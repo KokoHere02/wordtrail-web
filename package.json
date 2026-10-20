@@ -1,0 +1,39 @@
+{
+  "name": "wordtrail-web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --experimental-strip-types node_modules/vite/bin/vite.js --configLoader native",
+    "build": "vue-tsc -b && node --experimental-strip-types node_modules/vite/bin/vite.js build --configLoader native",
+    "preview": "node --experimental-strip-types node_modules/vite/bin/vite.js preview --configLoader native",
+    "dev:mock": "node --experimental-strip-types node_modules/vite/bin/vite.js --configLoader native --mode mock",
+    "typecheck": "vue-tsc -b",
+    "test:e2e": "playwright test",
+    "test:contracts": "node tests/contract-check.mjs",
+    "test:ui": "node tests/ui-check.mjs",
+    "dev:api": "node --experimental-strip-types node_modules/vite/bin/vite.js --configLoader native --mode api",
+    "dev:preview": "node --experimental-strip-types node_modules/vite/bin/vite.js --configLoader native --mode preview",
+    "test:daily": "node tests/daily-check.mjs",
+    "test:api-ui": "node tests/api-ui-check.mjs"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "axios": "^1.20.0",
+    "lucide-vue-next": "^1.0.0",
+    "pinia": "^4.1.0",
+    "tailwindcss": "^4.3.3",
+    "vue": "^3.5.44",
+    "vue-router": "^4.6.4"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^24.19.2",
+    "@vitejs/plugin-vue": "^6.0.10",
+    "@vue/tsconfig": "^0.9.1",
+    "happy-dom": "^21.0.3",
+    "typescript": "~6.0.3",
+    "vite": "^8.3.4",
+    "vue-tsc": "^3.3.13"
+  }
+}
