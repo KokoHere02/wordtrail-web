@@ -1,0 +1,102 @@
+/* Data-specific layouts share the existing theme and motion tokens. */
+.live-date { margin-top: var(--s6); color: var(--muted); font-size: var(--text-base); }
+.live-mode-note { text-align: center; color: var(--amber); padding: var(--s2); }
+.live-notice, .live-error { padding: var(--s4) var(--s5); border-radius: var(--radius); margin-top: var(--s4); border: 1px solid var(--notice-border); background: var(--sage); color: var(--ink); overflow-wrap: anywhere; }
+.live-error { border-color: var(--error-border); color: var(--error); background: var(--error-bg); }
+.live-error .live-actions { margin-top: var(--s2); }
+.live-actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s4); }
+.live-practice-options { margin: var(--s6) 0; padding: var(--s5); border-top: 1px solid var(--line); }
+.live-practice-options summary { cursor: pointer; font-weight: 600; }
+.live-practice-options .subtle-copy { margin: var(--s3) 0; }
+.live-actions input[type=number] { width: 80px; padding: var(--s2); border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); }
+.live-filter { display: flex; gap: var(--s3); align-items: center; color: var(--muted); }
+.live-filter select { background: var(--surface); color: var(--ink); border: 1px solid var(--line); padding: var(--s2) var(--s3); border-radius: var(--radius-sm); }
+.live-plan-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; align-items: center; gap: var(--s5); padding: var(--s5) 0; border-top: 1px solid var(--line); }
+.live-plan-row strong { font-size: var(--text-lg); overflow-wrap: anywhere; }
+.live-plan-row small { display: block; font-size: var(--text-sm); color: var(--muted); }
+.live-plan-row p { overflow-wrap: anywhere; color: var(--control-text); }
+.live-plan-schedule { font-size: var(--text-base); }
+.live-study-heading { display: flex; align-items: center; justify-content: space-between; padding: var(--s4) 0; border-bottom: 1px solid var(--line); color: var(--muted); }
+.live-meaning { display: grid; align-items: center; min-height: 100px; padding: var(--s4) 0; }
+.live-meaning .memory-meaning { font-size: var(--text-xl); overflow-wrap: anywhere; }
+.live-daily-page .memory-title h1 { max-width: 100%; overflow-wrap: anywhere; }
+.live-recall-caption { min-height: 72px; height: auto; padding: var(--s4) 0; gap: var(--s6); }
+.live-daily-stats { text-align: center; }
+.live-daily-result .session-stats { max-width: var(--practice-width); margin: 0 auto; }
+.live-daily-page .practice-feedback { min-height: 46px; height: auto; padding: var(--s2) 0; }
+.wordory-app .library-card-copy h2, .wordory-app .record-card h2 { overflow-wrap: anywhere; }
+.wordory-app .library-search input { flex: 1; width: 0; }
+.wordory-app .library-search button { flex-shrink: 0; }
+.wordory-app .today-streak { flex-wrap: wrap; }
+.wordory-app .library-card-copy { min-width: 0; }
+.book-cover .cover-label { white-space: normal; overflow-wrap: anywhere; max-width: 100%; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.auth-page > .wordory-brand { margin-bottom: var(--s8); }
+.live-daily-stats .session-stat-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.live-daily-stats > .subtle-copy { margin-top: var(--s3); font-size: var(--text-sm); }
+.live-date .violet-link { display: inline; }
+.today-statistics { width: 100%; margin-top: var(--s6); padding: var(--s5); border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); }
+.statistics-summary { margin-top: var(--s4); }
+.statistics-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--s3); margin-bottom: var(--s4); }
+.statistics-grid > div { display: flex; flex-direction: column; text-align: center; }
+.statistics-grid strong { font-size: var(--text-xl); }
+.statistics-grid span { color: var(--muted); font-size: var(--text-sm); }
+.statistics-warning { border-color: var(--amber-border); background: var(--amber-bg); color: var(--ink); }
+.plan-filters, .calendar-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s4); margin-bottom: var(--s5); }
+.plan-selection { flex-wrap: wrap; }
+.plan-selection-help { margin: var(--s3) 0; }
+.plan-word-copy { display: flex; gap: var(--s3); align-items: center; min-width: 0; }
+.plan-word-copy > div { min-width: 0; }
+.word-selected-state:has(button) { flex-direction: column; align-items: flex-end; }
+.calendar-sheet, .statistics-detail { margin-top: var(--s6); }
+.calendar-heading input, .settings-form input { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: var(--s2) var(--s3); background: var(--surface); color: var(--ink); min-height: var(--control); }
+.learning-calendar { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--s2); margin-top: var(--s5); }
+.calendar-weekday { text-align: center; color: var(--muted); padding: var(--s2); }
+.calendar-day { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; min-height: 96px; padding: var(--s3) var(--s1) var(--s5); background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: var(--radius-sm); transition: background var(--motion-fast), border-color var(--motion-fast); }
+.calendar-day:hover, .calendar-day.selected { background: var(--sage); border-color: var(--accent); }
+.calendar-day > span, .calendar-day > small { color: var(--muted); font-size: var(--text-sm); }
+.calendar-day.incomplete > small { color: var(--amber); }
+.calendar-day i { position: absolute; bottom: var(--s2); width: 6px; height: 6px; border-radius: var(--radius-pill); background: var(--accent); }
+.statistics-words-heading { margin-top: var(--s8); }
+.statistics-word-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: var(--s5); padding: var(--s5) 0; border-bottom: 1px solid var(--line); align-items: center; }
+.statistics-word-row strong { font-size: var(--text-lg); }
+.statistics-word-row p { color: var(--muted); font-size: var(--text-sm); }
+.statistics-word-row > div { min-width: 0; overflow-wrap: anywhere; }
+.statistics-word-row p.statistics-word-warning { color: var(--amber); }
+.history-group { margin-top: var(--s5); }
+.history-event { padding: var(--s4) 0; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.history-event p { color: var(--muted); font-size: var(--text-sm); margin: var(--s2) 0; }
+.history-event details summary { color: var(--accent-strong); cursor: pointer; }
+.history-event pre { white-space: pre-wrap; overflow-wrap: anywhere; padding: var(--s3); background: var(--bg); border-radius: var(--radius-sm); font-size: var(--text-sm); }
+.settings-form { display: flex; flex-direction: column; gap: var(--s5); max-width: 680px; }
+.settings-form label { font-weight: 600; }
+.settings-form input { max-width: 200px; }
+.settings-form .btn { align-self: flex-start; }
+@media (max-width: 640px) {
+  .live-daily-stats .session-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s4); }
+  .statistics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s4); }
+  .today-statistics { padding: var(--s4); }
+  .today-statistics .plan-heading { flex-wrap: wrap; }
+  .learning-calendar { gap: var(--s1); }
+  .calendar-day { min-height: 80px; border-radius: var(--radius-sm); padding: var(--s2) 0 var(--s5); }
+  .calendar-day > small { font-size: var(--text-xs); }
+  .calendar-heading { align-items: flex-start; }
+  .calendar-heading .live-actions { gap: var(--s2); }
+  .calendar-heading input { max-width: 160px; }
+  .statistics-word-row { grid-template-columns: minmax(0, 1fr) auto; gap: var(--s3); }
+  .statistics-word-row > div:nth-child(2) { grid-column: 1; grid-row: 2; }
+  .statistics-word-row > button { grid-column: 2; grid-row: 1 / 3; }
+  .live-date { margin-top: var(--s5); font-size: var(--text-sm); }
+  .live-plan-row { grid-template-columns: minmax(0, 1fr) auto; gap: var(--s3); }
+  .live-plan-schedule { grid-column: 1; grid-row: 2; }
+  .live-plan-row > .live-actions { grid-column: 2; grid-row: 1 / 3; flex-direction: column; gap: var(--s3); }
+  .live-meaning { min-height: 100px; }
+  .live-meaning .memory-meaning { font-size: var(--text-lg); }
+  .live-daily-page .recall-caption { font-size: var(--text-sm); }
+  .live-daily-stats .session-stat-grid strong { font-size: var(--text-lg); }
+  .live-daily-stats .session-stat-grid span { font-size: var(--text-xs); }
+  .wordory-app .record-summary strong { font-size: var(--text-lg); white-space: nowrap; }
+  .wordory-app .record-icon { flex-shrink: 0; }
+  .wordory-app .today-streak .muted-link { font-size: var(--text-sm); }
+  .live-filter { font-size: var(--text-sm); }
+  .live-practice-options { padding: var(--s4) 0; }
+}
