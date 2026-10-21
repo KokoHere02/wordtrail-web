@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue';
-import { ArrowRight, Info, Search } from 'lucide-vue-next';
+import { ArrowRight, Search } from 'lucide-vue-next';
 import { api } from '../../api';
 import { useResource } from '../../composables/useResource';
 import { useBooksStore } from '../../stores/books';
@@ -20,18 +20,18 @@ onMounted(refresh);
 </script>
 <template>
   <div class="library-page">
-    <header class="library-heading"><div><p class="overline reveal">YOUR NEXT WORD</p><h1 class="reveal" style="--delay: 50ms">选一本，慢慢学。</h1><p class="hero-subtitle reveal" style="--delay: 100ms">选择词书，再挑选想加入学习计划的单词。</p></div>
+    <header class="library-heading"><div><h1 class="reveal" style="--delay: 50ms">词库</h1></div>
       <form class="library-search" role="search" @submit.prevent="search"><Search :size="22" /><input v-model="keyword" type="search" aria-label="搜索词书" placeholder="搜索词书" /><button class="violet-link" type="submit">搜索</button></form>
     </header>
     <div class="category-tabs"><span class="subtle-copy">全部词书 <template v-if="data">· {{ data.total }} 本</template></span></div>
     <StatePanel :loading="loading" :error="error" :empty="!!data && !data.records.length" message="没有找到这本词书，换个关键词试试。" @retry="refresh" />
     <TransitionGroup v-if="!loading && !error" name="book-grid" tag="div" class="library-grid">
       <article v-for="(book, index) in data?.records" :key="book.id" class="library-card" :style="{ '--card-order': index }">
-        <BookCover :label="book.name" /><div class="library-card-copy"><h2>{{ book.name }}</h2><p>{{ book.description || '从这本词书开始，积累自己的词汇。' }}</p><span class="book-word-count">{{ book.wordCount.toLocaleString() }} 词</span></div>
+        <BookCover :label="book.name" /><div class="library-card-copy"><h2>{{ book.name }}</h2><p v-if="book.description">{{ book.description }}</p><span class="book-word-count">{{ book.wordCount.toLocaleString() }} 词</span></div>
         <div class="library-card-bottom"><RouterLink :to="`/books/${book.id}`" class="violet-link">查看词表<ArrowRight :size="18" /></RouterLink></div>
       </article>
     </TransitionGroup>
     <AppPagination v-if="data" :page="page" :size="size" :total="data.total" :disabled="loading" @change="page = $event" />
-    <div class="library-bottom"><p><Info :size="21" />加入计划后，将根据记忆反馈安排每日复习。</p><RouterLink to="/plan" class="btn btn-secondary">我的计划<ArrowRight :size="18" /></RouterLink></div>
+    <div class="library-bottom"><RouterLink to="/plan" class="btn btn-secondary">我的计划<ArrowRight :size="18" /></RouterLink></div>
   </div>
 </template>

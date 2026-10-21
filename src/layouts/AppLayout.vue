@@ -26,7 +26,7 @@ async function logout() {
 }
 </script>
 <template>
-  <div class="wordory-app">
+  <div class="wordory-app compact-copy">
     <a class="skip-link" href="#main">跳至主要内容</a>
     <header class="site-header">
       <BrandMark />
@@ -39,11 +39,10 @@ async function logout() {
         <button class="profile-button" aria-label="打开账户菜单" @click="profileOpen = true">{{ name.slice(0, 1).toUpperCase() }}</button>
       </div>
     </header>
-    <p v-if="mockEnabled" class="live-mode-note" role="status">当前为显式 Mock 模式，数据来自本地演示。</p>
+    <p v-if="mockEnabled" class="live-mode-note" role="status">Mock 演示模式</p>
     <main id="main" :class="['page-stage', { 'practice-stage': route.path.startsWith('/learn') && !route.path.startsWith('/learning') }]" tabindex="-1">
       <RouterView v-slot="{ Component }"><Transition name="page" mode="out-in"><component :is="Component" :key="route.path" /></Transition></RouterView>
     </main>
-    <footer class="site-footer"><span class="footer-motto"><span class="status-orb" />每天一点，慢慢记牢。</span><span class="footer-aside">选择适合自己的节奏。</span></footer>
     <AppDialog v-model="profileOpen" title="我的账户" :description="name">
       <RouterLink to="/plan" class="btn btn-secondary dialog-confirm" @click="profileOpen = false">管理长期学习计划</RouterLink>
       <RouterLink to="/settings" class="btn btn-secondary dialog-confirm" @click="profileOpen = false">每日目标设置</RouterLink>

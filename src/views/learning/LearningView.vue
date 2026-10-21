@@ -37,9 +37,7 @@ function localTime(value: string) {
   <div class="records-page">
   <section class="page-heading">
     <div>
-      <div class="eyebrow">YOUR LEARNING TRAIL</div>
-      <h1>我的学习</h1>
-      <p>每一轮小小的积累，都会留下自己的轨迹。</p>
+      <h1>专项练习</h1>
     </div>
     <RouterLink to="/books" class="text-button desktop-inline"
       >去选词书<ArrowRight :size="15"

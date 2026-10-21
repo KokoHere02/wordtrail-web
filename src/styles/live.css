@@ -1,4 +1,12 @@
 /* Data-specific layouts share the existing theme and motion tokens. */
+.compact-copy #main { padding-bottom: max(var(--s8), env(safe-area-inset-bottom)); }
+.compact-copy .today-hero { padding-top: var(--s8); }
+.compact-copy .today-hero h1, .compact-copy .library-heading h1 { margin-top: 0; }
+.compact-copy .today-streak, .compact-copy .library-bottom, .compact-copy .wordlist-bottom:not(:has(> span)) { justify-content: flex-end; }
+.copy-note { color: var(--muted); font-size: var(--text-sm); }
+.copy-note summary { cursor: pointer; width: fit-content; }
+.copy-note p { margin-top: var(--s2); }
+.reinforcement-status { min-height: var(--s6); text-align: center; margin-top: var(--s2); }
 .live-date { margin-top: var(--s6); color: var(--muted); font-size: var(--text-base); }
 .live-mode-note { text-align: center; color: var(--amber); padding: var(--s2); }
 .live-notice, .live-error { padding: var(--s4) var(--s5); border-radius: var(--radius); margin-top: var(--s4); border: 1px solid var(--notice-border); background: var(--sage); color: var(--ink); overflow-wrap: anywhere; }

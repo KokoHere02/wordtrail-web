@@ -43,13 +43,13 @@ export function usePlan() {
     try {
       if (bulk) {
         const result = await dailyApi.updatePlanStatus(ids, target);
-        notice.value = `请求 ${result.requestedCount} 词，变更 ${result.changedCount} 词，原状态相同 ${result.unchangedCount} 词。`;
+        notice.value = `共 ${result.requestedCount} 词 · 变更 ${result.changedCount} 词 · 未变 ${result.unchangedCount} 词。`;
       } else { await dailyApi.updatePlan(ids[0]!, target); notice.value = '计划已更新。'; }
-      notice.value += '暂停或移出同步跳过今日明细；只有进行中的今日任务可恢复跳过前状态，已结束任务不会重开。';
+      notice.value += target === 'ACTIVE' ? '已结束的今日任务不重开。' : '今日对应单词已跳过。';
       selection.clear();
       await refresh();
       return true;
-    } catch (e) { saveError.value = `${errorMessage(e)}；选择已保留，请重新加载核对状态后重试。`; return false; }
+    } catch (e) { saveError.value = `${errorMessage(e)}；选择已保留。`; return false; }
     finally { busy.value = false; }
   }
   return { ...resource, ...selection, status, learningStatus, keyword, sortOptions, sort, page, size, busy, saveError, notice, pageIds, pageSelected, refresh, search, change };

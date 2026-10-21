@@ -91,14 +91,7 @@ async function submit() {
   <main class="auth-page">
     <BrandMark />
     <section class="auth-card">
-      <h1>{{ registering ? "开始你的词汇之旅" : "欢迎回来" }}</h1>
-      <p>
-        {{
-          registering
-            ? "建立一个账户，让每次积累都有迹可循。"
-            : "翻开词书，继续一点一滴的积累。"
-        }}
-      </p>
+      <h1>{{ registering ? "创建账户" : "欢迎回来" }}</h1>
       <div v-if="notice" class="notice" role="status">{{ notice }}</div>
       <form novalidate @submit.prevent="submit">
         <div class="field">
@@ -173,6 +166,5 @@ async function submit() {
     <p v-if="mockEnabled" class="mock-notice">
       当前为离线演示，数据仅保存在此浏览器。可使用任意符合格式的账号与密码体验，请勿输入真实密码。
     </p>
-    <p class="auth-footer">一词一步，循序而行。</p>
   </main>
 </template>

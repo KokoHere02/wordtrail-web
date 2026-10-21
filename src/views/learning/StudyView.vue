@@ -198,7 +198,7 @@ onMounted(load);
           ><span v-else-if="item.answered" class="saved-note"
             ><Check :size="14" />已保存本次自评</span
           ><span v-else class="saved-note">{{
-            saving ? "正在保存…" : "按真实感受选择，不必急于记住"
+            saving ? "正在保存…" : ""
           }}</span>
         </div>
         <p v-if="saveError" class="form-error" role="alert">{{ saveError }}</p>
@@ -213,13 +213,7 @@ onMounted(load);
           >{{ item.nextItemId ? "下一个" : "完成本轮" }}<ArrowRight :size="19"
         /></AppButton>
       </div>
-      <p class="study-footnote">
-        {{
-          item.answered
-            ? "停留片刻，让含义与单词连在一起。"
-            : "选择后显示释义，答案会自动保存。"
-        }}
-      </p></template
+</template
     >
   </main>
 </template>

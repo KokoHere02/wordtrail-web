@@ -44,7 +44,7 @@ async function join() {
   busy.value = true; saveError.value = ''; notice.value = '';
   try {
     const result = await dailyApi.join(id, [...selection.selected.value]);
-    notice.value = `新增 ${result.addedCount} 词，恢复 ${result.reactivatedCount} 词，已在计划中 ${result.unchangedCount} 词。新增词不追加到已生成的今日任务；恢复可还原进行中任务的原明细，已结束任务不重开。`;
+    notice.value = `新增 ${result.addedCount} 词 · 恢复 ${result.reactivatedCount} 词 · 已有 ${result.unchangedCount} 词。`;
     selection.clear();
   } catch (e) { saveError.value = errorMessage(e); }
   finally { busy.value = false; }
@@ -64,7 +64,7 @@ async function practice(manual: boolean) {
   <div class="wordlist-page">
     <RouterLink to="/books" class="muted-link back-to-library"><ArrowLeft :size="17" />返回词库</RouterLink>
     <StatePanel :error="bookError" @retry="loadBook" />
-    <header class="wordlist-heading"><BookCover :label="book?.name || '词书'" /><div><p class="overline">YOUR WORD COLLECTION</p><h1>{{ book?.name || '词书词表' }}</h1><p>{{ book?.description }}</p><span class="subtle-copy">{{ book ? `${book.wordCount.toLocaleString()} 词` : '正在读取词书信息…' }}</span></div><RouterLink to="/plan" class="btn btn-secondary">我的学习计划</RouterLink></header>
+    <header class="wordlist-heading"><BookCover :label="book?.name || '词书'" /><div><h1>{{ book?.name || '词书词表' }}</h1><p>{{ book?.description }}</p><span class="subtle-copy">{{ book ? `${book.wordCount.toLocaleString()} 词` : '正在读取词书信息…' }}</span></div><RouterLink to="/plan" class="btn btn-secondary">我的学习计划</RouterLink></header>
     <section class="wordlist-sheet">
       <div class="wordlist-tools">
         <div class="category-tabs" role="group" aria-label="单词学习状态"><button v-for="entry in filters" :key="entry.value" :class="{ active: filter === entry.value }" :aria-pressed="filter === entry.value" :disabled="busy" @click="filter = entry.value">{{ entry.label }}</button></div>
@@ -76,8 +76,8 @@ async function practice(manual: boolean) {
       <AppPagination v-if="data" :page="page" :size="size" :total="data.total" :disabled="loading || busy" @change="page = $event" />
     </section>
     <p v-if="notice" class="live-notice" role="status">{{ notice }}</p><p v-if="saveError" class="inline-error" role="alert">{{ saveError }}</p>
-    <div class="wordlist-bottom"><span>{{ selection.count.value > 100 ? '每次最多加入 100 词，请减少选择。' : '选择会跨页保留；每次最多加入 100 词。' }}</span><button class="btn btn-primary" :disabled="busy || !selection.count.value || selection.count.value > 100" @click="join">{{ busy ? '正在提交…' : '加入学习计划' }}<ArrowRight :size="18" /></button></div>
-    <details class="live-practice-options"><summary>专项练习</summary><p class="subtle-copy">独立练习，不更新长期计划的复习进度。</p><div class="live-actions"><button class="btn btn-secondary" :disabled="busy || !selection.count.value || selection.count.value > 100" @click="practice(true)">练习已选 {{ selection.count.value }} 词</button><label for="practice-count">本轮数量</label><input id="practice-count" v-model.number="practiceCount" type="number" min="1" max="100" :disabled="busy" /><button class="btn btn-secondary" :disabled="busy" @click="practice(false)">按词书开始练习</button></div></details>
+    <div class="wordlist-bottom"><span>{{ selection.count.value > 100 ? '每次最多加入 100 词，请减少选择。' : '跨页保留 · 每次最多 100 词' }}</span><button class="btn btn-primary" :disabled="busy || !selection.count.value || selection.count.value > 100" @click="join">{{ busy ? '正在提交…' : '加入学习计划' }}<ArrowRight :size="18" /></button></div>
+    <details class="live-practice-options"><summary>专项练习</summary><p class="subtle-copy">不影响每日学习进度。</p><div class="live-actions"><button class="btn btn-secondary" :disabled="busy || !selection.count.value || selection.count.value > 100" @click="practice(true)">练习已选 {{ selection.count.value }} 词</button><label for="practice-count">本轮数量</label><input id="practice-count" v-model.number="practiceCount" type="number" min="1" max="100" :disabled="busy" /><button class="btn btn-secondary" :disabled="busy" @click="practice(false)">按词书开始练习</button></div></details>
     <WordHistoryDialog v-model="historyOpen" :word-id="historyWord?.id ?? null" :word="historyWord?.word || ''" />
   </div>
 </template>

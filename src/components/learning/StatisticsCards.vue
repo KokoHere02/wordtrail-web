@@ -12,8 +12,8 @@ defineProps<{ statistics: DailyStatistics }>();
       <div><strong>{{ statistics.reviewCompletedCount }}</strong><span>复习完成</span></div>
       <div><strong>{{ statistics.unfamiliarCount }}</strong><span>已答仍不熟悉</span></div>
     </div>
-    <p class="subtle-copy">仅统计每日学习；仍不熟悉词数包含强化中的词。更正与请求重试不增加作答次数。</p>
+    <details class="copy-note"><summary>统计口径</summary><p>仅每日学习；不熟悉含强化中的词；更正不增加作答次数。</p></details>
     <StatisticsNotice :complete="statistics.statisticsComplete" :incomplete-word-count="statistics.incompleteWordCount" />
-    <p v-if="!statistics.hasLearningActivity && statistics.statisticsComplete" class="subtle-copy">该日没有记录到每日学习行为；专项练习单独查看。</p>
+    <p v-if="!statistics.hasLearningActivity && statistics.statisticsComplete" class="subtle-copy">暂无每日学习记录。</p>
   </section>
 </template>

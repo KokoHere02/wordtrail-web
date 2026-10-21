@@ -74,7 +74,7 @@ async function relearn() {
   /><template v-if="summary.data.value"
     ><section class="round-heading">
       <div class="round-check"><Check :size="23" :stroke-width="1.5" /></div>
-      <h1>又走完了一小段词汇之旅。</h1>
+      <h1>本轮已完成</h1>
       <p>{{ summary.data.value.bookName || "词汇学习" }} · 本轮已完成</p>
     </section>
     <section class="result-stats" aria-label="本轮自评汇总">
@@ -96,16 +96,16 @@ async function relearn() {
       </div>
     </section>
     <p class="self-report-note">
-      以上为本轮用户自评，仅记录你此刻对单词的熟悉感受。
+      本轮自评结果
     </p>
     <div class="relearn-panel">
       <div>
-        <h2>再与生词见一面</h2>
+        <h2>重学</h2>
         <p>
           {{
             summary.data.value.relearnCount
-              ? `有 ${summary.data.value.relearnCount} 个不确定或不认识的词，可以单独开启一轮。`
-              : "本轮所有单词均自评为认识，暂无需要重学的词。"
+              ? `${summary.data.value.relearnCount} 个词待重学`
+              : "暂无需要重学的词。"
           }}
         </p>
       </div>
