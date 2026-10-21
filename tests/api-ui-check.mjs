@@ -102,6 +102,7 @@ await until(() => document.querySelector('.daily-equation'), 'live today after l
 assert.match(document.querySelector('.daily-equation').textContent, /0/);
 await router.push('/learn');
 await until(() => document.querySelector('.library-empty h1')?.textContent.includes('暂时没有待学'), 'empty daily plan does not generate sample words');
+assert.equal(document.querySelectorAll('.library-empty').length, 1, 'no duplicate start panel for an empty plan');
 await router.push('/books');
 await until(
   () => document.querySelectorAll(".library-card").length === 4,
@@ -295,8 +296,15 @@ await router.push('/today');
 await until(() => document.querySelector('.daily-equation'), 'real candidate pools');
 assert.match(document.querySelector('.today-plan').textContent, /2 个启用/);
 assert.equal(document.body.textContent.includes('连续学习 7 天'), false);
+const readOnlyAdapter = http.defaults.adapter;
+let dailyStartCalls = 0;
+http.defaults.adapter = async config => { if (config.url === '/learning/today/start') dailyStartCalls++; return readOnlyAdapter(config); };
 await router.push('/learn');
+await until(() => document.querySelector('.library-empty h1')?.textContent.includes('开始今日学习'), 'GET-only learning entry');
+assert.equal(dailyStartCalls, 0);
+await readyClick('开始学习');
 await until(() => document.querySelector('.memory-title h1')?.textContent.trim() === 'abandon', 'daily first word');
+assert.equal(dailyStartCalls, 1);
 assert.equal(document.querySelector('.memory-meaning'), null);
 const dailyAdapter = http.defaults.adapter;
 let originalWrite;
@@ -326,11 +334,24 @@ await readyClick('下一个单词');
 await until(() => document.querySelector('.memory-title h1')?.textContent.trim() === 'abandon', 'reinforcement uses same word');
 assert.equal(document.querySelector('.memory-meaning'), null);
 document.querySelector('.recall-known').click();
+await until(() => document.querySelector('.reinforcement-status')?.textContent.includes('还需 2 次'), 'known feedback only reduces remaining validations');
+const dailyStudyPath = router.currentRoute.value.path;
+await router.push('/records');
+await router.push(dailyStudyPath);
+await until(() => document.querySelector('.reinforcement-status')?.textContent.includes('还需 2 次') && document.querySelector('.recall-known')?.disabled === false, 'refresh restores remaining validations');
+assert.equal(document.querySelector('.memory-meaning'), null);
+assert.equal(dailyStartCalls, 1);
+document.querySelector('.recall-known').click();
+await until(() => document.querySelector('.reinforcement-status')?.textContent.includes('还需 1 次'), 'another known still relearning');
+await readyClick('下一个单词');
+await until(() => document.querySelector('.recall-known')?.disabled === false, 'last validation appears again');
+document.querySelector('.recall-known').click();
 await until(() => [...document.querySelectorAll('button')].some(el => el.textContent.trim() === '完成本轮'), 'last answer still visible');
 await readyClick('完成本轮');
 await until(() => document.querySelector('.live-daily-result .session-stats'), 'daily result from API');
 assert.match(document.querySelector('.session-stat-grid').textContent, /2 \/ 2/);
-assert.match(document.querySelector('.session-stat-grid').textContent, /3作答次数/);
+assert.match(document.querySelector('.session-stat-grid').textContent, /5作答次数/);
+assert.equal(dailyStartCalls, 1);
 assert.equal(document.body.textContent.includes('正确率'), false);
 await router.push('/records');
 await readyClick('已完成');
@@ -465,8 +486,99 @@ await until(
     document.querySelectorAll(".preview-word-row").length === 10,
   "login restores target",
 );
+// Same-day continuation: seven completed words plus three new ones, without any POST on reads.
+const continuationAdapter = http.defaults.adapter;
+const continuationCalls = [];
+http.defaults.adapter = async config => { continuationCalls.push({ method: config.method, url: config.url }); return continuationAdapter(config); };
+const startCount = () => continuationCalls.filter(call => call.url === '/learning/today/start').length;
+await router.push('/settings');
+await until(() => document.querySelector('#daily-target'), 'new account target');
+input('#daily-target', '7');
+clickText('保存每日目标');
+await until(() => document.querySelector('.live-notice')?.textContent.includes('7'), 'target seven saved');
+await router.push('/books/1');
+await until(() => document.querySelector('input[aria-label="选择 accept"]'), 'seven initial words available');
+for (const word of ['abandon', 'absorb', 'abstract', 'abundant', 'academic', 'accelerate', 'accept']) selectWord(word);
+await until(() => document.querySelector('.selected-count')?.textContent.includes('7'), 'seven selected');
+clickText('加入学习计划');
+await until(() => document.querySelector('.live-notice')?.textContent.includes('新增 7'), 'seven joined');
+await router.push('/today');
+await until(() => [...document.querySelectorAll('button')].some(button => button.textContent.trim() === '开始学习'), 'today start button');
+assert.equal(startCount(), 0);
+await readyClick('开始学习');
+await until(() => document.querySelector('.recall-known')?.disabled === false, 'first group ready');
+const continuedStudyPath = router.currentRoute.value.path;
+const continuedBatchId = router.currentRoute.value.params.batchId;
+for (let index = 0; index < 7; index++) {
+  await until(() => document.querySelector('.recall-known')?.disabled === false, `first group item ${index + 1}`);
+  document.querySelector('.recall-known').click();
+  await readyClick(index === 6 ? '完成本轮' : '下一个单词');
+}
+await until(() => document.querySelector('.live-daily-result .session-stats'), 'first seven result');
+assert.match(document.querySelector('.session-stat-grid').textContent, /7 \/ 7/);
+assert.equal(startCount(), 1);
+await router.push('/books/1');
+await until(() => document.querySelector('input[aria-label="选择 accomplish"]'), 'three new words available');
+for (const word of ['access', 'accommodate', 'accomplish']) selectWord(word);
+await until(() => document.querySelector('.selected-count')?.textContent.includes('3'), 'three selected');
+clickText('加入学习计划');
+await until(() => document.querySelector('.live-notice')?.textContent.includes('新增 3'), 'three joined after completion');
+await router.push('/today');
+await until(() => document.querySelector('.today-cta button')?.textContent.includes('继续学习'), 'today canAddMore retains continue button');
+assert.equal(startCount(), 1);
+await router.push(`/records/${continuedBatchId}`);
+await until(() => document.querySelector('.live-daily-result button')?.textContent.includes('继续学习'), 'result can continue, but does not auto append');
+assert.match(document.querySelector('.session-stat-grid').textContent, /7 \/ 7/);
+assert.equal(startCount(), 1);
+await router.push(continuedStudyPath);
+await until(() => document.querySelector('.library-empty button')?.textContent.includes('继续学习'), 'GET refresh does not auto append');
+assert.equal(startCount(), 1);
+await router.push('/today');
+await until(() => document.querySelector('.today-cta button')?.textContent.includes('继续学习'), 'today view mounted before continuation click');
+await readyClick('继续学习');
+await until(() => document.querySelector('.memory-title h1')?.textContent.trim() === 'access', 'explicit today continue appends new words');
+assert.equal(router.currentRoute.value.path, continuedStudyPath);
+assert.equal(startCount(), 2);
+assert.match(document.querySelector('.session-stat-grid').textContent, /7 \/ 10/);
+assert.match(document.querySelector('.live-daily-stats').textContent, /本任务目标 7 词/);
+for (let index = 0; index < 3; index++) {
+  await until(() => document.querySelector('.recall-known')?.disabled === false, `continued item ${index + 1}`);
+  document.querySelector('.recall-known').click();
+  await readyClick(index === 2 ? '完成本轮' : '下一个单词');
+}
+await until(() => document.querySelector('.live-daily-result .session-stats'), 'ten cumulative words result');
+assert.match(document.querySelector('.session-stat-grid').textContent, /10 \/ 10/);
+assert.equal(startCount(), 2);
+
+// Continuing while already on /learn/:batchId must update that same view, and allow attempts 4–6.
+await router.push('/books/1');
+await until(() => document.querySelector('input[aria-label="选择 abandon"]'), 'third group book');
+input('input[aria-label="搜索单词"]', 'accurate');
+document.querySelector('form[role="search"]').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+await until(() => document.querySelector('input[aria-label="选择 accurate"]'), 'one more word');
+selectWord('accurate');
+await readyClick('加入学习计划');
+await until(() => document.querySelector('.live-notice')?.textContent.includes('新增 1'), 'one word joined');
+await router.push(continuedStudyPath);
+await readyClick('继续学习');
+await until(() => document.querySelector('.memory-title h1')?.textContent.trim() === 'accurate', 'same path continuation refreshes queue');
+assert.equal(startCount(), 3);
+for (let attempt = 1; attempt <= 6; attempt++) {
+  await until(() => document.querySelector('.recall-known')?.disabled === false, `attempt ${attempt} available`);
+  assert.match(document.querySelector('.reinforcement-status').textContent, new RegExp(`本词第 ${attempt} / 6`));
+  document.querySelector(attempt === 6 ? '.recall-known' : '.recall-forgot').click();
+  if (attempt < 6) await readyClick('下一个单词');
+}
+await until(() => document.querySelector('.reinforcement-status')?.textContent.includes('当天暂时结束，仍需巩固'), 'LIMIT_REACHED message despite latest known result');
+assert.equal(document.querySelector('.recall-known').getAttribute('aria-pressed'), 'true');
+assert.equal(document.body.textContent.includes('已掌握'), false);
+await readyClick('完成本轮');
+await until(() => document.querySelector('.live-daily-result .session-stats'), 'limit result');
+assert.match(document.querySelector('.session-stat-grid').textContent, /11 \/ 11/);
+assert.equal(startCount(), 3);
+http.defaults.adapter = continuationAdapter;
 console.log(
-  "PASS Vue DOM integration: auth/redirect, books/practice, plan search and bulk status with atomic failure, removed-word rules, server daily queue/retry/correction/reinforcement, settings validation and task snapshot, statistics/calendar/incomplete notices, daily/practice history separation and empty-history uncertainty.",
+  "PASS Vue DOM integration: auth/books/plans/statistics regression; GET-only initialization/results/refresh; stable retry and correction; repeated known validations; six-attempt LIMIT_REACHED messaging; seven plus three continuation in the same batch beyond target; same-path continuation.",
 );
 console.log(
   "This does not verify pixels, responsive geometry, mobile keyboard or screenshots.",
