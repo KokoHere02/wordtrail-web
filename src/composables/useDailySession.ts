@@ -2,7 +2,7 @@ import { ref } from 'vue';
 import { dailyApi } from '../api/daily';
 import { ApiError, errorMessage } from '../api/http';
 import type { Result } from '../types/api';
-import type { DailyTask, DailyStudyItem, DailyAnswerResult, DailyAnswerBody, DailyCorrectionBody } from '../types/daily';
+import type { DailyTask, DailyStudyItem, DailyAnswerResult, DailyAnswerBody, DailyCorrectionBody, TodayOverview } from '../types/daily';
 
 type Pending = { batchId: number; item: DailyStudyItem } & (
   { kind: 'answer'; body: DailyAnswerBody } | { kind: 'correction'; body: DailyCorrectionBody }
@@ -13,8 +13,12 @@ type Pending = { batchId: number; item: DailyStudyItem } & (
 export function useDailySession(userId: number) {
   const key = `wordory.daily.pending.${userId}`;
   const progress = ref<DailyTask>();
+  const overview = ref<TodayOverview>();
   const item = ref<DailyStudyItem>();
   const receipt = ref<DailyAnswerResult>();
+  const answerDetails = ref<DailyStudyItem>();
+  const detailsError = ref('');
+  let answerLogId: number | null = null;
   const pending = ref<Pending>();
   const loading = ref(false);
   const saving = ref(false);
@@ -42,6 +46,9 @@ export function useDailySession(userId: number) {
     const task = await dailyApi.task(batchId);
     await readCurrent(task);
     receipt.value = undefined;
+    answerDetails.value = undefined;
+    detailsError.value = '';
+    answerLogId = null;
     correctableLogId.value = null;
   }
   async function readCurrent(initial: DailyTask) {
@@ -50,7 +57,13 @@ export function useDailySession(userId: number) {
       progress.value = task;
       if (task.status !== 'IN_PROGRESS' || task.nextItemId === null) { item.value = undefined; return; }
       const detail = await dailyApi.item(task.batchId, task.nextItemId);
-      if (['PENDING', 'RELEARNING'].includes(detail.learningStatus) && detail.nextAttemptNo !== null) { item.value = detail; return; }
+      if (['PENDING', 'RELEARNING'].includes(detail.learningStatus) && detail.nextAttemptNo !== null) {
+        if (!Number.isInteger(detail.attemptLimit) || detail.attemptLimit < 1 || detail.nextAttemptNo < 1 || detail.nextAttemptNo > detail.attemptLimit) {
+          item.value = undefined;
+          throw new ApiError('作答上限或序号无效，请确认后端已更新。', 'DAILY_CONTRACT_MISMATCH');
+        }
+        item.value = detail; return;
+      }
       // A plan change can happen between reading progress and its item. Never answer SKIPPED/DONE.
       item.value = undefined;
       receipt.value = undefined;
@@ -69,18 +82,25 @@ export function useDailySession(userId: number) {
     expired.value = false;
     noWords.value = false;
     try {
+      const today = await dailyApi.today();
+      overview.value = today;
       if (pending.value) {
         // Resolve an outstanding write before advancing to any other task.
         progress.value = await dailyApi.task(pending.value.batchId);
+        historical.value = progress.value.learningDate !== today.learningDate;
         item.value = pending.value.item;
         error.value = '上次保存结果尚未确认，请重试原请求后继续。';
       } else {
-        const task = batchId ? await dailyApi.task(batchId) : await dailyApi.start();
-        historical.value = batchId ? task.learningDate !== (await dailyApi.today()).learningDate : false;
-        progress.value = task;
-        if (historical.value) item.value = undefined;
+        const task = batchId ? await dailyApi.task(batchId) : today.task;
+        historical.value = task ? task.learningDate !== today.learningDate : false;
+        progress.value = task ?? undefined;
+        if (!task) { item.value = undefined; noWords.value = today.unassignedCount === 0; }
+        else if (historical.value) item.value = undefined;
         else await readCurrent(task);
         receipt.value = undefined;
+        answerDetails.value = undefined;
+        detailsError.value = '';
+        answerLogId = null;
         correctableLogId.value = null;
       }
     } catch (e) { handleError(e); }
@@ -95,11 +115,30 @@ export function useDailySession(userId: number) {
       correctableLogId.value = null;
     }
   }
+  async function loadAnswerDetails(batchId: number, itemId: number, originalLogId: number) {
+    answerDetails.value = undefined;
+    correctableLogId.value = null;
+    detailsError.value = '';
+    try {
+      const current = await dailyApi.item(batchId, itemId);
+      if (!Number.isInteger(current.attemptLimit) || current.attemptLimit < 1) throw new ApiError('接口未返回有效作答上限，请确认后端已更新。', 'DAILY_CONTRACT_MISMATCH');
+      answerDetails.value = current;
+      if (current.learningStatus !== 'SKIPPED' && current.correctableLogId === originalLogId) correctableLogId.value = originalLogId;
+    } catch (e) { detailsError.value = errorMessage(e); }
+  }
+  async function syncAnswerDetails() {
+    if (saving.value || loading.value || pending.value || !receipt.value || !item.value || !progress.value || answerLogId === null) return;
+    saving.value = true;
+    try { await loadAnswerDetails(progress.value.batchId, item.value.itemId, answerLogId); }
+    finally { saving.value = false; }
+  }
   async function send() {
     if (!pending.value || saving.value || expired.value) return;
     const action = pending.value;
     saving.value = true;
     error.value = '';
+    answerDetails.value = undefined;
+    detailsError.value = '';
     try {
       const saved = action.kind === 'answer'
         ? await dailyApi.answer(action.batchId, action.item.itemId, action.body)
@@ -110,11 +149,8 @@ export function useDailySession(userId: number) {
       remember();
       // Use the original ANSWER event, never the returned correction event id.
       const originalLogId = action.kind === 'answer' ? saved.logId : action.body.logId;
-      correctableLogId.value = null;
-      try {
-        const current = await dailyApi.item(action.batchId, action.item.itemId);
-        if (current.correctableLogId === originalLogId) correctableLogId.value = originalLogId;
-      } catch { /* Saved successfully; correction is unavailable until eligibility can be verified. */ }
+      answerLogId = originalLogId;
+      await loadAnswerDetails(action.batchId, action.item.itemId, originalLogId);
     } catch (e) {
       handleError(e);
       if (e instanceof ApiError && ['STALE_DAILY_ANSWER', 'CORRECTION_NOT_ALLOWED', 'PLAN_WORD_UNAVAILABLE'].includes(e.code)) {
@@ -132,7 +168,7 @@ export function useDailySession(userId: number) {
     } finally { saving.value = false; }
   }
   async function answer(result: Result) {
-    if (saving.value || loading.value || historical.value || expired.value || pending.value || receipt.value || !item.value || progress.value?.status !== 'IN_PROGRESS' || progress.value.nextItemId !== item.value.itemId || !['PENDING', 'RELEARNING'].includes(item.value.learningStatus) || item.value.nextAttemptNo === null) return;
+    if (saving.value || loading.value || historical.value || expired.value || pending.value || receipt.value || !item.value || progress.value?.status !== 'IN_PROGRESS' || progress.value.nextItemId !== item.value.itemId || !['PENDING', 'RELEARNING'].includes(item.value.learningStatus) || item.value.nextAttemptNo === null || item.value.nextAttemptNo > item.value.attemptLimit) return;
     if (!remember({ batchId: progress.value.batchId, item: item.value, kind: 'answer', body: { result, attemptNo: item.value.nextAttemptNo, requestId: crypto.randomUUID() } })) return;
     await send();
   }
@@ -149,5 +185,5 @@ export function useDailySession(userId: number) {
     catch (e) { handleError(e); }
     finally { loading.value = false; }
   }
-  return { progress, item, receipt, pending, loading, saving, error, expired, historical, noWords, notice, correctableLogId, open, answer, correct, retry: send, next };
+  return { progress, overview, item, receipt, answerDetails, detailsError, pending, loading, saving, error, expired, historical, noWords, notice, correctableLogId, open, answer, correct, syncAnswerDetails, retry: send, next };
 }

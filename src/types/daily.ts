@@ -28,6 +28,7 @@ export interface PlanWord {
 }
 export interface TodayOverview {
   learningDate: string; dailyTarget: number; activeCount: number; dueCount: number; newCount: number;
+  unassignedCount: number; canAddMore: boolean;
   task: DailyTask | null;
 }
 export interface DailyTask {
@@ -40,6 +41,8 @@ export interface DailyStudyItem {
   itemType: 'NEW' | 'REVIEW'; learningStatus: 'PENDING' | 'RELEARNING' | 'DONE' | 'SKIPPED';
   result: Result | null; answerCount: number; nextAttemptNo: number | null;
   nextItemId: number | null; correctableLogId: number | null;
+  reinforcementRemaining: number | null; attemptLimit: number;
+  completionReason: 'RECALLED' | 'LIMIT_REACHED' | null;
 }
 export interface DailyAnswerBody { result: Result; attemptNo: number; requestId: string }
 export interface DailyCorrectionBody { result: Result; logId: number; requestId: string }

@@ -2,7 +2,7 @@
 import type { BookWord, Result } from '../types/api';
 import type { PlanWord, PlanStatus, DailyTask, DailyStudyItem, DailyAnswerResult, DailyStatistics, WordHistoryEvent } from '../types/daily';
 interface TaskFixture { task: DailyTask; items: DailyStudyItem[]; queue: number[]; skippedBefore?: Record<number, { status: DailyStudyItem['learningStatus']; attempt: number | null; position: number }> }
-interface EventFixture { signature: string; batchId: number; receipt: Omit<DailyAnswerResult, 'progress'>; wordId?: number; history?: WordHistoryEvent }
+interface EventFixture { signature: string; batchId: number; receipt: Omit<DailyAnswerResult, 'progress'>; wordId?: number; history?: WordHistoryEvent; reinforcementBefore?: number | null }
 interface State { plan: PlanWord[]; tasks: TaskFixture[]; events: Record<string, EventFixture>; nextId: number; latestLog: number | null; dailyTarget?: number }
 const date = () => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Shanghai' }).format(new Date());
 const timestamp = () => new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Shanghai' }).replace(' ', 'T');
@@ -13,7 +13,7 @@ function recalculate(fixture: TaskFixture) {
   const { task, items, queue } = fixture;
   task.completedCount = items.filter(word => word.learningStatus === 'DONE').length;
   task.skippedCount = items.filter(word => word.learningStatus === 'SKIPPED').length;
-  task.unfamiliarCount = items.filter(word => word.learningStatus === 'DONE' && word.result !== 1).length;
+  task.unfamiliarCount = items.filter(word => word.learningStatus === 'DONE' && (word.result !== 1 || word.completionReason === 'LIMIT_REACHED')).length;
   task.nextItemId = queue[0] ?? null;
   if (task.status === 'IN_PROGRESS' && !queue.length) task.status = 'COMPLETED';
 }
@@ -120,17 +120,35 @@ export function mockDaily(account: string, url: string, method: string, body: Re
     changeStatus([Number(planMatch[1])]);
     return respond(null);
   }
-  if (url === '/learning/today') { const p = pools(); const task = state.tasks.find(t => t.task.learningDate === date())?.task || null; return respond({ learningDate: date(), dailyTarget: task?.dailyTarget ?? state.dailyTarget ?? 20, activeCount: p.active.length, dueCount: p.due.length, newCount: p.fresh.length, task }); }
-  if (url === '/learning/today/start') {
-    const existing = state.tasks.find(t => t.task.learningDate === date());
-    if (existing) return respond(existing.task);
+  const unassigned = (fixture?: TaskFixture) => {
     const p = pools();
-    const selected = [...p.due, ...p.fresh].slice(0, state.dailyTarget ?? 20);
-    if (!selected.length) fail(409, 'NO_DAILY_WORDS', '今天没有到期或待学单词，请先去词库加入计划。');
-    const batchId = state.nextId++;
-    const items: DailyStudyItem[] = selected.map(w => ({ itemId: state.nextId++, wordId: w.wordId, word: w.word, phonetic: w.phonetic, itemType: w.firstLearnedAt ? 'REVIEW' : 'NEW', learningStatus: 'PENDING', result: null, answerCount: 0, nextAttemptNo: 1, nextItemId: null, correctableLogId: null }));
-    const task: DailyTask = { batchId, learningDate: date(), dailyTarget: state.dailyTarget ?? 20, taskType: 'DAILY', status: 'IN_PROGRESS', totalCount: items.length, completedCount: 0, skippedCount: 0, answerCount: 0, unfamiliarCount: 0, newCount: items.filter(w => w.itemType === 'NEW').length, reviewCount: items.filter(w => w.itemType === 'REVIEW').length, nextItemId: items[0]!.itemId };
-    state.tasks.push({ task, items, queue: items.map(w => w.itemId) });
+    const assigned = new Set(fixture?.items.map(item => item.wordId) || []);
+    return [...p.due, ...p.fresh].filter(word => !assigned.has(word.wordId));
+  };
+  if (url === '/learning/today') {
+    const p = pools(); const fixture = state.tasks.find(t => t.task.learningDate === date());
+    const task = fixture?.task || null;
+    const unassignedCount = unassigned(fixture).length;
+    return respond({ learningDate: date(), dailyTarget: task?.dailyTarget ?? state.dailyTarget ?? 20, activeCount: p.active.length, dueCount: p.due.length, newCount: p.fresh.length, unassignedCount, canAddMore: task?.status === 'COMPLETED' && unassignedCount > 0, task });
+  }
+  if (url === '/learning/today/start' && method === 'post') {
+    const existing = state.tasks.find(t => t.task.learningDate === date());
+    if (existing && existing.task.status !== 'COMPLETED') return respond(existing.task);
+    const target = existing?.task.dailyTarget ?? state.dailyTarget ?? 20;
+    const selected = unassigned(existing).slice(0, target);
+    if (!selected.length) {
+      if (existing) return respond(existing.task);
+      fail(409, 'NO_DAILY_WORDS', '今天没有到期或待学单词，请先去词库加入计划。');
+    }
+    const batchId = existing?.task.batchId ?? state.nextId++;
+    const items: DailyStudyItem[] = selected.map(w => ({ itemId: state.nextId++, wordId: w.wordId, word: w.word, phonetic: w.phonetic, itemType: w.firstLearnedAt ? 'REVIEW' : 'NEW', learningStatus: 'PENDING', result: null, answerCount: 0, nextAttemptNo: 1, nextItemId: null, correctableLogId: null, reinforcementRemaining: 0, attemptLimit: 6, completionReason: null }));
+    const task: DailyTask = existing?.task ?? { batchId, learningDate: date(), dailyTarget: target, taskType: 'DAILY', status: 'IN_PROGRESS', totalCount: 0, completedCount: 0, skippedCount: 0, answerCount: 0, unfamiliarCount: 0, newCount: 0, reviewCount: 0, nextItemId: null };
+    task.totalCount += items.length;
+    task.newCount += items.filter(w => w.itemType === 'NEW').length;
+    task.reviewCount += items.filter(w => w.itemType === 'REVIEW').length;
+    task.status = 'IN_PROGRESS'; task.nextItemId = items[0]!.itemId;
+    if (existing) { existing.items.push(...items); existing.queue.push(...items.map(w => w.itemId)); }
+    else state.tasks.push({ task, items, queue: items.map(w => w.itemId) });
     return respond(task);
   }
   if (url === '/learning/daily-tasks') return respond(paginate(state.tasks.filter(t => t.task.status === (query.get('status') || 'IN_PROGRESS')).map(t => t.task).reverse()));
@@ -155,8 +173,11 @@ export function mockDaily(account: string, url: string, method: string, body: Re
   }
   if (![1, 2, 3].includes(Number(body.result)) || requestId.length < 8 || requestId.length > 64) fail(400, 'INVALID_PARAMETER', '自评参数不合法');
   const correction = match[3] === 'correction';
+  if (correction && (body.logId !== item.correctableLogId || body.logId !== state.latestLog)) fail(409, 'CORRECTION_NOT_ALLOWED', '当前反馈不可更正');
+  const original = correction ? Object.values(state.events).find(event => event.receipt.logId === body.logId && !event.receipt.correction) : undefined;
+  const reinforcementBefore = correction ? original?.reinforcementBefore : item.reinforcementRemaining;
+  if (reinforcementBefore === null || reinforcementBefore === undefined) fail(409, 'REVIEW_HISTORY_INCOMPLETE', '学习历史不完整，无法恢复巩固状态，请核查记录');
   if (correction) {
-    if (body.logId !== item.correctableLogId || body.logId !== state.latestLog) fail(409, 'CORRECTION_NOT_ALLOWED', '当前反馈不可更正');
     const queued = queue.indexOf(item.itemId);
     if (queued >= 0) queue.splice(queued, 1);
   } else {
@@ -164,9 +185,15 @@ export function mockDaily(account: string, url: string, method: string, body: Re
     queue.shift(); item.answerCount++; task.answerCount++;
   }
   item.result = body.result as Result;
-  item.learningStatus = item.result === 1 || item.answerCount >= 3 ? 'DONE' : 'RELEARNING';
+  const firstFeedback = item.answerCount === 1;
+  const remaining = firstFeedback ? item.result === 1 ? 0 : item.result === 2 ? 2 : 3
+    : item.result === 1 ? Math.max(0, reinforcementBefore - 1) : Math.max(reinforcementBefore, item.result === 2 ? 2 : 3);
+  item.reinforcementRemaining = remaining;
+  item.learningStatus = remaining === 0 || item.answerCount >= item.attemptLimit ? 'DONE' : 'RELEARNING';
+  item.completionReason = item.learningStatus === 'DONE' ? remaining === 0 ? 'RECALLED' : 'LIMIT_REACHED' : null;
   item.nextAttemptNo = item.learningStatus === 'DONE' ? null : item.answerCount + 1;
-  if (item.learningStatus === 'RELEARNING') queue.splice(Math.min(3, queue.length), 0, item.itemId);
+  const gap = item.result === 1 ? remaining >= 2 ? 5 : 7 : 3;
+  if (item.learningStatus === 'RELEARNING') queue.splice(Math.min(gap, queue.length), 0, item.itemId);
   const logId = state.nextId++;
   if (!correction) { item.correctableLogId = logId; state.latestLog = logId; }
   const plan = state.plan.find(w => w.wordId === item.wordId)!;
@@ -174,10 +201,10 @@ export function mockDaily(account: string, url: string, method: string, body: Re
   // Fixture scheduling intentionally uses tomorrow; the live UI always displays backend dates.
   plan.nextReviewAt = new Date(Date.now() + 86400000).toLocaleString('sv-SE', { timeZone: 'Asia/Shanghai' }).replace(' ', 'T');
   task.completedCount = items.filter(w => w.learningStatus === 'DONE').length;
-  task.unfamiliarCount = items.filter(w => w.learningStatus === 'DONE' && w.result !== 1).length;
+  task.unfamiliarCount = items.filter(w => w.learningStatus === 'DONE' && (w.result !== 1 || w.completionReason === 'LIMIT_REACHED')).length;
   task.nextItemId = queue[0] ?? null;
   task.status = queue.length ? 'IN_PROGRESS' : 'COMPLETED';
   const receipt = { logId, itemId: item.itemId, result: item.result, translation: meaning, answeredAt: timestamp(), correction };
-  state.events[requestId] = { signature, batchId: task.batchId, receipt, wordId: item.wordId, history: { logId, batchId: task.batchId, itemId: item.itemId, learningDate: task.learningDate, answeredAt: receipt.answeredAt, result: item.result, taskType: 'DAILY', eventType: correction ? 'CORRECTION' : 'ANSWER', correctsLogId: correction ? Number(body.logId) : null, attemptNo: item.answerCount, affectsSchedule: item.answerCount === 1, scheduleBefore: null, scheduleAfter: null, scheduleAvailable: false } };
+  state.events[requestId] = { signature, batchId: task.batchId, receipt, wordId: item.wordId, reinforcementBefore, history: { logId, batchId: task.batchId, itemId: item.itemId, learningDate: task.learningDate, answeredAt: receipt.answeredAt, result: item.result, taskType: 'DAILY', eventType: correction ? 'CORRECTION' : 'ANSWER', correctsLogId: correction ? Number(body.logId) : null, attemptNo: item.answerCount, affectsSchedule: item.answerCount === 1, scheduleBefore: null, scheduleAfter: null, scheduleAvailable: false } };
   return respond({ ...receipt, progress: task });
 }
