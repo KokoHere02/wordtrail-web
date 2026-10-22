@@ -85,6 +85,17 @@ async function readyClick(text) {
   await until(() => [...document.querySelectorAll('button')].some(el => el.textContent.trim() === text && !el.disabled), `ready ${text}`);
   clickText(text);
 }
+async function openPlanRow(word) {
+  const row = [...document.querySelectorAll('.live-plan-row')].find(entry => entry.querySelector('strong')?.textContent === word);
+  assert.ok(row, `Plan row: ${word}`);
+  if (!row.querySelector('.plan-item-actions')) row.querySelector('.plan-more button').click();
+  await until(() => row.querySelector('.plan-item-actions'), `expanded ${word}`);
+  return row;
+}
+async function planStatus(label) {
+  await until(() => document.querySelector(`.plan-status-tabs button[aria-label="${label}"]`)?.disabled === false, `plan status ${label}`);
+  document.querySelector(`.plan-status-tabs button[aria-label="${label}"]`).click();
+}
 await until(() => document.querySelector("#username"), "login view");
 assert.ok(document.querySelector(".mock-notice"));
 // Field errors and focus are real Vue events, but browser focus styling remains unverified.
@@ -99,6 +110,9 @@ input("#username", "dom_reader");
 input("#password", "example123");
 clickText("登录");
 await until(() => document.querySelector('.daily-equation'), 'live today after login');
+document.querySelector('button[aria-label="切换深色主题"]').click();
+await until(() => document.documentElement.dataset.theme === 'dark', 'global dark theme');
+assert.equal(localStorage.getItem('wordtrail.theme'), 'dark');
 assert.match(document.querySelector('.daily-equation').textContent, /0/);
 await router.push('/learn');
 await until(() => document.querySelector('.library-empty h1')?.textContent.includes('暂时没有待学'), 'empty daily plan does not generate sample words');
@@ -285,10 +299,13 @@ await until(() => document.querySelector('.live-notice')?.textContent.includes('
 assert.match(document.querySelector('.selected-count').textContent, /0/);
 await router.push('/plan');
 await until(() => document.querySelectorAll('.live-plan-row').length === 2, 'plan from API');
-const abandonPlanRow = [...document.querySelectorAll('.live-plan-row')].find(row => row.querySelector('strong')?.textContent === 'abandon');
+assert.equal(document.documentElement.dataset.theme, 'dark', 'theme survives routing');
+document.querySelector('button[aria-label="切换浅色主题"]').click();
+await until(() => document.documentElement.dataset.theme === 'light', 'restore light theme');
+const abandonPlanRow = await openPlanRow('abandon');
 [...abandonPlanRow.querySelectorAll('button')].find(button => button.textContent === '暂停').click();
 await until(() => document.querySelectorAll('.live-plan-row').length === 1, 'pause removes from active list');
-clickText('已暂停');
+await planStatus('已暂停');
 await until(() => document.querySelectorAll('.live-plan-row').length === 1 && document.querySelector('.live-plan-row').textContent.includes('abandon'), 'paused filter');
 clickText('重新启用');
 await until(() => document.querySelector('.state-panel')?.textContent.includes('没有符合'), 'reactivated leaves paused filter');
@@ -437,18 +454,18 @@ assert.equal(document.querySelector('input[aria-label="选择计划单词 absorb
 http.defaults.adapter = dailyAdapter;
 await readyClick('批量暂停');
 await until(() => document.querySelector('.live-notice')?.textContent.includes('变更 1 词'), 'bulk server counts');
-await readyClick('已暂停');
+await planStatus('已暂停');
 await until(() => document.querySelectorAll('.live-plan-row').length === 1, 'paused searched plan');
 const resumeBox = document.querySelector('input[aria-label="选择计划单词 absorb"]');
 resumeBox.checked = true; resumeBox.dispatchEvent(new window.Event('change', { bubbles: true }));
 await readyClick('批量恢复');
 await until(() => document.querySelector('.live-notice')?.textContent.includes('变更 1 词'), 'bulk resume');
-await readyClick('启用中');
+await planStatus('学习中');
 await until(() => document.querySelectorAll('.live-plan-row').length === 1, 'active prefix result');
 clickText('移出');
 await readyClick('确认移出');
 await until(() => !document.querySelector('[role="dialog"]'), 'remove confirmation');
-await readyClick('已移出');
+await planStatus('已移出');
 await until(() => document.querySelectorAll('.live-plan-row').length === 1, 'removed plan');
 assert.equal([...document.querySelectorAll('.live-plan-row button')].some(button => button.textContent.includes('重新启用')), false);
 assert.match(document.querySelector('.plan-selection-help').textContent, /不能在这里直接恢复/);
@@ -577,6 +594,42 @@ await until(() => document.querySelector('.live-daily-result .session-stats'), '
 assert.match(document.querySelector('.session-stat-grid').textContent, /11 \/ 11/);
 assert.equal(startCount(), 3);
 http.defaults.adapter = continuationAdapter;
+// The redesigned plan keeps server totals separate from filtered pages and selections.
+await router.push('/plan');
+await until(() => document.querySelectorAll('.live-plan-row').length === 5 && document.querySelector('.plan-status-tabs button[aria-label="学习中"] .plan-tab-count')?.textContent === '11', 'five-row plan and server category counts');
+const firstPlanWord = document.querySelector('.live-plan-row strong').textContent;
+const selectPlanBox = element => { element.checked = true; element.dispatchEvent(new window.Event('change', { bubbles: true })); };
+selectPlanBox(document.querySelector('.live-plan-row input'));
+await until(() => document.querySelector('.plan-bulkbar')?.textContent.includes('已选 1'), 'selection reveals bulk toolbar');
+document.querySelector('.plan-sheet button[aria-label="下一页"]').click();
+await until(() => document.querySelector('.live-plan-row strong')?.textContent !== firstPlanWord && document.querySelectorAll('.live-plan-row').length === 5, 'second plan page');
+selectPlanBox(document.querySelector('.live-plan-row input'));
+await until(() => document.querySelector('.plan-bulkbar')?.textContent.includes('已选 2'), 'selection retained across plan pages');
+input('input[aria-label="搜索计划单词"]', '%_!');
+document.querySelector('form[role="search"]').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+await until(() => document.querySelector('.plan-sheet .state-panel')?.textContent.includes('没有符合'), 'literal empty plan search');
+assert.match(document.querySelector('.plan-bulkbar').textContent, /已选 2/);
+assert.equal(document.querySelector('.plan-status-tabs button[aria-label="学习中"] .plan-tab-count').textContent, '11', 'filtered page never becomes overall count');
+input('input[aria-label="搜索计划单词"]', '');
+document.querySelector('form[role="search"]').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+await until(() => document.querySelectorAll('.live-plan-row').length === 5, 'reset plan search');
+await readyClick('清空选择');
+await until(() => !document.querySelector('.plan-bulkbar'), 'bulk toolbar disappears when clear');
+document.querySelector('.plan-sheet button[aria-label="第 3 页"]').click();
+await until(() => document.querySelectorAll('.live-plan-row').length === 1, 'last plan page');
+selectPlanBox(document.querySelector('.live-plan-row input'));
+await readyClick('批量暂停');
+await until(() => document.querySelectorAll('.live-plan-row').length === 5 && document.querySelector('.plan-status-tabs button[aria-label="学习中"] .plan-tab-count')?.textContent === '10', 'pause updates counts and recovers disappearing last page');
+assert.equal(document.querySelector('.plan-sheet button[aria-current="page"]').textContent, '2');
+assert.equal(document.querySelector('.plan-status-tabs button[aria-label="已暂停"] .plan-tab-count').textContent, '1');
+await planStatus('已暂停');
+await until(() => document.querySelectorAll('.live-plan-row').length === 1, 'paused word available');
+await readyClick('重新启用');
+await until(() => document.querySelector('.plan-status-tabs button[aria-label="学习中"] .plan-tab-count')?.textContent === '11' && !document.querySelector('.live-plan-row'), 'resume restores category counts');
+await planStatus('学习中');
+await until(() => document.querySelectorAll('.live-plan-row').length === 5, 'active plan after resume');
+assert.equal(document.querySelector('.plan-sheet button[aria-current="page"]').textContent, '1');
+console.log('PASS redesigned plan: server category counts, numbered pagination, cross-page selection, empty search, conditional bulk tools and recovery after last-page changes; global light/dark theme persistence.');
 console.log(
   "PASS Vue DOM integration: auth/books/plans/statistics regression; GET-only initialization/results/refresh; stable retry and correction; repeated known validations; six-attempt LIMIT_REACHED messaging; seven plus three continuation in the same batch beyond target; same-path continuation.",
 );
