@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, watch } from "vue";
 import { useRoute } from "vue-router";
 import {
   Check,
   ChevronDown,
   Keyboard,
   Minus,
+  Moon,
   Plus,
   SlidersHorizontal,
   Sun,
@@ -14,6 +15,7 @@ import {
 import BrandMark from "../components/ui/BrandMark.vue";
 import AppDialog from "../components/ui/AppDialog.vue";
 import { usePreviewStore } from "../stores/preview";
+import { useTheme } from '../composables/useTheme';
 const route = useRoute();
 const store = usePreviewStore();
 const nav = [
@@ -40,10 +42,7 @@ const footer = computed(() =>
         ? "today"
         : "other",
 );
-const comfortable = ref(false);
-watch(comfortable, (value) => {
-  document.documentElement.dataset.comfort = String(value);
-});
+const { isDark, toggleTheme } = useTheme();
 watch(
   () => route.path,
   () => {
@@ -95,11 +94,11 @@ onBeforeUnmount(() => {
       <div class="header-actions">
         <button
           class="round-icon appearance-button"
-          :aria-pressed="comfortable"
-          :aria-label="comfortable ? '关闭护眼底色' : '开启护眼底色'"
-          @click="comfortable = !comfortable"
+          :aria-pressed="isDark"
+          :aria-label="isDark ? '切换浅色主题' : '切换深色主题'"
+          @click="toggleTheme"
         >
-          <Sun :size="24" :stroke-width="1.7" /></button
+          <Sun v-if="isDark" :size="24" :stroke-width="1.7" /><Moon v-else :size="24" :stroke-width="1.7" /></button
         ><button
           class="round-icon"
           aria-label="打开偏好设置"

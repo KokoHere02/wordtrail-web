@@ -1,21 +1,21 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { LogOut, Sun } from 'lucide-vue-next';
+import { LogOut, Moon, Sun } from 'lucide-vue-next';
 import BrandMark from '../components/ui/BrandMark.vue';
 import AppDialog from '../components/ui/AppDialog.vue';
 import { useAuthStore } from '../stores/auth';
 import { mockEnabled } from '../api/http';
+import { useTheme } from '../composables/useTheme';
 const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
 const profileOpen = ref(false);
-const comfortable = ref(document.documentElement.dataset.comfort === 'true');
+const { isDark, toggleTheme } = useTheme();
 const signingOut = ref(false);
 const name = computed(() => auth.user?.nickname || auth.user?.username || '');
 const nav = [{ label: '今日', path: '/today' }, { label: '学习', path: '/learn' }, { label: '词库', path: '/books' }, { label: '记录', path: '/records' }];
 const activeIndex = computed(() => route.path.startsWith('/books') ? 2 : route.path.startsWith('/records') || route.path.startsWith('/learning') || route.path === '/statistics' ? 3 : route.path === '/today' || route.path === '/settings' ? 0 : 1);
-watch(comfortable, value => { document.documentElement.dataset.comfort = String(value); });
 watch(() => route.path, () => { profileOpen.value = false; });
 async function logout() {
   if (signingOut.value) return;
@@ -35,7 +35,7 @@ async function logout() {
         <RouterLink v-for="(entry, index) in nav" :key="entry.path" :to="entry.path" :class="{ active: index === activeIndex }" :aria-current="index === activeIndex ? 'page' : undefined">{{ entry.label }}</RouterLink>
       </nav>
       <div class="header-actions">
-        <button class="round-icon appearance-button" :aria-pressed="comfortable" aria-label="切换护眼底色" @click="comfortable = !comfortable"><Sun :size="23" /></button>
+        <button class="round-icon appearance-button" :aria-pressed="isDark" :aria-label="isDark ? '切换浅色主题' : '切换深色主题'" :title="isDark ? '切换浅色主题' : '切换深色主题'" @click="toggleTheme"><Sun v-if="isDark" :size="21" /><Moon v-else :size="21" /></button>
         <button class="profile-button" aria-label="打开账户菜单" @click="profileOpen = true">{{ name.slice(0, 1).toUpperCase() }}</button>
       </div>
     </header>

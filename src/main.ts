@@ -5,7 +5,9 @@ import App from "./App.vue";
 import { router } from "./router";
 import { setExpiredHandler } from "./api/http";
 import { useAuthStore } from "./stores/auth";
+import { initializeTheme } from './composables/useTheme';
 
+initializeTheme();
 export const app = createApp(App);
 app.use(createPinia());
 setExpiredHandler(() => {
