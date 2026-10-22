@@ -1,4 +1,35 @@
 /* Data-specific layouts share the existing theme and motion tokens. */
+.library-heading-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); min-width: 0; }
+.book-progress { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4); margin: var(--s3) 0 0; font-size: var(--text-sm); }
+.book-progress > div { display: flex; align-items: baseline; gap: var(--s1); }
+.book-progress dt { color: var(--muted); }
+.book-progress dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.wordlist-heading > .live-actions { flex: 0 1 auto; justify-content: flex-end; }
+.book-detail-copy { overflow-wrap: anywhere; }
+.book-editor { display: flex; flex-direction: column; gap: var(--s3); }
+.book-editor input, .book-editor textarea { width: 100%; padding: var(--s3); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); }
+.book-editor textarea { resize: vertical; min-height: var(--s16); }
+.book-editor .live-actions { margin-top: var(--s3); }
+.dialog-panel:has(.dictionary-collector) { width: min(100%, var(--practice-width)); }
+.dictionary-collector { display: flex; flex-direction: column; gap: var(--s4); }
+.dictionary-search { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); }
+.dictionary-search .library-search { flex: 1; min-width: 0; }
+.dictionary-word { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; align-items: center; gap: var(--s4); padding: var(--s3) 0; border-bottom: 1px solid var(--line); }
+.dictionary-word > label { display: flex; align-items: center; gap: var(--s3); min-width: 0; }
+.dictionary-word small { display: block; color: var(--muted); font-size: var(--text-sm); }
+.dictionary-word strong, .dictionary-word p { overflow-wrap: anywhere; }
+.dictionary-word p { color: var(--muted); font-size: var(--text-sm); }
+.wordlist-tools .library-search .search-field { width: 100%; min-width: 0; padding: 0; border: 0; background: transparent; box-shadow: none; }
+@media (max-width: 640px) {
+  .library-heading-actions { width: 100%; }
+  .library-heading-actions .library-search { flex: 1; min-width: 0; }
+  .wordlist-heading > .live-actions { flex-basis: 100%; justify-content: flex-start; }
+  .wordlist-heading > .live-actions .btn { flex: 1; }
+  .dictionary-search .library-search { flex-basis: 100%; }
+  .dictionary-word { grid-template-columns: minmax(0, 1fr) auto; gap: var(--s2) var(--s3); }
+  .dictionary-word > p { grid-column: 1; }
+  .dictionary-word > span { grid-column: 2; grid-row: 1 / 3; }
+}
 .compact-copy #main { padding-bottom: max(var(--s8), env(safe-area-inset-bottom)); }
 .compact-copy .today-hero { padding-top: var(--s8); }
 .compact-copy .today-hero h1, .compact-copy .library-heading h1 { margin-top: 0; }

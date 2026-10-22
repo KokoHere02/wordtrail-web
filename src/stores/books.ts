@@ -11,15 +11,10 @@ export const useBooksStore = defineStore("books", () => {
     books.value = {};
   }
   async function find(id: number): Promise<Book> {
-    if (books.value[id]) return books.value[id];
-    // No single-book endpoint exists. Scan the documented paginated catalog.
-    for (let page = 1; ; page++) {
-      const result = await api.books({ page, size: 100 });
-      remember(result.records);
-      if (books.value[id]) return books.value[id];
-      if (page * result.size >= result.total || !result.records.length)
-        throw new Error("找不到这本词书，或你没有访问权限。");
-    }
+    // Counts and edit permission are live server data, including on deep links.
+    const book = await api.book(id);
+    remember([book]);
+    return book;
   }
   return { books, remember, find, clear };
 });

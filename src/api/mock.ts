@@ -1,6 +1,7 @@
 // Explicit offline fixture adapter. Never installed in real API mode.
 import { AxiosError, AxiosHeaders, type AxiosAdapter } from "axios";
 import { mockDaily, mockLearned } from './mockDaily';
+import { mockBooks, personalBookName, personalWordIds } from './mockBooks';
 import type {
   Book,
   BookWord,
@@ -9,7 +10,7 @@ import type {
   StudyItem,
   User,
 } from "../types/api";
-const books: Book[] = [
+const books: Pick<Book, 'id' | 'name' | 'description' | 'wordCount'>[] = [
   {
     id: 1,
     name: "四级核心词汇",
@@ -120,7 +121,7 @@ function save(value: Database) {
     JSON.stringify(value),
   );
 }
-function bookWords(id: number, _state: Database): BookWord[] {
+function systemWords(id: number): BookWord[] {
   const book = books.find((b) => b.id === id);
   if (!book) fail(404, "BOOK_NOT_FOUND", "词书不存在");
   return vocabulary
@@ -136,6 +137,11 @@ function bookWords(id: number, _state: Database): BookWord[] {
         lastResult: answer?.lastResult ?? null,
       };
     });
+}
+function bookWords(id: number, _state: Database): BookWord[] {
+  if (books.some(book => book.id === id)) return systemWords(id);
+  const dictionary = books.flatMap(book => systemWords(book.id));
+  return personalWordIds(user()!.username, id).map(wordId => dictionary.find(word => word.id === wordId)!);
 }
 function fail(status: number, code: string, message: string): never {
   throw { status, code, message };
@@ -248,26 +254,8 @@ export const mockAdapter: AxiosAdapter = async (config) => {
     const state = db();
     const daily = mockDaily(user()!.username, url, config.method || 'get', body, query, id => bookWords(id, state));
     if (daily) return response(daily.data);
-    const keyword = (query.get("keyword") || "").toLowerCase();
-    if (url === "/word-books")
-      return response(
-        paginate(books.filter((b) => b.name.toLowerCase().includes(keyword))),
-      );
-    const wordMatch = url.match(/^\/word-books\/(\d+)\/words$/);
-    if (wordMatch)
-      return response(
-        paginate(
-          bookWords(Number(wordMatch[1]), state).filter(
-            (w) =>
-              w.word.startsWith(keyword) &&
-              (query.get("learningStatus") === "LEARNED"
-                ? w.learned
-                : query.get("learningStatus") === "UNLEARNED"
-                  ? !w.learned
-                  : true),
-          ),
-        ),
-      );
+    const bookResult = mockBooks(user()!.username, url, config.method || 'get', body, query, books, books.flatMap(book => systemWords(book.id)), id => bookWords(id, state));
+    if (bookResult) return response(bookResult.data, bookResult.status);
     if (url === "/learning-batches" && config.method === "post") {
       const words = bookWords(Number(body.bookId), state);
       const manual = body.selectionType === "MANUAL";
@@ -294,7 +282,7 @@ export const mockAdapter: AxiosAdapter = async (config) => {
             .map((b) => ({
               batchId: b.id,
               bookId: b.bookId,
-              bookName: books.find((book) => book.id === b.bookId)?.name,
+              bookName: books.find(book => book.id === b.bookId)?.name ?? personalBookName(user()!.username, b.bookId) ?? null,
               selectionType: b.selectionType,
               status: b.status,
               totalCount: b.items.length,
@@ -359,7 +347,7 @@ export const mockAdapter: AxiosAdapter = async (config) => {
       return response({
         batchId: batch.id,
         bookId: batch.bookId,
-        bookName: books.find((b) => b.id === batch.bookId)?.name,
+        bookName: books.find((b) => b.id === batch.bookId)?.name ?? personalBookName(user()!.username, batch.bookId) ?? null,
         totalCount: batch.items.length,
         knownCount: batch.items.filter((i) => i.result === 1).length,
         uncertainCount: batch.items.filter((i) => i.result === 2).length,
@@ -389,7 +377,7 @@ export const mockAdapter: AxiosAdapter = async (config) => {
           state,
           batch.bookId,
           "MANUAL",
-          bookWords(batch.bookId, state).filter((w) => ids.includes(w.id)),
+          batch.items.filter(item => ids.includes(item.wordId)).map(item => ({ id: item.wordId, word: item.word, phonetic: item.phonetic, translation: item.meaning, learned: false, lastResult: null })),
         ),
         201,
       );

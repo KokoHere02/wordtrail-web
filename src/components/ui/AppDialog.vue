@@ -36,7 +36,7 @@ function keyboard(event: KeyboardEvent) {
 }
 watch(
   () => props.modelValue,
-  async (open) => {
+  async (open, previousOpen) => {
     if (open) {
       previousFocus = document.activeElement as HTMLElement | null;
       document.addEventListener("keydown", keyboard);
@@ -46,12 +46,13 @@ watch(
         panel.value?.querySelector<HTMLElement>("input") ||
         panel.value?.querySelector<HTMLElement>("button")
       )?.focus();
-    } else {
+    } else if (previousOpen) {
       document.removeEventListener("keydown", keyboard);
       document.body.style.overflow = "";
       previousFocus?.focus();
     }
   },
+  { immediate: true },
 );
 onBeforeUnmount(() => {
   document.removeEventListener("keydown", keyboard);

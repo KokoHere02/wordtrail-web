@@ -98,7 +98,7 @@ http.interceptors.response.use(
   },
 );
 export async function request<T>(
-  method: "GET" | "POST" | "PUT" | "PATCH",
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
   url: string,
   data?: unknown,
   params?: object,

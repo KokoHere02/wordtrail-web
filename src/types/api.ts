@@ -36,6 +36,23 @@ export interface Book {
   name: string;
   description: string | null;
   wordCount: number;
+  unlearnedCount: number;
+  startedCount: number;
+  dueCount: number;
+  bookType: 'SYSTEM' | 'PERSONAL';
+  editable: boolean;
+}
+export type BookScope = 'ALL' | 'SYSTEM' | 'PERSONAL';
+export interface BookMetadata { name: string; description: string | null }
+export interface DictionaryWord {
+  id: number; word: string; phonetic: string | null; translation: string | null;
+  inBook: boolean | null;
+}
+export interface DictionaryQuery extends PageQuery {
+  keyword: string; matchType?: 'PREFIX' | 'EXACT'; bookId?: number;
+}
+export interface BookWordsChange {
+  requestedCount: number; changedCount: number; unchangedCount: number;
 }
 export interface BookWord {
   id: number;
