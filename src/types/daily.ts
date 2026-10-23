@@ -1,4 +1,5 @@
 import type { Result, Status } from './api';
+import type { TranslationFields } from './translation';
 export type PlanStatus = 'ACTIVE' | 'PAUSED' | 'REMOVED';
 export type PlanLearningStatus = 'ALL' | 'NEW' | 'LEARNED' | 'DUE';
 export type PlanSortBy = 'joined_at' | 'next_review_at';
@@ -20,7 +21,7 @@ export interface LearningSettings { dailyTarget: number }
 export interface JoinPlanResult {
   requestedCount: number; addedCount: number; reactivatedCount: number; unchangedCount: number;
 }
-export interface PlanWord {
+export interface PlanWord extends TranslationFields {
   wordId: number; word: string; phonetic: string | null; translation: string | null;
   planStatus: PlanStatus; joinedAt: string;
   firstLearnedAt: string | null; lastLearnedAt: string | null; lastResult: Result | null;
@@ -36,8 +37,8 @@ export interface DailyTask {
   totalCount: number; completedCount: number; skippedCount: number; answerCount: number; unfamiliarCount: number;
   newCount: number; reviewCount: number; nextItemId: number | null;
 }
-export interface DailyStudyItem {
-  itemId: number; wordId: number; word: string; phonetic: string | null; translation?: string;
+export interface DailyStudyItem extends TranslationFields {
+  itemId: number; wordId: number; word: string; phonetic: string | null; translation?: string | null;
   itemType: 'NEW' | 'REVIEW'; learningStatus: 'PENDING' | 'RELEARNING' | 'DONE' | 'SKIPPED';
   result: Result | null; answerCount: number; nextAttemptNo: number | null;
   nextItemId: number | null; correctableLogId: number | null;
@@ -46,7 +47,7 @@ export interface DailyStudyItem {
 }
 export interface DailyAnswerBody { result: Result; attemptNo: number; requestId: string }
 export interface DailyCorrectionBody { result: Result; logId: number; requestId: string }
-export interface DailyAnswerResult {
+export interface DailyAnswerResult extends TranslationFields {
   logId: number; itemId: number; result: Result; translation: string | null;
   answeredAt: string; correction: boolean; progress: DailyTask;
 }
@@ -60,7 +61,7 @@ export interface CalendarDay {
   hasLearningActivity: boolean; statisticsComplete: boolean; incompleteWordCount: number;
 }
 export interface LearningCalendar { month: string; statisticsComplete: boolean; days: CalendarDay[] }
-export interface StatisticsWord {
+export interface StatisticsWord extends TranslationFields {
   wordId: number; word: string; translation: string | null; itemType: 'NEW' | 'REVIEW' | null;
   lastResult: Result | null; answerCount: number; completed: boolean; statisticsComplete: boolean;
 }

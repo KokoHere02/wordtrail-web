@@ -14,6 +14,9 @@ export function personalWordIds(account: string, id: number): number[] {
   return book.wordIds;
 }
 export function personalBookName(account: string, id: number) { return read(account).books.find(book => book.id === id)?.name; }
+export function personalBooksForWord(account: string, wordId: number) {
+  return read(account).books.filter(book => book.wordIds.includes(wordId)).sort((a, b) => a.id - b.id).map(book => ({ id: book.id, name: book.name }));
+}
 export function mockBooks(account: string, url: string, method: string, body: Record<string, unknown>, query: URLSearchParams, system: SystemBook[], dictionary: BookWord[], catalog: (id: number) => BookWord[]) {
   if (!/^\/word-books(?:\/|$)/.test(url) && url !== '/words') return;
   const state = read(account);
@@ -66,7 +69,7 @@ export function mockBooks(account: string, url: string, method: string, body: Re
     if (bookId !== null) lookup(bookId);
     const ids = bookId === null ? null : new Set(catalog(bookId).map(word => word.id));
     const results = dictionary.filter(word => matchType === 'EXACT' ? word.word === keyword : word.word.startsWith(keyword)).sort((a, b) => a.word < b.word ? -1 : a.word > b.word ? 1 : a.id - b.id);
-    return respond(paginate(results.map(({ id, word, phonetic, translation }) => ({ id, word, phonetic, translation, inBook: ids ? ids.has(id) : null }))));
+    return respond(paginate(results.map(({ id, word, phonetic, translation, translationGroups }) => ({ id, word, phonetic, translation, translationGroups, inBook: ids ? ids.has(id) : null }))));
   }
   const match = url.match(/^\/word-books\/(\d+)(?:\/words(?:\/(\d+))?)?$/);
   if (!match) fail(404, 'NOT_FOUND', '演示接口不存在');

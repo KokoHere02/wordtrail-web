@@ -1,9 +1,13 @@
 // Explicit offline fixture adapter. Never installed in real API mode.
 import { AxiosError, AxiosHeaders, type AxiosAdapter } from "axios";
-import { mockDaily, mockLearned } from './mockDaily';
+import { mockDaily, mockDailyEvidence, mockLearned } from './mockDaily';
 import { mockBooks, personalBookName, personalWordIds } from './mockBooks';
+import { incompleteEvidence, mockWordStudy, type StudyLog } from './mockWordStudy';
+import { mockInsights } from './mockInsights';
+import type { TranslationGroup } from '../types/translation';
 import type {
   Book,
+  BatchCreated,
   BookWord,
   Result,
   Status,
@@ -82,12 +86,19 @@ const vocabulary = [
     "adj. 跨学科的；涉及多个专业领域的研究与合作",
   ],
 ];
+// Explicit structured fixtures, not a client-side parser of legacy translations.
+// Other words retain old responses to exercise the documented fallback.
+const groupedMeanings: Record<string, readonly TranslationGroup[]> = {
+  abandon: [{ partOfSpeech: 'v.', meaning: '放弃；遗弃' }],
+  abstract: [{ partOfSpeech: 'adj.', meaning: '抽象的' }, { partOfSpeech: 'n.', meaning: '摘要' }],
+  access: [{ partOfSpeech: 'n.', meaning: '入口；使用权' }, { partOfSpeech: 'v.', meaning: '访问' }],
+};
 interface MockItem extends StudyItem {
   meaning: string | null;
 }
 interface MockBatch {
   id: number;
-  bookId: number;
+  bookId: number | null;
   selectionType: "BOOK" | "MANUAL";
   status: Status;
   createdAt: string;
@@ -97,8 +108,11 @@ interface MockBatch {
 interface Database {
   batches: MockBatch[];
   nextId: number;
+  events: StudyLog[];
+  requests: Record<string, { signature: string; result: Result; answeredAt: string | null }>;
+  nextLogId: number;
 }
-const now = () => new Date().toISOString().slice(0, 19);
+const now = () => new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Shanghai' }).replace(' ', 'T');
 function accountId(username: string) {
   let hash = 0;
   for (const character of username.toLowerCase()) hash = (Math.imul(hash, 31) + character.charCodeAt(0)) | 0;
@@ -110,10 +124,14 @@ function user(): User | null {
   ) as User | null;
 }
 function db(): Database {
-  return JSON.parse(
+  const value = JSON.parse(
     localStorage.getItem(`wordtrail.mock.${user()?.username}`) ||
       '{"batches":[],"nextId":1}',
   ) as Database;
+  value.events ||= [];
+  value.requests ||= {};
+  value.nextLogId ||= 500000;
+  return value;
 }
 function save(value: Database) {
   localStorage.setItem(
@@ -133,6 +151,7 @@ function systemWords(id: number): BookWord[] {
         word: word!,
         phonetic: phonetic!,
         translation: translation!,
+        translationGroups: groupedMeanings[word!],
         learned: !!answer?.firstLearnedAt,
         lastResult: answer?.lastResult ?? null,
       };
@@ -148,10 +167,10 @@ function fail(status: number, code: string, message: string): never {
 }
 function create(
   state: Database,
-  bookId: number,
+  bookId: number | null,
   selectionType: "BOOK" | "MANUAL",
   words: BookWord[],
-) {
+): BatchCreated {
   if (!words.length)
     fail(
       409,
@@ -177,6 +196,7 @@ function create(
       answeredAt: null,
       nextItemId: i < words.length - 1 ? id * 1000 + i + 2 : null,
       meaning: word.translation,
+      translationGroups: word.translationGroups,
     })),
   };
   state.batches.push(batch);
@@ -252,7 +272,12 @@ export const mockAdapter: AxiosAdapter = async (config) => {
       fail(401, "UNAUTHENTICATED", "请先登录");
     if (url === "/auth/me") return response(user());
     const state = db();
-    const daily = mockDaily(user()!.username, url, config.method || 'get', body, query, id => bookWords(id, state));
+    const practiceItems = () => state.batches.flatMap(batch => batch.items.map(item => ({ batchId: batch.id, itemId: item.itemId, wordId: item.wordId, result: item.result, answerCount: item.answered ? 1 : 0 })));
+    const insights = mockInsights({ account: user()!.username, url, method: config.method || 'get', query, practiceEvents: state.events, practiceItems: practiceItems() });
+    if (insights) return response(insights.data);
+    const wordStudy = mockWordStudy({ account: user()!.username, url, method: config.method || 'get', body, query, dictionary: books.flatMap(book => systemWords(book.id)), practiceEvents: state.events, practiceItems: practiceItems(), createPractice: words => create(state, null, 'MANUAL', words) });
+    if (wordStudy) return response(wordStudy.data, wordStudy.status);
+    const daily = mockDaily(user()!.username, url, config.method || 'get', body, query, id => bookWords(id, state), state.events);
     if (daily) return response(daily.data);
     const bookResult = mockBooks(user()!.username, url, config.method || 'get', body, query, books, books.flatMap(book => systemWords(book.id)), id => bookWords(id, state));
     if (bookResult) return response(bookResult.data, bookResult.status);
@@ -282,7 +307,7 @@ export const mockAdapter: AxiosAdapter = async (config) => {
             .map((b) => ({
               batchId: b.id,
               bookId: b.bookId,
-              bookName: books.find(book => book.id === b.bookId)?.name ?? personalBookName(user()!.username, b.bookId) ?? null,
+              bookName: b.bookId === null ? null : books.find(book => book.id === b.bookId)?.name ?? personalBookName(user()!.username, b.bookId) ?? null,
               selectionType: b.selectionType,
               status: b.status,
               totalCount: b.items.length,
@@ -317,43 +342,69 @@ export const mockAdapter: AxiosAdapter = async (config) => {
       if (itemMatch[2]) {
         if (![1, 2, 3].includes(Number(body.result)))
           fail(400, "INVALID_PARAMETER", "请选择自评结果");
+        const requestId = typeof body.requestId === 'string' ? body.requestId : undefined;
+        if (body.requestId !== undefined && (!requestId || !/^[A-Za-z0-9_-]{8,64}$/.test(requestId))) fail(400, 'INVALID_PARAMETER', '请求键格式不合法');
+        const signature = JSON.stringify({ url, result: body.result });
+        const cached = requestId ? state.requests[requestId] : undefined;
+        if (cached) {
+          if (cached.signature !== signature) fail(409, 'REQUEST_ID_REUSED', '请求键已用于其他内容');
+          return response({ ...progress(), itemId: item.itemId, result: cached.result, translation: item.meaning, translationGroups: item.translationGroups, answeredAt: cached.answeredAt });
+        }
         if (!item.answered && item.itemId !== next())
           fail(409, "ANSWER_OUT_OF_ORDER", "请按顺序作答");
         if (item.result !== body.result) {
+          const original = state.events.filter(event => event.eventType === 'ANSWER' && event.batchId === batch.id && event.itemId === item.itemId).at(-1);
+          if (item.answered) {
+            const latest = state.events.filter(event => event.eventType === 'ANSWER').at(-1);
+            if (!original || latest?.logId !== original.logId || original.answeredAt.slice(0, 10) !== now().slice(0, 10)) fail(409, 'CORRECTION_NOT_ALLOWED', '当前反馈不可更正');
+          }
+          const timestamp = now();
+          const dailyEvents = mockDailyEvidence(user()!.username).events;
+          const attemptNo = original?.attemptNo ?? [...dailyEvents, ...state.events].filter(event => event.wordId === item.wordId && event.eventType === 'ANSWER' && event.answeredAt.slice(0, 10) === timestamp.slice(0, 10)).length + 1;
+          state.events.push({ logId: state.nextLogId++, batchId: batch.id, itemId: item.itemId, wordId: item.wordId, learningDate: timestamp.slice(0, 10), answeredAt: timestamp, result: body.result as Result, taskType: 'PRACTICE', eventType: item.answered ? 'CORRECTION' : 'ANSWER', correctsLogId: original?.logId ?? null, attemptNo, affectsSchedule: false, scheduleBefore: null, scheduleAfter: null, scheduleAvailable: false });
           item.result = body.result as Result;
           item.answered = true;
           item.answeredAt = now();
           batch.updatedAt = now();
         }
         if (answered() === batch.items.length) batch.status = "COMPLETED";
+        if (requestId) state.requests[requestId] = { signature, result: item.result!, answeredAt: item.answeredAt };
         save(state);
         return response({
           ...progress(),
           itemId: item.itemId,
           result: item.result,
           translation: item.meaning,
+          translationGroups: item.translationGroups,
           answeredAt: item.answeredAt,
         });
       }
-      const { meaning, ...study } = item;
+      const { meaning, translationGroups, ...study } = item;
       return response({
         ...study,
-        ...(item.answered ? { translation: meaning } : {}),
+        ...(item.answered && meaning !== null ? { translation: meaning, translationGroups } : {}),
       });
     }
     if (batch.status !== "COMPLETED")
       fail(409, "BATCH_NOT_COMPLETED", "本轮尚未完成");
+    const incomplete = incompleteEvidence(practiceItems().filter(item => item.batchId === batch.id), state.events);
     if (suffix === "/result")
       return response({
         batchId: batch.id,
         bookId: batch.bookId,
-        bookName: books.find((b) => b.id === batch.bookId)?.name ?? personalBookName(user()!.username, batch.bookId) ?? null,
+        bookName: batch.bookId === null ? null : books.find((b) => b.id === batch.bookId)?.name ?? personalBookName(user()!.username, batch.bookId) ?? null,
         totalCount: batch.items.length,
         knownCount: batch.items.filter((i) => i.result === 1).length,
         uncertainCount: batch.items.filter((i) => i.result === 2).length,
         unknownCount: batch.items.filter((i) => i.result === 3).length,
         relearnCount: batch.items.filter((i) => i.result !== 1).length,
         completedAt: batch.updatedAt,
+        completedCount: answered(),
+        answerCount: state.events.filter(event => event.batchId === batch.id && event.eventType === 'ANSWER').length,
+        unfamiliarCount: batch.items.filter(item => item.result === 2 || item.result === 3).length,
+        statisticsComplete: incomplete.size === 0,
+        incompleteWordCount: incomplete.size,
+        dataScope: 'RECORDED_EVENTS_AND_ITEMS',
       });
     if (suffix === "/result/words")
       return response(
@@ -364,10 +415,11 @@ export const mockAdapter: AxiosAdapter = async (config) => {
                 !query.get("result") ||
                 i.result === Number(query.get("result")),
             )
-            .map((i) => ({ ...i, translation: i.meaning })),
+            .map((i) => ({ ...i, translation: i.meaning, translationGroups: i.translationGroups, answerCount: state.events.filter(event => event.batchId === batch.id && event.itemId === i.itemId && event.eventType === 'ANSWER').length, statisticsComplete: !incomplete.has(i.wordId) })),
         ),
       );
     if (suffix === "/relearn") {
+      if (batch.bookId !== null) bookWords(batch.bookId, state);
       const ids = batch.items
         .filter((i) => i.result === 2 || i.result === 3)
         .map((i) => i.wordId);
@@ -377,7 +429,7 @@ export const mockAdapter: AxiosAdapter = async (config) => {
           state,
           batch.bookId,
           "MANUAL",
-          batch.items.filter(item => ids.includes(item.wordId)).map(item => ({ id: item.wordId, word: item.word, phonetic: item.phonetic, translation: item.meaning, learned: false, lastResult: null })),
+          batch.items.filter(item => ids.includes(item.wordId)).map(item => ({ id: item.wordId, word: item.word, phonetic: item.phonetic, translation: item.meaning, translationGroups: item.translationGroups, learned: false, lastResult: null })),
         ),
         201,
       );

@@ -44,7 +44,16 @@ function statisticsFor(state: State, day: string): DailyStatistics {
   return { learningDate: day, completedCount: learned.filter(word => word.learningStatus === 'DONE').length, answerCount: events.filter(event => event.history?.eventType === 'ANSWER').length, newCompletedCount: learned.filter(word => word.learningStatus === 'DONE' && word.itemType === 'NEW').length, reviewCompletedCount: learned.filter(word => word.learningStatus === 'DONE' && word.itemType === 'REVIEW').length, unfamiliarCount: learned.filter(word => word.result === 2 || word.result === 3).length, hasLearningActivity: learned.length > 0 || events.length > 0, statisticsComplete: incomplete.length === 0, incompleteWordCount: incomplete.length };
 }
 export function mockLearned(account: string, wordId: number) { return read(account).plan.find(word => word.wordId === wordId); }
-export function mockDaily(account: string, url: string, method: string, body: Record<string, unknown>, query: URLSearchParams, catalog: (id: number) => BookWord[]): { data: unknown } | undefined {
+export function mockDailyEvidence(account: string) {
+  const state = read(account);
+  return {
+    tasks: state.tasks.map(fixture => ({ task: fixture.task, items: fixture.items })),
+    dailyTarget: state.dailyTarget ?? 20,
+    events: Object.values(state.events).filter(event => event.wordId !== undefined && event.history).map(event => ({ ...event.history!, wordId: event.wordId! })),
+    items: state.tasks.flatMap(fixture => fixture.items.map(item => ({ batchId: fixture.task.batchId, itemId: item.itemId, wordId: item.wordId, result: item.result, answerCount: item.answerCount ?? null }))),
+  };
+}
+export function mockDaily(account: string, url: string, method: string, body: Record<string, unknown>, query: URLSearchParams, catalog: (id: number) => BookWord[], practiceEvents: (WordHistoryEvent & { wordId: number })[] = []): { data: unknown } | undefined {
   if (!url.startsWith('/learning-plan/') && !url.startsWith('/learning/') && !/^\/learning-batches\/\d+\/daily(?:\/|$)/.test(url)) return;
   const state = read(account);
   const respond = (data: unknown) => { save(account, state); return { data }; };
@@ -73,11 +82,11 @@ export function mockDaily(account: string, url: string, method: string, body: Re
     }
     if (url.endsWith('/words')) {
       const fixture = state.tasks.find(entry => entry.task.learningDate === day);
-      return respond(paginate((fixture?.items || []).filter(word => word.answerCount > 0 || word.result !== null).map(word => ({ wordId: word.wordId, word: word.word, translation: state.plan.find(entry => entry.wordId === word.wordId)?.translation ?? null, itemType: word.itemType, lastResult: word.result, answerCount: Object.values(state.events).filter(event => event.wordId === word.wordId && event.history?.learningDate === day && event.history.eventType === 'ANSWER').length, completed: word.learningStatus === 'DONE', statisticsComplete: word.answerCount === Object.values(state.events).filter(event => event.wordId === word.wordId && event.history?.learningDate === day && event.history.eventType === 'ANSWER').length }))));
+      return respond(paginate((fixture?.items || []).filter(word => word.answerCount > 0 || word.result !== null).map(word => ({ wordId: word.wordId, word: word.word, translation: state.plan.find(entry => entry.wordId === word.wordId)?.translation ?? null, translationGroups: state.plan.find(entry => entry.wordId === word.wordId)?.translationGroups, itemType: word.itemType, lastResult: word.result, answerCount: Object.values(state.events).filter(event => event.wordId === word.wordId && event.history?.learningDate === day && event.history.eventType === 'ANSWER').length, completed: word.learningStatus === 'DONE', statisticsComplete: word.answerCount === Object.values(state.events).filter(event => event.wordId === word.wordId && event.history?.learningDate === day && event.history.eventType === 'ANSWER').length }))));
     }
   }
   const historyMatch = url.match(/^\/learning-plan\/words\/(\d+)\/history$/);
-  if (historyMatch) return respond(paginate(Object.values(state.events).filter(event => event.wordId === Number(historyMatch[1]) && event.history).map(event => event.history!).sort((a, b) => b.answeredAt.localeCompare(a.answeredAt) || b.logId - a.logId)));
+  if (historyMatch) return respond(paginate([...Object.values(state.events).filter(event => event.wordId === Number(historyMatch[1]) && event.history).map(event => event.history!), ...practiceEvents.filter(event => event.wordId === Number(historyMatch[1]))].sort((a, b) => b.answeredAt.localeCompare(a.answeredAt) || b.logId - a.logId)));
   if (url === '/learning-plan/words' && method === 'post') {
     const ids = Array.isArray(body.wordIds) ? [...new Set(body.wordIds)] : [];
     const words = catalog(Number(body.bookId));
@@ -90,7 +99,7 @@ export function mockDaily(account: string, url: string, method: string, body: Re
         else { existing.planStatus = 'ACTIVE'; synchronizePlan(state, existing.wordId, 'ACTIVE'); reactivatedCount++; }
       } else {
         const word = words.find(w => w.id === id)!;
-        state.plan.push({ wordId: word.id, word: word.word, phonetic: word.phonetic, translation: word.translation, planStatus: 'ACTIVE', joinedAt: timestamp(), firstLearnedAt: null, lastLearnedAt: null, lastResult: null, nextReviewAt: null, reviewLevel: 0 });
+        state.plan.push({ wordId: word.id, word: word.word, phonetic: word.phonetic, translation: word.translation, translationGroups: word.translationGroups, planStatus: 'ACTIVE', joinedAt: timestamp(), firstLearnedAt: null, lastLearnedAt: null, lastResult: null, nextReviewAt: null, reviewLevel: 0 });
         addedCount++;
       }
     }
@@ -160,8 +169,8 @@ export function mockDaily(account: string, url: string, method: string, body: Re
   if (!match[2]) return respond({ ...task, nextItemId: task.learningDate === date() ? task.nextItemId : null });
   const item = items.find(w => w.itemId === Number(match[2]));
   if (!item) fail(404, 'ITEM_NOT_FOUND', '单词不存在');
-  const meaning = state.plan.find(w => w.wordId === item.wordId)?.translation ?? null;
-  if (!match[3]) return respond({ ...item, correctableLogId: item.learningStatus !== 'SKIPPED' && item.correctableLogId === state.latestLog && task.learningDate === date() ? item.correctableLogId : null, nextAttemptNo: task.learningDate === date() ? item.nextAttemptNo : null, nextItemId: task.learningDate === date() ? task.nextItemId : null });
+  const definition = state.plan.find(w => w.wordId === item.wordId);
+  if (!match[3]) return respond({ ...item, ...(item.learningStatus === 'DONE' && definition?.translation != null ? { translation: definition.translation, translationGroups: definition.translationGroups } : {}), correctableLogId: item.learningStatus !== 'SKIPPED' && item.correctableLogId === state.latestLog && task.learningDate === date() ? item.correctableLogId : null, nextAttemptNo: task.learningDate === date() ? item.nextAttemptNo : null, nextItemId: task.learningDate === date() ? task.nextItemId : null });
   const signature = JSON.stringify({ url, body });
   const requestId = String(body.requestId || '');
   if (task.learningDate !== date()) fail(409, 'DAILY_TASK_EXPIRED', '历史每日任务只读，请返回今日。');
@@ -204,7 +213,7 @@ export function mockDaily(account: string, url: string, method: string, body: Re
   task.unfamiliarCount = items.filter(w => w.learningStatus === 'DONE' && (w.result !== 1 || w.completionReason === 'LIMIT_REACHED')).length;
   task.nextItemId = queue[0] ?? null;
   task.status = queue.length ? 'IN_PROGRESS' : 'COMPLETED';
-  const receipt = { logId, itemId: item.itemId, result: item.result, translation: meaning, answeredAt: timestamp(), correction };
+  const receipt = { logId, itemId: item.itemId, result: item.result, translation: definition?.translation ?? null, translationGroups: definition?.translationGroups, answeredAt: timestamp(), correction };
   state.events[requestId] = { signature, batchId: task.batchId, receipt, wordId: item.wordId, reinforcementBefore, history: { logId, batchId: task.batchId, itemId: item.itemId, learningDate: task.learningDate, answeredAt: receipt.answeredAt, result: item.result, taskType: 'DAILY', eventType: correction ? 'CORRECTION' : 'ANSWER', correctsLogId: correction ? Number(body.logId) : null, attemptNo: item.answerCount, affectsSchedule: item.answerCount === 1, scheduleBefore: null, scheduleAfter: null, scheduleAvailable: false } };
   return respond({ ...receipt, progress: task });
 }

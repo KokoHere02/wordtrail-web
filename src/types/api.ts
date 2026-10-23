@@ -1,3 +1,4 @@
+import type { TranslationFields } from './translation';
 export type Result = 1 | 2 | 3;
 export type Status = "IN_PROGRESS" | "COMPLETED" | "ABANDONED";
 export type LearningStatus = "ALL" | "UNLEARNED" | "LEARNED";
@@ -44,7 +45,7 @@ export interface Book {
 }
 export type BookScope = 'ALL' | 'SYSTEM' | 'PERSONAL';
 export interface BookMetadata { name: string; description: string | null }
-export interface DictionaryWord {
+export interface DictionaryWord extends TranslationFields {
   id: number; word: string; phonetic: string | null; translation: string | null;
   inBook: boolean | null;
 }
@@ -54,7 +55,7 @@ export interface DictionaryQuery extends PageQuery {
 export interface BookWordsChange {
   requestedCount: number; changedCount: number; unchangedCount: number;
 }
-export interface BookWord {
+export interface BookWord extends TranslationFields {
   id: number;
   word: string;
   phonetic: string | null;
@@ -64,7 +65,7 @@ export interface BookWord {
 }
 export interface BatchCreated {
   batchId: number;
-  bookId: number;
+  bookId: number | null;
   selectionType: "BOOK" | "MANUAL";
   status: Status;
   wordCount: number;
@@ -90,7 +91,7 @@ export interface BatchProgress {
   answeredCount: number;
   nextItemId: number | null;
 }
-export interface StudyItem {
+export interface StudyItem extends TranslationFields {
   itemId: number;
   wordId: number;
   word: string;
@@ -98,11 +99,11 @@ export interface StudyItem {
   sortOrder: number;
   result: Result | null;
   answered: boolean;
-  translation?: string;
+  translation?: string | null;
   answeredAt: string | null;
   nextItemId: number | null;
 }
-export interface AnswerResult {
+export interface AnswerResult extends TranslationFields {
   itemId: number;
   result: Result;
   translation: string | null;
@@ -122,8 +123,14 @@ export interface RoundResult {
   unknownCount: number;
   relearnCount: number;
   completedAt: string | null;
+  completedCount: number;
+  answerCount: number;
+  unfamiliarCount: number;
+  statisticsComplete: boolean;
+  incompleteWordCount: number;
+  dataScope: 'RECORDED_EVENTS_AND_ITEMS';
 }
-export interface RoundWord {
+export interface RoundWord extends TranslationFields {
   itemId: number;
   wordId: number;
   word: string;
@@ -131,6 +138,8 @@ export interface RoundWord {
   translation: string | null;
   result: Result;
   answeredAt: string;
+  answerCount: number;
+  statisticsComplete: boolean;
 }
 export type CreateBatch = { bookId: number } & (
   | { selectionType: "BOOK"; count: number }
