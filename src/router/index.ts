@@ -7,7 +7,7 @@ import { uiPreview } from "../config";
 import { useAuthStore } from "../stores/auth";
 import AppLayout from "../layouts/AppLayout.vue";
 import PreviewLayout from "../layouts/PreviewLayout.vue";
-import FocusLayout from "../layouts/FocusLayout.vue";
+
 const visualRoutes: RouteRecordRaw[] = [
   {
     path: "/",
@@ -66,12 +66,34 @@ const apiRoutes: RouteRecordRaw[] = [
     children: [
       { path: "", redirect: "/today" },
       { path: "today", component: () => import("../views/live/TodayView.vue") },
-      { path: "learn", component: () => import("../views/live/DailyView.vue") },
-      { path: "learn/:batchId(\\d+)", component: () => import("../views/live/DailyView.vue") },
+      { path: "learn", component: () => import("../views/learning/StudyWorkspaceView.vue"), meta: { workspace: true } },
+      { path: "learn/:batchId(\\d+)", component: () => import("../views/learning/StudyWorkspaceView.vue"), meta: { workspace: true } },
+      { path: "study/:batchId(\\d+)", component: () => import("../views/learning/StudyWorkspaceView.vue"), meta: { workspace: true } },
       { path: "plan", component: () => import("../views/live/PlanView.vue") },
+      { path: "dictation", component: () => import("../views/learning/StudyWorkspaceView.vue"), meta: { workspace: true } },
+      { path: "dictation/mistakes", component: () => import("../views/dictation/DictationMistakesView.vue") },
+      { path: "dictation/:batchId(\\d+)", component: () => import("../views/learning/StudyWorkspaceView.vue"), meta: { workspace: true } },
+      { path: "dictation/:batchId(\\d+)/result", component: () => import("../views/dictation/DictationResultView.vue") },
+      { path: "sentences", component: () => import("../views/sentences/SentenceCatalogView.vue") },
+      { path: "sentences/favorites", component: () => import("../views/sentences/SentenceCatalogView.vue") },
+      { path: "sentences/review", component: () => import("../views/sentences/SentenceCatalogView.vue") },
+      { path: "sentences/due", component: () => import("../views/sentences/SentenceCatalogView.vue") },
+      { path: "sentences/statistics", component: () => import("../views/sentences/SentenceStatisticsView.vue") },
+      { path: "sentences/notes", component: () => import("../views/sentences/SentenceNotesView.vue") },
+      { path: "sentences/manage", component: () => import("../views/sentences/SentenceManagementView.vue") },
+      { path: "sentences/manage/new", component: () => import("../views/sentences/SentenceEditorView.vue") },
+      { path: "sentences/manage/import", component: () => import("../views/sentences/SentenceCsvImportView.vue") },
+      { path: "sentences/manage/:sentenceId(\\d+)/edit", component: () => import("../views/sentences/SentenceEditorView.vue") },
+      { path: "sentences/records", component: () => import("../views/sentences/SentenceRecordsView.vue") },
+      { path: "sentences/sessions/:sessionId(\\d+)", component: () => import("../views/learning/StudyWorkspaceView.vue"), meta: { workspace: true } },
+      { path: "sentences/sessions/:sessionId(\\d+)/result", component: () => import("../views/sentences/SentenceResultView.vue") },
+      { path: "words/:wordId(\\d+)", component: () => import("../views/live/WordDetailView.vue") },
+      { path: "weak-words", component: () => import("../views/live/WeakWordsView.vue") },
       { path: "settings", component: () => import("../views/live/SettingsView.vue") },
+      { path: "settings/security", component: () => import("../views/auth/AccountSecurityView.vue") },
       { path: "statistics", component: () => import("../views/live/StatisticsView.vue") },
       { path: "records", component: () => import("../views/live/RecordsView.vue") },
+      { path: "records/dictation", component: () => import("../views/dictation/DictationRecordsView.vue") },
       { path: "records/:batchId(\\d+)", component: () => import("../views/live/DailyResultView.vue") },
       {
         path: "books",
@@ -92,16 +114,6 @@ const apiRoutes: RouteRecordRaw[] = [
         path: "learning/:batchId(\\d+)/result",
         component: () => import("../views/learning/ResultView.vue"),
         meta: { title: "我的学习" },
-      },
-    ],
-  },
-  {
-    path: "/study",
-    component: FocusLayout,
-    children: [
-      {
-        path: ":batchId(\\d+)",
-        component: () => import("../views/learning/StudyView.vue"),
       },
     ],
   },

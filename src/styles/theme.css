@@ -1,10 +1,10 @@
 @theme {
-  --color-paper: #f2f1ed;
-  --color-surface: #fcfbf9;
-  --color-ink: #252c28;
-  --color-muted: #667168;
-  --color-line: #e0e4de;
-  --color-sage: #e2ebe3;
+  --color-paper: #f5f4ef;
+  --color-surface: #fcfcf8;
+  --color-ink: #252b28;
+  --color-muted: #737c74;
+  --color-line: #dfe4dd;
+  --color-sage: #e8ede5;
   --font-sans:
     "Inter", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
   --font-serif: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
@@ -16,37 +16,48 @@
   --muted: var(--color-muted);
   --line: var(--color-line);
   --sage: var(--color-sage);
-  --accent: #2e584b;
-  --accent-strong: #244c40;
-  --primary-hover: #244b3f;
-  --control-text: #505a54;
-  --translation: #4e5852;
-  --text-subtle: #667168;
-  --text-placeholder: #667168;
-  --icon-color: #68736c;
-  --surface-raised: #fdfdfa;
-  --surface-muted: #edf0eb;
-  --on-accent: #fcfdfa;
-  --button-start: #31594c;
-  --button-end: #31594c;
-  --button-hover-start: #244b3f;
-  --button-hover-end: #244b3f;
-  --progress-start: #426c5e;
-  --progress-end: #426c5e;
+  --accent: #294b42;
+  --accent-strong: #294b42;
+  --primary-hover: #365d4b;
+  --control-text: #37483b;
+  --translation: var(--muted);
+  --text-subtle: #7c847c;
+  --text-placeholder: var(--text-subtle);
+  --icon-color: var(--accent);
+  --surface-raised: var(--surface);
+  --surface-muted: #eeefe8;
+  --on-accent: #f5f4ef;
+  --button-start: #294b42;
+  --button-end: #294b42;
+  --button-hover-start: var(--primary-hover);
+  --button-hover-end: var(--primary-hover);
+  --secondary-text: var(--control-text);
+  --secondary-hover: var(--hover);
+  --key-bg: #e1e7de;
+  --key-text: var(--control-text);
+  --tag-bg: var(--sage);
+  --tag-text: #365746;
+  --tag-radius: 6px;
+  --example-line: #7d9887;
+  --progress-track: #e1e5de;
+  --progress-start: #496b59;
+  --progress-end: var(--progress-start);
   --cover-start: #78968a;
   --cover-end: #57796a;
   --cover-spine: #244b3f4d;
   --cover-line: #f5faf54d;
-  --logo-base: #2b5447;
+  --logo-base: #4b6b5a;
   --logo-start: #426b5c;
   --logo-end: #2b5447;
-  --focus-ring: #7eaa95;
+  --focus-ring: #496b59;
+  --focus-width: 2px;
+  --focus-offset: 3px;
   --selection-bg: #dbe7dd;
   --selection-text: #214635;
   --shadow-tint: #213c3012;
   --shadow-faint: #213c3006;
   --shadow-cover: #213c3026;
-  --hover: #edf2ec;
+  --hover: #e8ede5;
   --error: #a15e54;
   --error-bg: #f3e8e3;
   --success: #52745d;
@@ -59,8 +70,8 @@
   --book-index: #8d9d92;
   --row-selected: #eef2ec;
   --status-idle: #d0d6cf;
-  --phonetic: #667168;
-  --answer-border: #d8e1d7;
+  --phonetic: var(--muted);
+  --answer-border: #b9c4b9;
   --correction-line: #a9bcb0;
   --card-hover-border: #9bb4a2;
   --neutral-tag: #eceeeb;
@@ -68,9 +79,22 @@
   --notice-border: #cadbcc;
   --notice-text: #526b59;
   --checkbox-border: #a3b0a6;
-  --header-bg: #fcfbf9;
+  --header-bg: var(--bg);
   --overlay-bg: #12231a40;
-  --plan-detail-bg: #f8faf5;
+  --plan-detail-bg: #f1f3ec;
+  --review-width: 640px;
+  --learning-width: 1120px;
+  --learning-answer-height: 72px;
+  --recall-prompt-bg: var(--tag-bg);
+  --recall-prompt-border: transparent;
+  --recall-prompt-height: 60px;
+  --review-font: Georgia, "Iowan Old Style", "Times New Roman", serif;
+  --review-word-size: 80px;
+  --review-long-word-size: clamp(32px, 5vw, 56px);
+  --review-meaning-size: 18px;
+  --review-phonetic-size: 18px;
+  --review-meaning-height: 236px;
+  --review-answer-height: 60px;
   --plan-width: 1330px;
   --plan-word-size: clamp(30px, 3vw, 40px);
   --plan-title-size: clamp(32px, 3.5vw, 46px);
@@ -142,43 +166,51 @@
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --color-paper: #131a21;
-  --color-surface: #1c2732;
-  --color-ink: #e6edf3;
-  --color-muted: #aebdca;
-  --color-line: #304250;
-  --color-sage: #2c4555;
-  --accent: #a4cce4;
-  --accent-strong: #b7d9ed;
-  --primary-hover: #b5d8ec;
-  --control-text: #c2cfda;
-  --translation: #c6d1db;
-  --text-subtle: #a5b5c3;
-  --text-placeholder: #8c9fae;
-  --icon-color: #bbccda;
-  --surface-raised: #21313d;
-  --surface-muted: #263744;
-  --on-accent: #14232d;
-  --button-start: #a1c9e2;
-  --button-end: #a1c9e2;
-  --button-hover-start: #b5d8ec;
-  --button-hover-end: #b5d8ec;
-  --progress-start: #a4cce4;
-  --progress-end: #a4cce4;
-  --cover-start: #52768d;
-  --cover-end: #36596f;
-  --cover-spine: #162d3e66;
-  --cover-line: #d0e8f24d;
-  --logo-base: #34576b;
-  --logo-start: #52788f;
-  --logo-end: #34576b;
-  --focus-ring: #90bdd8;
-  --selection-bg: #365669;
-  --selection-text: #edf6fc;
+  --color-paper: #141d18;
+  --color-surface: #1c2821;
+  --color-ink: #e9ece5;
+  --color-muted: #adb7ab;
+  --color-line: #344237;
+  --color-sage: #304032;
+  --accent: #b3c8aa;
+  --accent-strong: #b3c8aa;
+  --primary-hover: #c0d2b8;
+  --control-text: #dee5d8;
+  --translation: var(--muted);
+  --text-subtle: #9aa89b;
+  --text-placeholder: var(--text-subtle);
+  --icon-color: var(--accent);
+  --surface-raised: #25352a;
+  --surface-muted: #293a2d;
+  --on-accent: #19251c;
+  --button-start: #b3c8aa;
+  --button-end: #b3c8aa;
+  --button-hover-start: var(--primary-hover);
+  --button-hover-end: var(--primary-hover);
+  --key-bg: #354631;
+  --key-text: var(--control-text);
+  --tag-bg: var(--sage);
+  --tag-text: #c4d4b8;
+  --recall-prompt-bg: var(--surface);
+  --recall-prompt-border: var(--line);
+  --example-line: var(--accent);
+  --progress-track: #2a362d;
+  --progress-start: #b3c8aa;
+  --progress-end: #b3c8aa;
+  --cover-start: #527055;
+  --cover-end: #36533e;
+  --cover-spine: #162d1d66;
+  --cover-line: #d3e5cb4d;
+  --logo-base: #36533e;
+  --logo-start: #527055;
+  --logo-end: #36533e;
+  --focus-ring: #b3c8aa;
+  --selection-bg: #354b3c;
+  --selection-text: #e9ece5;
   --shadow-tint: #00000026;
   --shadow-faint: #0000000d;
   --shadow-cover: #00000033;
-  --hover: #253846;
+  --hover: #243429;
   --error: #e6a69b;
   --error-bg: #362c2d;
   --error-border: #78514d;
@@ -188,21 +220,21 @@
   --amber: #dfc68e;
   --amber-bg: #393527;
   --amber-border: #796d48;
-  --book-index: #91a7b8;
-  --row-selected: #233543;
-  --status-idle: #475965;
-  --phonetic: #a6b9c9;
-  --answer-border: #3b5262;
-  --correction-line: #5b788b;
-  --card-hover-border: #688ba2;
-  --neutral-tag: #2a3b48;
-  --neutral-tag-text: #c1d0dc;
-  --notice-border: #415d6e;
-  --notice-text: #c0d8e8;
-  --checkbox-border: #8ca6b8;
-  --header-bg: #18232d;
-  --overlay-bg: #070e16a6;
-  --plan-detail-bg: #1b2b36;
+  --book-index: #9caf9a;
+  --row-selected: #27392c;
+  --status-idle: #4d5e50;
+  --phonetic: #adb7ab;
+  --answer-border: #718270;
+  --correction-line: #6e8268;
+  --card-hover-border: #859b7c;
+  --neutral-tag: #2c3c30;
+  --neutral-tag-text: #cdd7c9;
+  --notice-border: #4b624b;
+  --notice-text: #ccd9c4;
+  --checkbox-border: #94ac8b;
+  --header-bg: var(--bg);
+  --overlay-bg: #07100aa6;
+  --plan-detail-bg: #223226;
   --shadow: 0 8px 28px #0000000d;
   --shadow-float: 0 18px 64px #00000033;
   --shadow-purple: 0 7px 18px #0000001f;
@@ -213,7 +245,10 @@
 body {
   margin: 0;
   min-width: 320px;
+  background: var(--bg);
+  color: var(--ink);
 }
+:root, body { transition: background-color var(--motion-fast) var(--ease), color var(--motion-fast) var(--ease), border-color var(--motion-fast) var(--ease); }
 button,
 input,
 select,
@@ -258,8 +293,8 @@ svg {
   flex-shrink: 0;
 }
 :focus-visible {
-  outline: 3px solid var(--focus-ring);
-  outline-offset: 4px;
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }
 input,
 textarea {
@@ -290,6 +325,9 @@ input::-webkit-search-cancel-button {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+@media (max-width: 700px) {
+  :root { --review-word-size: 56px; --review-long-word-size: clamp(26px, 7vw, 40px); --review-meaning-size: 16px; --review-meaning-height: 220px; --review-answer-height: 52px; }
 }
 @media (max-width: 640px) {
   :root {

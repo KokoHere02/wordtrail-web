@@ -172,10 +172,23 @@ export function useDailySession(userId: number) {
     if (!remember({ batchId: progress.value.batchId, item: item.value, kind: 'answer', body: { result, attemptNo: item.value.nextAttemptNo, requestId: crypto.randomUUID() } })) return;
     await send();
   }
-  async function correct() {
+  async function correct(result: 2 | 3 = 3) {
     if (saving.value || loading.value || historical.value || expired.value || pending.value || !item.value || !progress.value || !correctableLogId.value || receipt.value?.result !== 1) return;
-    if (!remember({ batchId: progress.value.batchId, item: item.value, kind: 'correction', body: { result: 3, logId: correctableLogId.value, requestId: crypto.randomUUID() } })) return;
+    if (!remember({ batchId: progress.value.batchId, item: item.value, kind: 'correction', body: { result, logId: correctableLogId.value, requestId: crypto.randomUUID() } })) return;
     await send();
+  }
+  async function correctPrevious(batchId: number, previous: DailyStudyItem, logId: number, result: 2 | 3 = 3) {
+    if (saving.value || loading.value || historical.value || expired.value || pending.value || progress.value?.batchId !== batchId) return;
+    loading.value = true;
+    error.value = '';
+    let allowed = false;
+    try {
+      const current = await dailyApi.item(batchId, previous.itemId);
+      if (current.learningStatus === 'SKIPPED' || current.correctableLogId !== logId) throw new ApiError('这次反馈已不能更正，请返回当前单词继续。', 'CORRECTION_NOT_ALLOWED');
+      allowed = true;
+    } catch (value) { handleError(value); }
+    finally { loading.value = false; }
+    if (allowed && remember({ batchId, item: previous, kind: 'correction', body: { result, logId, requestId: crypto.randomUUID() } })) await send();
   }
   async function next() {
     if (!receipt.value || !progress.value || saving.value || loading.value || pending.value || expired.value) return;
@@ -185,5 +198,5 @@ export function useDailySession(userId: number) {
     catch (e) { handleError(e); }
     finally { loading.value = false; }
   }
-  return { progress, overview, item, receipt, answerDetails, detailsError, pending, loading, saving, error, expired, historical, noWords, notice, correctableLogId, open, answer, correct, syncAnswerDetails, retry: send, next };
+  return { progress, overview, item, receipt, answerDetails, detailsError, pending, loading, saving, error, expired, historical, noWords, notice, correctableLogId, open, answer, correct, correctPrevious, syncAnswerDetails, retry: send, next };
 }

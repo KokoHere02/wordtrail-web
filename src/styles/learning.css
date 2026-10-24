@@ -1,0 +1,70 @@
+/* Learning uses the homepage chrome. Definition contents keep the existing WordMeaning styles. */
+.learning-header, .learning-main { width: min(calc(100% - var(--s6) * 2), var(--learning-width)); margin-inline: auto; }
+.learning-toolbar { display: flex; align-items: center; justify-content: space-between; gap: var(--s4); padding: var(--s6) 0 var(--s4); }
+.learning-toolbar a { display: inline-flex; align-items: center; gap: var(--s2); min-height: var(--control); font-size: var(--text-base); color: var(--control-text); }
+.learning-toolbar a:hover { color: var(--accent); }
+.learning-progress.study-progress { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--s6); width: min(100%, var(--review-width)); margin: 0 auto var(--s6); color: var(--muted); font-size: var(--text-base); }
+.learning-progress .progress-track { width: 100%; height: var(--s2); border-radius: var(--radius-pill); background: var(--progress-track); }
+.learning-progress .progress-track > span { background: var(--progress-start); border-radius: inherit; }
+.learning-progress .review-progress-count { grid-column: 2; grid-row: 1; white-space: nowrap; }
+.learning-main { padding-bottom: max(var(--s8), env(safe-area-inset-bottom)); }
+.learning-card { position: relative; padding: var(--s16) var(--s10) var(--s10); border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); box-shadow: none; }
+.learning-card .learning-word-area { padding: 0; text-align: center; }
+.learning-card .memory-title { margin: 0; }
+.learning-card .memory-title h1 { font-weight: 400; }
+.learning-card .review-pronunciation { margin-top: var(--s3); }
+.learning-reveal-area { display: flex; justify-content: center; margin-top: var(--s8); }
+.reveal-button { display: inline-flex; align-items: center; justify-content: center; gap: var(--s3); min-height: var(--control); max-width: 100%; padding: var(--s3) var(--s5); border: 1px solid var(--recall-prompt-border); border-radius: var(--radius); color: var(--accent); background: var(--recall-prompt-bg); font-size: var(--text-md); line-height: 1.6; }
+.reveal-button:hover:not(:disabled) { background: var(--hover); }
+.learning-definition { width: min(100%, var(--review-width)); min-width: 0; text-align: left; }
+.learning-state { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: var(--s3); padding: var(--s4) 0; color: var(--muted); font-size: var(--text-base); line-height: 1.7; }
+.learning-card .learning-rating { width: 100%; gap: var(--s4); margin: var(--s8) 0 0; }
+.learning-card .review-answer { min-height: var(--learning-answer-height); padding: var(--s4); gap: var(--s3); font-size: var(--text-lg); }
+.learning-card .review-answer > span { font-size: inherit; font-weight: 500; }
+.learning-card .review-answer::after { display: none; }
+.learning-card .review-answer::before { content: attr(data-key); display: grid; place-items: center; min-width: var(--s8); height: var(--s8); padding-inline: var(--s1); border-radius: var(--s1); color: var(--key-text); background: var(--key-bg); font: 400 var(--text-md)/1 var(--font-serif); }
+.learning-correction { display: flex; flex-direction: column; align-items: center; gap: var(--s2); margin-top: var(--s5); }
+.learning-correction-trigger { display: flex; align-items: center; gap: var(--s2); }
+.learning-correction-trigger .correction-button { min-height: var(--control); padding: var(--s2) var(--s1); }
+.learning-correction kbd, .learning-correction-choice::before { display: inline-grid; place-items: center; min-width: var(--s6); padding: var(--s1); border-radius: var(--s1); color: var(--key-text); background: var(--key-bg); font: var(--text-base)/1.2 var(--font-sans); }
+.learning-correction-choices { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: var(--s3); width: 100%; font-size: var(--text-base); }
+.learning-correction-label { color: var(--muted); }
+.learning-correction-choice, .learning-correction-cancel { display: inline-flex; justify-content: center; align-items: center; gap: var(--s2); min-height: var(--control); padding: var(--s2) var(--s3); color: var(--control-text); background: transparent; border: 1px solid var(--answer-border); border-radius: var(--radius); }
+.learning-correction-choice::before { content: attr(data-key); }
+.learning-correction-choice:hover { background: var(--hover); }
+.learning-correction-cancel { color: var(--muted); border-color: transparent; }
+.learning-correction-cancel:hover { color: var(--accent); background: var(--hover); }
+.learning-past-label { position: absolute; inset: var(--s4) var(--s5) auto auto; margin: 0; color: var(--muted); font-size: var(--text-base); }
+.learning-controls { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--s5); margin-top: var(--s8); }
+.learning-controls .learning-step { display: inline-flex; align-items: center; justify-content: center; gap: var(--s4); min-width: calc(var(--s16) * 2); min-height: calc(var(--control) + var(--s2)); margin: 0; padding: var(--s3) var(--s5); border: 1px solid var(--line); border-radius: var(--radius); color: var(--accent); background: var(--surface); box-shadow: none; font-size: var(--text-md); }
+.learning-controls .learning-step:hover:not(:disabled) { border-color: var(--answer-border); background: var(--hover); }
+.learning-page .learning-controls .next-button:disabled { display: inline-flex; visibility: visible; }
+.learning-keys { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: var(--s2) var(--s3); margin: 0; color: var(--muted); font-size: var(--text-base); line-height: 1.7; }
+.learning-keys > span { display: inline-flex; align-items: center; gap: var(--s2); white-space: nowrap; }
+.learning-keys kbd { display: inline-grid; place-items: center; min-width: var(--s6); padding: 0 var(--s1); border: 1px solid var(--line); border-radius: var(--s1); color: var(--control-text); background: var(--surface-muted); font: inherit; }
+.learning-error, .learning-notice { padding: var(--s3) 0; margin: 0 0 var(--s4); font-size: var(--text-base); line-height: 1.7; overflow-wrap: anywhere; }
+.learning-error > button, .learning-error > a { margin-top: var(--s2); margin-right: var(--s4); min-height: var(--control); }
+.learning-notice { color: var(--muted); }
+.learning-empty { margin: var(--s12) auto; }
+.learning-toolbar a, .learning-card, .reveal-button, .learning-controls .learning-step, .learning-card .review-answer::before, .learning-correction-choice, .learning-correction-cancel { transition: background-color var(--motion-fast) var(--ease), color var(--motion-fast) var(--ease), border-color var(--motion-fast) var(--ease); }
+@media (max-width: 700px) {
+  .learning-header, .learning-main { width: calc(100% - var(--s5) * 2); }
+  .learning-toolbar { padding: var(--s3) 0; }
+  .learning-card { padding: var(--s10) var(--s4) var(--s6); border-radius: var(--radius); }
+  .learning-progress.study-progress { gap: var(--s3); margin-bottom: var(--s5); }
+  .learning-card .learning-rating { margin-top: var(--s6); gap: var(--s2); }
+  .learning-card .review-answer { min-height: var(--review-answer-height); padding: var(--s3) var(--s1); gap: var(--s2); font-size: var(--text-md); }
+  .learning-card .review-answer::before { min-width: var(--s6); height: var(--s6); font-size: var(--text-base); }
+  .learning-reveal-area { margin-top: var(--s5); }
+  .reveal-button { font-size: var(--text-base); padding-inline: var(--s3); }
+  .learning-controls { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s4); margin-top: var(--s5); }
+  .learning-controls .learning-step { min-width: 0; width: 100%; font-size: var(--text-base); }
+  .learning-keys { grid-column: 1 / -1; grid-row: 2; }
+  .learning-controls .next-button { grid-column: 2; grid-row: 1; }
+}
+@media (max-width: 520px) {
+  .learning-progress.study-progress { grid-template-columns: 1fr; gap: var(--s2); }
+  .learning-progress .review-progress-count { grid-column: 1; grid-row: 1; text-align: center; }
+  .learning-progress .progress-track { grid-column: 1; grid-row: 2; }
+  .learning-card .review-answer::before { display: none; }
+}

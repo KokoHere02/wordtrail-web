@@ -226,40 +226,33 @@ button.profile-button:hover {
   min-height: 42px;
   padding: 0 22px;
   gap: 12px;
-  transition:
-    transform var(--motion-normal) var(--spring),
-    background var(--motion-fast),
-    box-shadow var(--motion-normal);
+  transition: background-color var(--motion-fast), color var(--motion-fast), border-color var(--motion-fast);
   border: 1px solid transparent;
 }
 .wordory-app .btn-primary {
-  background: linear-gradient(115deg, var(--button-start), var(--button-end));
+  background: var(--button-start);
   color: var(--on-accent);
-  box-shadow: var(--shadow-purple);
+  box-shadow: none;
 }
 .wordory-app .btn-primary:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 26px var(--shadow-tint);
-  background: linear-gradient(
-    115deg,
-    var(--button-hover-start),
-    var(--button-hover-end)
-  );
+  transform: none;
+  box-shadow: none;
+  background: var(--button-hover-start);
 }
 .wordory-app .btn:active:not(:disabled) {
-  transform: translateY(1px) scale(0.98);
+  transform: none;
   box-shadow: none;
 }
 .wordory-app .btn-secondary {
   border-color: var(--line);
   background: var(--surface);
   color: var(--control-text);
-  box-shadow: 0 3px 10px var(--shadow-faint);
+  box-shadow: none;
 }
 .wordory-app .btn-secondary:hover:not(:disabled) {
   border-color: var(--focus-ring);
   background: var(--surface-raised);
-  transform: translateY(-2px);
+  transform: none;
 }
 .btn svg {
   transition: transform var(--motion-normal) var(--ease);
@@ -1511,7 +1504,7 @@ button.profile-button:hover {
   justify-content: center;
   padding: 24px;
   background: #27213824;
-  backdrop-filter: blur(5px);
+  backdrop-filter: none;
 }
 .dialog-panel {
   width: min(100%, 460px);
@@ -1627,8 +1620,8 @@ button.profile-button:hover {
   transform: translateX(17px);
 }
 .toggle-input:focus-visible + .toggle-switch {
-  outline: 3px solid var(--focus-ring);
-  outline-offset: 3px;
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }
 .settings-tip {
   display: flex;

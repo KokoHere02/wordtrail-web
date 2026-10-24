@@ -44,6 +44,6 @@ onMounted(refresh);
       </div>
     </section>
     <TodayStatistics />
-    <div class="today-streak"><RouterLink to="/records" class="muted-link">查看学习记录<ArrowUpRight :size="18" /></RouterLink></div>
+    <div class="today-streak live-actions"><RouterLink to="/dictation" class="muted-link">单词默写<ArrowUpRight :size="18" /></RouterLink><RouterLink to="/sentences" class="muted-link">句子英译中<ArrowUpRight :size="18" /></RouterLink><RouterLink to="/records" class="muted-link">查看学习记录<ArrowUpRight :size="18" /></RouterLink></div>
   </div>
 </template>

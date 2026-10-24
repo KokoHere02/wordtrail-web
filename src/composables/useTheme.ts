@@ -6,13 +6,14 @@ let initialized = false;
 function apply(value: Theme) {
   theme.value = value;
   document.documentElement.dataset.theme = value;
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', value === 'dark' ? '#141D18' : '#F5F4EF');
 }
 export function initializeTheme() {
   if (initialized) return;
   initialized = true;
   let saved: string | null = null;
   try { saved = localStorage.getItem(storageKey); } catch { /* Theme switching also works without storage. */ }
-  apply(saved === 'light' || saved === 'dark' ? saved : window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  apply(saved === 'light' || saved === 'dark' ? saved : 'dark');
 }
 export function useTheme() {
   initializeTheme();

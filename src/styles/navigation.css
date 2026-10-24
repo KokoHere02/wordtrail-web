@@ -1,0 +1,15 @@
+/* Live navigation exposes every implemented learning mode. Preview chrome stays separate. */
+.app-main-nav { width: clamp(440px, 40vw, 528px); height: calc(var(--control) + var(--s3)); top: 17px; grid-template-columns: repeat(var(--nav-count), minmax(0, 1fr)); }
+.app-main-nav > a { min-width: 0; min-height: var(--control); white-space: nowrap; }
+.app-main-nav .nav-indicator { width: calc((100% - 10px) / var(--nav-count)); top: 5px; bottom: 5px; }
+.app-main-nav .app-nav-short { display: none; }
+@media (max-width: 800px) {
+  .app-site-header { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: 52px calc(var(--control) + var(--s3)); gap: var(--s3); padding-top: var(--s1); padding-bottom: var(--s3); min-height: 136px; }
+  .app-site-header .header-actions { grid-column: 2; grid-row: 1; }
+  .app-site-header .header-actions .appearance-button { display: inline-flex; }
+  .app-site-header .app-main-nav { position: relative; left: auto; top: auto; transform: none; grid-column: 1 / -1; grid-row: 2; width: 100%; height: calc(var(--control) + var(--s3)); margin: 0; }
+}
+@media (max-width: 640px) {
+  .app-main-nav .app-nav-label { display: none; }
+  .app-main-nav .app-nav-short { display: inline; }
+}

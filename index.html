@@ -4,16 +4,17 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#F2F1ED" />
+    <meta name="theme-color" content="#F5F4EF" />
     <script>
       // Set the saved appearance before the first paint.
       try {
         const savedTheme = localStorage.getItem('wordtrail.theme');
         document.documentElement.dataset.theme = savedTheme === 'light' || savedTheme === 'dark'
-          ? savedTheme : matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          ? savedTheme : 'dark';
       } catch {
-        document.documentElement.dataset.theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        document.documentElement.dataset.theme = 'dark';
       }
+      document.querySelector('meta[name="theme-color"]').setAttribute('content', document.documentElement.dataset.theme === 'dark' ? '#141D18' : '#F5F4EF');
     </script>
     <meta
       name="description"

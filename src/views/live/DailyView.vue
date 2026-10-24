@@ -1,60 +1,71 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted } from 'vue';
+import { computed, onMounted, ref, watchEffect, onActivated, onScopeDispose, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ArrowLeft, ArrowRight, Check } from 'lucide-vue-next';
-import { useDailySession } from '../../composables/useDailySession';
-import { useStartDaily } from '../../composables/useStartDaily';
+import { ArrowRight } from 'lucide-vue-next';
 import { useAuthStore } from '../../stores/auth';
-import type { Result } from '../../types/api';
-import DailyStats from '../../components/learning/DailyStats.vue';
+import { useDailyLearning } from '../../composables/useDailyLearning';
+import { useStartDaily } from '../../composables/useStartDaily';
+import { useLearningKeys } from '../../composables/useLearningKeys';
+import LearningCard from '../../components/learning/LearningCard.vue';
+import LearningControls from '../../components/learning/LearningControls.vue';
+import ReviewHeader from '../../components/learning/ReviewHeader.vue';
 import StatePanel from '../../components/ui/StatePanel.vue';
 import AppButton from '../../components/ui/AppButton.vue';
-import ReinforcementStatus from '../../components/learning/ReinforcementStatus.vue';
+import { useStudySurface } from '../../composables/useStudySurface';
+import type { Result } from '../../types/api';
+import { dailyApi } from '../../api/daily';
+const props = defineProps<{ embedded?: boolean; requestedBatchId?: number }>();
+const surface = useStudySurface();
 const route = useRoute();
 const router = useRouter();
-const requestedId = route.params.batchId ? Number(route.params.batchId) : undefined;
-const session = useDailySession(useAuthStore().user!.id);
+const requestedId = props.embedded ? props.requestedBatchId : route.params.batchId ? Number(route.params.batchId) : undefined;
+const learning = useDailyLearning(useAuthStore().user!.id);
+const { session, current, answer, isPast, busy, feedback, reveal, canRate, canPrevious, canNext, canCorrect } = learning;
+const { progress, overview, item, pending, loading, saving, error, expired, historical, noWords, notice } = session;
+const { visible, definition, loading: revealLoading, error: revealError } = reveal;
+const card = ref<InstanceType<typeof LearningCard>>();
+const displayKey = computed(() => isPast.value ? `past:${learning.history.selected.value?.key}` : `live:${item.value?.itemId}:${item.value?.nextAttemptNo}`);
+const readonly = computed(() => historical.value || progress.value?.status === 'ABANDONED');
 const { starting, startError, start } = useStartDaily(async task => {
   const path = task.status === 'IN_PROGRESS' ? `/learn/${task.batchId}` : `/records/${task.batchId}`;
-  if (route.path === path) await session.open(task.batchId);
-  else await router.push(path);
+  if (route.path === path) await session.open(task.batchId); else await router.push(path);
 });
-const { progress, overview, item, receipt, answerDetails, detailsError, pending, loading, saving, error, expired, historical, noWords, notice, correctableLogId } = session;
-const choices: { value: Result; name: string; className: string; key: string }[] = [{ value: 3, name: '忘记', className: 'forgot', key: '1' }, { value: 2, name: '模糊', className: 'uncertain', key: '2' }, { value: 1, name: '认识', className: 'known', key: '3' }];
-const readonly = computed(() => historical.value || !!progress.value && progress.value.status !== 'IN_PROGRESS' && !receipt.value && !pending.value);
-const reinforcementItem = computed(() => receipt.value ? answerDetails.value : item.value);
-const canAnswer = computed(() => !!item.value && ['PENDING', 'RELEARNING'].includes(item.value.learningStatus) && item.value.nextAttemptNo !== null && item.value.nextAttemptNo <= item.value.attemptLimit && progress.value?.nextItemId === item.value.itemId && !receipt.value && !pending.value && !loading.value && !saving.value && !expired.value && !readonly.value);
-async function next() {
-  await session.next();
-  if (!error.value && !item.value && progress.value?.status === 'COMPLETED') await router.push(`/records/${progress.value.batchId}`);
-}
-function keyboard(event: KeyboardEvent) {
-  if (event.repeat || event.altKey || event.ctrlKey || event.metaKey || document.querySelector('[role="dialog"]') || event.target instanceof HTMLElement && event.target.closest('input,select,textarea,button,a,[contenteditable=true]')) return;
-  const choice = choices.find(c => c.key === event.key);
-  if (choice && canAnswer.value) { event.preventDefault(); void session.answer(choice.value); }
-  if (event.key === 'Enter' && receipt.value) { event.preventDefault(); void next(); }
-}
-onMounted(() => { void session.open(requestedId); document.addEventListener('keydown', keyboard); });
-onBeforeUnmount(() => document.removeEventListener('keydown', keyboard));
+function revealMeaning() { if (current.value && !busy.value) return reveal.reveal(); }
+function pronounce() { if (current.value && !busy.value) card.value?.pronounce(); }
+watchEffect(() => { if (surface) surface.state.source = progress.value ? `每日计划 · ${progress.value.learningDate}` : '每日计划'; });
+async function rate(result: Result) { await learning.rate(result); if (surface?.active.value && !session.pending.value && !session.error.value && session.receipt.value) await learning.next(); }
+async function retryAnswer() { await learning.retry(); if (surface?.active.value && !session.pending.value && !session.error.value && session.receipt.value) await learning.next(); }
+useLearningKeys({ reveal: revealMeaning, pronounce, rate: result => card.value?.rate(result), previous: learning.previous, next: learning.next, correct: () => card.value?.openCorrection(), cancelCorrection: () => card.value?.cancelCorrection() });
+onMounted(() => session.open(requestedId));
+let live = true;
+onScopeDispose(() => { live = false; });
+onActivated(() => {
+  void nextTick(async () => {
+    if (!live || !surface?.active.value || busy.value || pending.value || !progress.value) return;
+    const id = progress.value.batchId;
+    try {
+      const latest = await dailyApi.task(id);
+      if (!live || !surface.active.value || busy.value || pending.value || progress.value?.batchId !== id) return;
+      const previous = progress.value;
+      if (latest.totalCount !== previous.totalCount || latest.nextItemId !== previous.nextItemId || latest.status !== previous.status || latest.answerCount !== previous.answerCount || latest.skippedCount !== previous.skippedCount) await session.open(id);
+    } catch { if (live) notice.value = '暂未同步最新任务，可在练习设置中重新同步。'; }
+  });
+});
 </script>
 <template>
-  <div class="memory-page practice-page live-daily-page">
-    <div class="practice-breadcrumb"><p><span class="practice-badge">今日复习</span></p><RouterLink to="/today" class="violet-link">返回今日<ArrowLeft :size="17" /></RouterLink></div>
-    <div class="live-study-heading"><span>{{ progress?.learningDate || '每日学习' }}</span><RouterLink to="/plan" class="muted-link">管理计划</RouterLink></div>
-    <StatePanel :loading="loading" />
-    <p v-if="notice" class="live-notice" role="status">{{ notice }}</p>
-    <p v-if="startError" class="inline-error" role="alert">{{ startError }}</p>
-    <div v-if="error && !noWords" class="live-error" role="alert"><p>{{ error }}</p><div class="live-actions"><button v-if="pending && !expired" class="violet-link" :disabled="saving || loading" @click="session.retry">{{ saving ? '正在确认…' : '重试原请求' }}</button><RouterLink v-else-if="expired" to="/today" class="violet-link">返回今日任务</RouterLink><button v-else class="violet-link" :disabled="loading || saving" @click="session.open(requestedId)">重新同步</button><RouterLink to="/books" class="muted-link">去词库选词</RouterLink></div></div>
-    <div v-if="noWords && !loading" class="library-empty"><h1>今天暂时没有待学的词</h1><p>{{ error }}</p><RouterLink to="/books" class="btn btn-primary">去词库加入计划<ArrowRight :size="18" /></RouterLink><RouterLink to="/plan" class="violet-link">查看我的计划</RouterLink></div><div v-if="!loading && !expired && !noWords && item && !readonly" class="memory-content">
-      <p class="practice-counter">{{ item.itemType === 'NEW' ? '新词' : '复习' }}<template v-if="item.learningStatus === 'RELEARNING'"> · 本轮强化</template> · 已完成 {{ progress?.completedCount }} / {{ progress?.totalCount }} 词</p>
-      <ReinforcementStatus v-if="reinforcementItem" :item="reinforcementItem" :answered="!!receipt" />
-      <p v-if="detailsError" class="inline-error" role="alert">已保存，巩固状态暂未同步。<button class="violet-link" :disabled="saving" @click="session.syncAnswerDetails">重新同步</button></p>
-      <div class="memory-word-stage"><Transition name="word" mode="out-in"><section :key="`${item.itemId}:${item.nextAttemptNo}`" class="memory-word-content"><div class="memory-title"><h1 :class="{ 'long-memory-word': item.word.length > 14 }" lang="en">{{ item.word }}</h1></div><p class="memory-phonetic">{{ item.phonetic }}</p><div class="live-meaning" aria-live="polite"><Transition name="feedback" mode="out-in"><p v-if="receipt" key="meaning" class="memory-meaning">{{ receipt.translation || '暂无释义' }}</p><p v-else key="hint" class="subtle-copy">回想这个词的意思</p></Transition></div></section></Transition></div>
-      <div class="recall-options" role="group" aria-label="你对这个单词的记忆"><button v-for="choice in choices" :key="choice.value" :class="['recall-card', `recall-${choice.className}`, { picked: receipt?.result === choice.value }]" :disabled="!canAnswer" :aria-pressed="receipt?.result === choice.value" @click="session.answer(choice.value)"><strong>{{ choice.name }}</strong><span>按 {{ choice.key }} 自评</span><Check v-if="receipt?.result === choice.value" class="recall-check" :size="17" /></button></div>
-      <div class="recall-caption live-recall-caption"><template v-if="receipt"><button v-if="receipt.result === 1 && correctableLogId" class="muted-link" :disabled="saving || !!pending" @click="session.correct">记错了</button><button class="violet-link" :disabled="saving || !!pending" @click="next">{{ progress?.status === 'COMPLETED' ? '完成本轮' : '下一个单词' }}<ArrowRight :size="17" /></button></template><span v-else>{{ saving ? '正在保存…' : '' }}</span></div>
-      <DailyStats v-if="progress" :task="progress" />
-      <p v-if="receipt?.correction" class="practice-feedback" role="status"><Check :size="20" />已更正为不认识</p>
+  <div class="review-page learning-page live-daily-page">
+    <ReviewHeader :completed="progress?.completedCount || 0" :total="progress?.totalCount || 0" :skipped="progress?.skippedCount || 0" back-to="/today" label="今日学习" :description="progress?.learningDate" />
+    <div class="learning-main">
+      <div v-if="surface?.state.settings" class="workspace-configuration live-actions"><RouterLink to="/plan" class="muted-link">调整计划范围</RouterLink><RouterLink to="/settings" class="muted-link">每日目标</RouterLink><button class="muted-link" :disabled="busy" @click="session.open(requestedId)">同步服务端进度</button></div>
+      <StatePanel :loading="loading && !current" />
+      <p v-if="notice || feedback" class="learning-notice" role="status">{{ notice || feedback }}</p>
+      <p v-if="startError" class="inline-error" role="alert">{{ startError }}</p>
+      <div v-if="error && !noWords" class="live-error learning-error" role="alert"><p>{{ error }}</p><button v-if="pending && !expired" class="violet-link" :disabled="busy" @click="retryAnswer">{{ saving ? '正在确认…' : '重试原请求' }}</button><button v-else-if="!expired" class="violet-link" :disabled="busy" @click="session.open(requestedId)">重新同步</button><RouterLink v-else to="/today" class="violet-link">返回今日任务</RouterLink></div>
+      <template v-if="current && !readonly && !expired">
+        <LearningCard ref="card" :word="current.word" :phonetic="current.phonetic" :word-key="displayKey" variant="daily" :visible="visible" :definition="definition" :reveal-loading="revealLoading" :reveal-error="revealError" :busy="busy" :rate-disabled="!canRate || revealLoading" :result="answer?.result" :past="isPast" :can-correct="canCorrect" @reveal="revealMeaning" @rate="rate" @correct="learning.correct" />
+        <LearningControls :previous-disabled="!canPrevious" :next-disabled="!canNext" :final="!isPast && progress?.status === 'COMPLETED'" @previous="learning.previous" @next="learning.next" />
+      </template>
+      <div v-else-if="!loading && !error" class="library-empty learning-empty"><h1>{{ historical ? '历史任务仅供回顾' : noWords ? '今天暂时没有待学的词' : progress?.status === 'COMPLETED' ? '本轮已结束' : !progress ? '开始今日学习' : '本轮暂无可作答单词' }}</h1><p v-if="progress">完成 {{ progress.completedCount }} / {{ progress.totalCount }} 词</p><AppButton v-if="!historical && !pending && (!progress || overview?.canAddMore)" :busy="starting" @click="start">{{ progress ? '继续学习' : '开始学习' }}<ArrowRight :size="18" /></AppButton><RouterLink v-if="progress" :to="`/records/${progress.batchId}`" class="btn btn-secondary">查看本轮记录</RouterLink><RouterLink to="/books" class="violet-link">去词库选词</RouterLink></div>
     </div>
-    <div v-else-if="!loading && !error && !expired && !noWords" class="library-empty"><h1>{{ historical ? '历史任务仅供回顾' : progress?.status === 'COMPLETED' ? '本轮已结束' : !progress ? '开始今日学习' : '本轮暂无可作答单词' }}</h1><DailyStats v-if="progress" :task="progress" /><AppButton v-if="!historical && !pending && (!progress || overview?.canAddMore && overview.task?.batchId === progress.batchId)" :busy="starting" @click="start">{{ progress ? '继续学习' : '开始学习' }}<ArrowRight :size="18" /></AppButton><button v-if="!historical && progress?.status === 'IN_PROGRESS'" class="violet-link" @click="session.open(requestedId)">重新同步任务</button><RouterLink v-if="progress" :to="`/records/${progress.batchId}`" class="btn btn-secondary">查看本轮记录<ArrowRight :size="18" /></RouterLink><RouterLink to="/books" class="violet-link">去词库选词</RouterLink></div>
   </div>
 </template>
