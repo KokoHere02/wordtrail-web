@@ -1,0 +1,29 @@
+.word-sentence-row, .sentence-note-row { padding-block: var(--s4); border-bottom: 1px solid var(--line); }
+.word-sentence-practice select { min-height: var(--control); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: var(--s2); }
+.sentence-note-panel { margin-block: var(--s5); padding-block: var(--s4); border-top: 1px solid var(--line); }
+.sentence-note-panel h2 { font-size: var(--text-md); }
+.sentence-note-content { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.8; margin-block: var(--s3); }
+.sentence-note-tags, .sentence-note-tag-options { display: flex; flex-wrap: wrap; gap: var(--s3); margin-block: var(--s3); }
+.sentence-note-tag-options label, .sentence-collect-form label { display: flex; align-items: center; gap: var(--s3); min-height: var(--control); overflow-wrap: anywhere; }
+.sentence-note-form label > select { margin-left: var(--s3); }
+.sentence-note-form { margin-bottom: 0; }
+.sentence-linked-word { display: inline-flex; align-items: center; gap: var(--s3); }
+.sentence-collect-form fieldset { display: grid; gap: var(--s3); min-width: 0; }
+.sentence-join-choice { border-top: 1px solid var(--line); padding-top: var(--s3); }
+.sentence-collect-form .btn { justify-self: start; }
+.weak-sentence-section { margin-block: var(--s5); }
+.account-security .library-heading { flex-wrap: wrap; gap: var(--s4); }
+.account-section { margin-block: var(--s6); padding-block: var(--s5); border-top: 1px solid var(--line); }
+.account-section h2 { font-size: var(--text-lg); margin-bottom: var(--s3); }
+.account-device-row { display: flex; align-items: start; justify-content: space-between; gap: var(--s4); padding-block: var(--s5); border-bottom: 1px solid var(--line); }
+.account-device-row > div { min-width: 0; overflow-wrap: anywhere; }
+.account-device-row h3 { display: flex; flex-wrap: wrap; gap: var(--s3); align-items: center; }
+.account-device-row dl { font-size: var(--text-base); color: var(--muted); margin-top: var(--s3); }
+.account-device-row dl > div { display: flex; flex-wrap: wrap; gap: var(--s3); margin-block: var(--s2); }
+.account-device-row > button { flex-shrink: 0; }
+@media (max-width: 680px) {
+  .account-device-row { flex-direction: column; }
+  .sentence-note-tag-options { gap: var(--s2) var(--s4); }
+  .word-sentence-practice .sentence-launch-actions { align-items: stretch; }
+  .sentence-note-form label > select { margin-left: 0; width: 100%; }
+}
