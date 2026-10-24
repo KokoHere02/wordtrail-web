@@ -46,5 +46,6 @@ onMounted(refresh);
       <AppButton type="submit" :busy="busy">保存每日目标</AppButton>
     </form>
     <p v-if="notice" class="live-notice" role="status">{{ notice }}</p>
+    <RouterLink to="/settings/security" class="btn btn-secondary">账户安全与设备</RouterLink>
   </div>
 </template>

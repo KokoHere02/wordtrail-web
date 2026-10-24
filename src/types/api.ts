@@ -21,6 +21,7 @@ export interface User {
 export interface Credentials {
   username: string;
   password: string;
+  deviceName?: string;
 }
 export interface Registration extends Credentials {
   nickname?: string;

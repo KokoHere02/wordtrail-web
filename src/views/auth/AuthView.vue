@@ -11,11 +11,15 @@ const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
 const registering = computed(() => route.path === "/register");
-const form = reactive({ username: "", password: "", nickname: "" });
-const errors = reactive({ username: "", password: "", nickname: "" });
+const form = reactive({ username: "", password: "", nickname: "", deviceName: "" });
+const errors = reactive({ username: "", password: "", nickname: "", deviceName: "" });
 const busy = ref(false);
 const error = ref("");
 const notice = ref("");
+if (sessionStorage.getItem('wordtrail.security-notice')) {
+  notice.value = sessionStorage.getItem('wordtrail.security-notice') || '';
+  sessionStorage.removeItem('wordtrail.security-notice');
+}
 if (sessionStorage.getItem("wordtrail.logout-notice")) {
   notice.value = "本地已退出。服务端退出未能确认，请稍后重试。";
   sessionStorage.removeItem("wordtrail.logout-notice");
@@ -23,14 +27,14 @@ if (sessionStorage.getItem("wordtrail.logout-notice")) {
 const redirect = computed(() => {
   const value = route.query.redirect;
   return typeof value === "string" &&
-    /^\/(today|learn|plan|records|books|learning|study|statistics|settings)(\/|$|\?)/.test(value)
+    /^\/(today|learn|plan|records|books|learning|study|statistics|settings|sentences|dictation|words|weak-words)(\/|$|\?)/.test(value)
     ? value
     : "/today";
 });
 watch(registering, () => {
   form.password = "";
   error.value = "";
-  Object.assign(errors, { username: "", password: "", nickname: "" });
+  Object.assign(errors, { username: "", password: "", nickname: "", deviceName: "" });
 });
 async function submit() {
   if (busy.value) return;
@@ -38,13 +42,14 @@ async function submit() {
     ? ""
     : "用户名须为 4～32 位字母、数字或下划线。";
   errors.password =
-    form.password.length >= 8 && form.password.length <= 64
+    [...form.password].length >= 8 && [...form.password].length <= 64
       ? ""
       : "密码须为 8～64 个字符。";
   errors.nickname =
     registering.value && form.nickname.trim().length > 64
       ? "昵称不能超过 64 个字符。"
       : "";
+  errors.deviceName = !registering.value && [...form.deviceName.trim()].length > 100 ? '设备名称最多 100 个字符。' : '';
   if (Object.values(errors).some(Boolean)) {
     document
       .getElementById(
@@ -52,7 +57,7 @@ async function submit() {
           ? "username"
           : errors.password
             ? "password"
-            : "nickname",
+            : errors.nickname ? "nickname" : "device-name",
       )
       ?.focus();
     return;
@@ -76,6 +81,7 @@ async function submit() {
       await auth.login({
         username: form.username.trim(),
         password: form.password,
+        ...(form.deviceName.trim() ? { deviceName: form.deviceName.trim() } : {}),
       });
       form.password = "";
       await router.replace(redirect.value);
@@ -147,6 +153,7 @@ async function submit() {
             >{{ errors.password || "8～64 个字符" }}</small
           >
         </div>
+        <div v-if="!registering" class="field"><label for="device-name">设备名称（可选）</label><input id="device-name" v-model="form.deviceName" :disabled="busy" autocomplete="off" :aria-invalid="!!errors.deviceName" aria-describedby="device-name-help" placeholder="例如：我的笔记本" /><small id="device-name-help" :class="{ 'field-error': errors.deviceName }">{{ errors.deviceName || '仅作自定义标记，不识别实际硬件' }}</small></div>
         <p v-if="error" class="form-error" role="alert">{{ error }}</p>
         <AppButton type="submit" class="auth-submit" :busy="busy"
           >{{ registering ? "创建账户" : "登录" }}<ArrowRight :size="17"
