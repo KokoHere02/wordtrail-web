@@ -7,6 +7,7 @@ import AppDialog from '../ui/AppDialog.vue';
 import AppButton from '../ui/AppButton.vue';
 import AppPagination from '../ui/AppPagination.vue';
 import StatePanel from '../ui/StatePanel.vue';
+import WordMeaning from './WordMeaning.vue';
 const props = defineProps<{ modelValue: boolean; bookId: number }>();
 const emit = defineEmits<{ 'update:modelValue': [value: boolean]; changed: [result: BookWordsChange]; unavailable: [] }>();
 const collection = useDictionaryCollection(props.bookId);
@@ -33,7 +34,7 @@ async function collect() {
         <div class="wordlist-selection"><label><input type="checkbox" :checked="pageSelected" :indeterminate="!pageSelected && pageIds.some(id => selection.selected.value.has(id))" :disabled="busy || blocked || !pageIds.length" @change="selection.togglePage(pageIds, !pageSelected)" />选择当前页</label><span>已选 {{ selection.count.value }} 词</span><button class="muted-link" :disabled="busy || !selection.count.value" @click="selection.clear">清空</button></div>
         <article v-for="word in data.records" :key="word.id" class="dictionary-word">
           <label><input type="checkbox" :checked="selection.selected.value.has(word.id)" :disabled="busy || blocked || word.inBook !== false" :aria-label="`收录 ${word.word} #${word.id}`" @change="selection.toggle(word.id, !selection.selected.value.has(word.id))" /><span><strong lang="en">{{ word.word }}</strong><small>{{ word.phonetic }}</small></span></label>
-          <p>{{ word.translation || '暂无释义' }}</p><span class="subtle-copy">{{ word.inBook === true ? '已收录' : word.inBook === false ? '未收录' : '收录状态未知' }}</span>
+          <WordMeaning :translation="word.translation" :translation-groups="word.translationGroups" /><span class="subtle-copy">{{ word.inBook === true ? '已收录' : word.inBook === false ? '未收录' : '收录状态未知' }}</span>
         </article>
         <AppPagination :page="page" :size="size" :total="data.total" :disabled="busy || blocked || loading" @change="collection.changePage" />
       </template>

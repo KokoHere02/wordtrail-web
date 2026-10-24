@@ -18,6 +18,7 @@ import AppButton from "../../components/ui/AppButton.vue";
 import AppPagination from "../../components/ui/AppPagination.vue";
 import SearchField from "../../components/ui/SearchField.vue";
 import StatePanel from "../../components/ui/StatePanel.vue";
+import WordMeaning from '../../components/word/WordMeaning.vue';
 const route = useRoute();
 const router = useRouter();
 const bookId = Number(route.params.bookId);
@@ -219,7 +220,7 @@ onMounted(() => {
               "
           /></label>
           <div class="word-name">{{ word.word }}</div>
-          <p class="word-translation">{{ word.translation || "暂无释义" }}</p>
+          <WordMeaning class="word-translation" :translation="word.translation" :translation-groups="word.translationGroups" />
           <span :class="['learning-status', { learned: word.learned }]"
             ><span class="status-dot" />{{
               word.learned ? "已学" : "未学"

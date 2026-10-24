@@ -1,0 +1,36 @@
+.word-meaning { min-width: 0; max-width: 100%; color: var(--translation); font-size: var(--text-base); text-align: left; line-height: 1.7; letter-spacing: normal; }
+.translation-group { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: var(--s2); }
+.translation-group + .translation-group { margin-top: var(--s2); }
+.translation-group.has-part-of-speech { grid-template-columns: clamp(3em, 18%, 6em) minmax(0, 1fr); }
+.translation-part-of-speech { display: block; min-width: 0; padding: 0 var(--s1); border-radius: var(--tag-radius); background: var(--tag-bg); color: var(--tag-text); font: italic 400 var(--text-sm)/1.8 var(--font-serif); text-align: center; overflow-wrap: anywhere; }
+.translation-meaning, .translation-legacy { min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; word-break: normal; }
+.translation-empty { color: var(--muted); }
+.word-meaning.word-translation { overflow: visible; text-overflow: clip; white-space: normal; }
+.plan-word .word-meaning { margin-top: var(--s1); }
+.weak-word-copy .word-meaning { margin-top: var(--s2); }
+.dictionary-word .word-meaning, .statistics-word-row .word-meaning { font-size: var(--text-sm); }
+.statistics-word-row .word-meaning { margin-top: var(--s1); }
+.word-detail-translation.word-meaning { font-size: var(--text-lg); }
+.word-meaning--study { width: 100%; padding: var(--s5); border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--ink); }
+.word-meaning--study .translation-group { gap: var(--s4); }
+.word-meaning--study .translation-group.has-part-of-speech { grid-template-columns: clamp(3em, 16%, 5em) minmax(0, 1fr); }
+.word-meaning--study .translation-group + .translation-group { padding-top: var(--s4); margin-top: var(--s4); border-top: 1px solid var(--line); }
+.word-meaning--study .translation-part-of-speech { padding: var(--s1) var(--s2); font-size: var(--text-md); }
+.word-meaning--study .translation-meaning, .word-meaning--study .translation-legacy, .word-meaning--study .translation-empty { font-size: var(--text-lg); }
+.live-daily-page .live-meaning, .study-main .meaning-area { min-height: calc(var(--s16) * 3 + var(--s5)); }
+.live-meaning:has(.word-meaning--study) { width: min(100%, var(--practice-width)); margin-inline: auto; }
+.meaning-area:has(.word-meaning--study) { height: auto; padding-bottom: var(--s4); }
+.word-meaning--study.study-meaning { margin: var(--s3) 0 0; }
+@media (max-width: 700px) {
+  .word-meaning { font-size: var(--text-sm); }
+  .word-meaning--study { padding: var(--s4); }
+  .word-meaning--study .translation-group { gap: var(--s3); }
+  .word-meaning--study .translation-group.has-part-of-speech { grid-template-columns: clamp(3em, 20%, 4em) minmax(0, 1fr); }
+  .word-meaning--study .translation-part-of-speech { font-size: var(--text-base); }
+  .word-meaning--study .translation-meaning, .word-meaning--study .translation-legacy, .word-meaning--study .translation-empty { font-size: var(--text-md); }
+  .word-detail-translation.word-meaning { font-size: var(--text-md); }
+}
+@media (max-width: 640px) {
+  .preview-word-row > .word-meaning { grid-column: 1; grid-row: 2; margin-left: calc(var(--s5) + var(--s2)); margin-top: var(--s1); }
+  .dictionary-word > .word-meaning { grid-column: 1; grid-row: 2; }
+}

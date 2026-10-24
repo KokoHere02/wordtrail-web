@@ -1,23 +1,29 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { useRoute } from "vue-router";
 import { ArrowLeft, ArrowRight, Check, RotateCcw } from "lucide-vue-next";
 import { api } from "../../api";
-import { errorMessage } from "../../api/http";
+import { ApiError } from "../../api/http";
+import { usePracticeLaunch } from '../../composables/usePracticeLaunch';
+import PracticeLaunchNotice from '../../components/learning/PracticeLaunchNotice.vue';
 import { useResource } from "../../composables/useResource";
 import type { Page, Result, RoundResult, RoundWord } from "../../types/api";
 import AppButton from "../../components/ui/AppButton.vue";
 import AppPagination from "../../components/ui/AppPagination.vue";
 import StatePanel from "../../components/ui/StatePanel.vue";
+import WordMeaning from '../../components/word/WordMeaning.vue';
 const id = Number(useRoute().params.batchId);
-const router = useRouter();
 const summary = useResource<RoundResult>();
 const words = useResource<Page<RoundWord>>();
 const filter = ref<Result | undefined>();
 const page = ref(1);
 const size = 10;
-const busy = ref(false);
-const error = ref("");
+const creation = usePracticeLaunch(async error => {
+  if (error instanceof ApiError && error.code === 'NO_RELEARN_WORDS') {
+    await Promise.all([summary.load(() => api.result(id)), words.load(() => api.resultWords(id, { page: page.value, size, ...(filter.value ? { result: filter.value } : {}) }))]);
+  }
+});
+const { busy, error, uncertain, created } = creation;
 const filters: { value: Result | undefined; label: string }[] = [
   { value: undefined, label: "全部" },
   { value: 1, label: "认识" },
@@ -50,57 +56,49 @@ function changePage(value: number) {
   loadWords();
 }
 async function relearn() {
-  if (busy.value) return;
-  busy.value = true;
-  error.value = "";
-  try {
-    const batch = await api.relearn(id);
-    await router.push(`/study/${batch.batchId}`);
-  } catch (e) {
-    error.value = errorMessage(e);
-  } finally {
-    busy.value = false;
-  }
+  if (summary.loading.value || summary.error.value || !summary.data.value?.relearnCount) return;
+  await creation.launch(() => api.relearn(id));
 }
 </script>
 <template>
-  <div class="wordlist-page">
+  <div class="wordlist-page practice-result-page">
   <RouterLink to="/learning" class="back-link"
     ><ArrowLeft :size="15" />我的学习</RouterLink
   ><StatePanel
     :loading="summary.loading.value"
     :error="summary.error.value"
     @retry="loadSummary"
-  /><template v-if="summary.data.value"
+  /><template v-if="summary.data.value && !summary.loading.value && !summary.error.value"
     ><section class="round-heading">
       <div class="round-check"><Check :size="23" :stroke-width="1.5" /></div>
       <h1>本轮已完成</h1>
-      <p>{{ summary.data.value.bookName || "词汇学习" }} · 本轮已完成</p>
+      <p>{{ summary.data.value.bookName || (summary.data.value.bookId === null ? '跨词本专项' : '词书专项') }}</p>
     </section>
-    <section class="result-stats" aria-label="本轮自评汇总">
+    <section class="result-stats" aria-label="本轮认识专项统计">
       <div class="result-stat">
         <strong>{{ summary.data.value.totalCount }}</strong
-        ><span>本轮单词</span>
+        ><span>不同词数</span>
       </div>
       <div class="result-stat">
-        <strong>{{ summary.data.value.knownCount }}</strong
-        ><span>认识</span>
+        <strong>{{ summary.data.value.completedCount ?? '—' }}</strong
+        ><span>完成词数</span>
       </div>
       <div class="result-stat">
-        <strong>{{ summary.data.value.uncertainCount }}</strong
-        ><span>不确定</span>
+        <strong>{{ summary.data.value.answerCount ?? '—' }}</strong
+        ><span>已记录作答次数</span>
       </div>
       <div class="result-stat">
-        <strong>{{ summary.data.value.unknownCount }}</strong
-        ><span>不认识</span>
+        <strong>{{ summary.data.value.unfamiliarCount ?? '—' }}</strong
+        ><span>仍不熟悉词数</span>
       </div>
     </section>
-    <p class="self-report-note">
-      本轮自评结果
-    </p>
+    <div class="result-self-reports" aria-label="本轮最终自评"><span>认识 {{ summary.data.value.knownCount }}</span><span>模糊 {{ summary.data.value.uncertainCount }}</span><span>不认识 {{ summary.data.value.unknownCount }}</span></div>
+    <p class="self-report-note">本轮自评 · 完成及反馈来自本批次明细，作答次数仅含已记录事件。</p>
+    <p v-if="summary.data.value.statisticsComplete === false" class="weak-incomplete-notice" role="status">部分历史缺少记录，{{ summary.data.value.incompleteWordCount }} 个词的统计不完整。0 次不表示从未学习，次数不从完成词数推算。</p>
+    <p v-else-if="summary.data.value.statisticsComplete !== true" class="weak-incomplete-notice" role="status">接口尚未提供事件统计信息，无法确认历史完整性。</p>
     <div class="relearn-panel">
       <div>
-        <h2>重学</h2>
+        <h2>再次练习</h2>
         <p>
           {{
             summary.data.value.relearnCount
@@ -112,13 +110,15 @@ async function relearn() {
       <AppButton
         v-if="summary.data.value.relearnCount"
         :busy="busy"
+        :disabled="uncertain || !!created"
         @click="relearn"
-        ><RotateCcw :size="16" />重学不确定／不认识的词</AppButton
+        ><RotateCcw :size="16" />再次练习模糊／不认识的词</AppButton
       ><RouterLink v-else to="/books" class="btn btn-secondary"
         >继续选词<ArrowRight :size="16"
       /></RouterLink>
     </div>
-    <p v-if="error" class="form-error" role="alert">{{ error }}</p>
+    <PracticeLaunchNotice :error="error" :uncertain="uncertain" :batch-id="created?.batchId" />
+    <p class="weak-practice-note subtle-copy">专项不会改变每日薄弱词和长期复习安排。</p>
     <div class="list-toolbar">
       <div class="section-title"><h2>本轮词汇</h2></div>
       <div class="segmented" role="group" aria-label="自评结果筛选">
@@ -145,11 +145,11 @@ async function relearn() {
         :key="word.itemId"
         class="word-row result-row"
       >
-        <span class="word-name">{{ word.word }}</span>
-        <p class="word-translation">{{ word.translation || "暂无释义" }}</p>
-        <span :class="['result-tag', { known: word.result === 1 }]">{{
+        <RouterLink :to="`/words/${word.wordId}`" class="word-name" lang="en">{{ word.word }}</RouterLink>
+        <WordMeaning class="word-translation" :translation="word.translation" :translation-groups="word.translationGroups" />
+        <div class="result-word-feedback"><span :class="['result-tag', { known: word.result === 1 }]">{{
           labels[word.result]
-        }}</span>
+        }}</span><p>已记录作答 {{ word.answerCount ?? '—' }} 次</p><p v-if="word.statisticsComplete === false" class="statistics-word-warning">历史记录不完整</p></div>
       </div>
     </div>
     <AppPagination

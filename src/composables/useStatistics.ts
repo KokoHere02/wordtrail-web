@@ -1,4 +1,4 @@
-import { onMounted, ref } from 'vue';
+import { onMounted, onScopeDispose, ref } from 'vue';
 import { dailyApi } from '../api/daily';
 import { useResource } from './useResource';
 import type { Page } from '../types/api';
@@ -19,26 +19,30 @@ export function useStatistics(initialDate?: string) {
   const page = ref(1);
   const size = 15;
   let dateGeneration = 0;
+  let active = true;
+  onScopeDispose(() => { active = false; dateGeneration++; });
   function loadWords() {
-    if (!selectedDate.value) return;
+    if (!active || !selectedDate.value) return;
     const date = selectedDate.value;
     return words.load(() => dailyApi.statisticsWords({ date, page: page.value, size }));
   }
   async function selectDate(date?: string) {
+    if (!active) return;
     const current = ++dateGeneration;
     selectedDate.value = date || '';
     dateInput.value = date || '';
     words.data.value = undefined;
     await daily.load(() => dailyApi.statistics(date));
-    if (current !== dateGeneration || !daily.data.value) return;
+    if (!active || current !== dateGeneration || !daily.data.value) return;
     selectedDate.value = daily.data.value.learningDate;
     dateInput.value = selectedDate.value;
     page.value = 1;
     await loadWords();
   }
   async function loadMonth(month?: string) {
+    if (!active) return;
     await calendar.load(() => dailyApi.calendar(month));
-    if (calendar.data.value) monthInput.value = calendar.data.value.month;
+    if (active && calendar.data.value) monthInput.value = calendar.data.value.month;
   }
   function changeMonth(amount: number) {
     const month = calendar.data.value?.month;

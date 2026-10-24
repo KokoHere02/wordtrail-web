@@ -37,11 +37,11 @@ function localTime(value: string) {
   <div class="records-page">
   <section class="page-heading">
     <div>
-      <h1>专项练习</h1>
+      <h1>认识专项</h1>
     </div>
-    <RouterLink to="/books" class="text-button desktop-inline"
-      >去选词书<ArrowRight :size="15"
-    /></RouterLink>
+    <div class="live-actions"><RouterLink to="/dictation" class="text-button">单词默写</RouterLink><RouterLink to="/sentences" class="text-button">句子英译中</RouterLink><RouterLink to="/weak-words" class="text-button"
+      >薄弱词巩固<ArrowRight :size="15"
+    /></RouterLink></div>
   </section>
   <div
     class="segmented learning-filters"
@@ -78,7 +78,7 @@ function localTime(value: string) {
       class="batch-card"
     >
       <div class="batch-info">
-        <h2>{{ batch.bookName || "词汇学习" }}</h2>
+        <h2>{{ batch.bookName || (batch.bookId === null ? '跨词本专项' : '词书专项') }}</h2>
         <p>
           {{ localTime(batch.createdAt) }} 创建 ·
           {{ batch.selectionType === "BOOK" ? "按词书学习" : "手动选词" }}
