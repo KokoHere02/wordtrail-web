@@ -51,7 +51,7 @@ await build({
     },
   },
 });
-const { router, http } = await import("../.qa-ui-dist/ui.js");
+const { router, http, dailyApi } = await import("../.qa-ui-dist/ui.js");
 const document = window.document;
 async function until(predicate, label) {
   const deadline = Date.now() + 8000;
@@ -180,7 +180,7 @@ assert.equal(document.querySelector(".study-meaning"), null);
 assert.equal(document.querySelector(".next-button").disabled, true);
 let retriedPracticeBody;
 http.defaults.adapter = async config => { if (config.url.endsWith('/answer')) retriedPracticeBody = config.data; return originalAdapter(config); };
-clickText("认识");
+clickText("重试原请求");
 await until(
   () => document.querySelector(".study-meaning")?.textContent.includes("放弃"),
   "saved reveal",
@@ -189,6 +189,7 @@ assert.equal(document.querySelector(".study-word").textContent, "abandon");
 assert.equal(retriedPracticeBody, failedPracticeBody);
 http.defaults.adapter = originalAdapter;
 clickText("记错了");
+await readyClick('改为不认识');
 await until(
   () =>
     [...document.querySelectorAll(".answer-button")]
@@ -196,7 +197,7 @@ await until(
       ?.getAttribute("aria-pressed") === "true",
   "correction",
 );
-clickText("下一个");
+clickText("下一词");
 await until(
   () => document.querySelector(".study-word")?.textContent === "accurate",
   "second word",
@@ -212,7 +213,7 @@ await until(
   () => document.querySelector(".study-word")?.textContent === "accurate",
   "resume first unanswered",
 );
-clickText("不确定");
+clickText("模糊");
 await until(
   () => document.querySelector(".study-meaning")?.textContent.includes("准确"),
   "final reveal",
@@ -223,7 +224,7 @@ assert.deepEqual(
   [...document.querySelectorAll(".result-stat strong")].map(
     (el) => el.textContent,
   ),
-  ["2", "0", "1", "1"],
+  ["2", "2", "2", "2"],
 );
 clickText("不认识");
 await until(
@@ -235,7 +236,7 @@ assert.equal(
   "abandon",
 );
 const resultPath = router.currentRoute.value.path;
-clickText("重学不确定／不认识的词");
+clickText("再次练习模糊／不认识的词");
 await until(
   () => document.querySelector(".study-word")?.textContent === "abandon",
   "new relearn batch",
@@ -341,27 +342,37 @@ assert.equal(retryWrite, originalWrite);
 assert.equal(document.querySelector('.memory-title h1').textContent.trim(), 'abandon');
 await until(() => [...document.querySelectorAll('button')].some(el => el.textContent.trim() === '记错了'), 'correction eligibility');
 clickText('记错了');
+await readyClick('改为不认识');
 await until(() => document.querySelector('.recall-forgot').getAttribute('aria-pressed') === 'true', 'daily correction');
-await readyClick('下一个单词');
+await readyClick('下一词');
 await until(() => document.querySelector('.memory-title h1')?.textContent.trim() === 'absorb', 'next server queue word');
 assert.equal(document.querySelector('.memory-meaning'), null);
 document.querySelector('.recall-known').click();
 await until(() => document.querySelector('.memory-meaning')?.textContent.includes('吸收'), 'daily second saved');
-await readyClick('下一个单词');
+await readyClick('下一词');
 await until(() => document.querySelector('.memory-title h1')?.textContent.trim() === 'abandon', 'reinforcement uses same word');
 assert.equal(document.querySelector('.memory-meaning'), null);
+const firstValidationKey = document.querySelector('.learning-card').dataset.wordKey;
 document.querySelector('.recall-known').click();
-await until(() => document.querySelector('.reinforcement-status')?.textContent.includes('还需 2 次'), 'known feedback only reduces remaining validations');
+await readyClick('下一词');
+await until(() => document.querySelector('.learning-card')?.dataset.wordKey !== firstValidationKey && document.querySelector('.recall-known')?.disabled === false, 'known validation advances to another server attempt');
 const dailyStudyPath = router.currentRoute.value.path;
+const firstValidationTask = await dailyApi.task(Number(router.currentRoute.value.params.batchId));
+assert.equal((await dailyApi.item(firstValidationTask.batchId, firstValidationTask.nextItemId)).reinforcementRemaining, 2);
 await router.push('/records');
+await until(() => document.querySelector('.records-page'), 'records mounted before restore');
 await router.push(dailyStudyPath);
-await until(() => document.querySelector('.reinforcement-status')?.textContent.includes('还需 2 次') && document.querySelector('.recall-known')?.disabled === false, 'refresh restores remaining validations');
+await until(() => document.querySelector('.recall-known')?.disabled === false, 'refresh restores pending validation');
+const restoredTask = await dailyApi.task(Number(router.currentRoute.value.params.batchId));
+assert.equal((await dailyApi.item(restoredTask.batchId, restoredTask.nextItemId)).reinforcementRemaining, 2);
 assert.equal(document.querySelector('.memory-meaning'), null);
 assert.equal(dailyStartCalls, 1);
+const secondValidationKey = document.querySelector('.learning-card').dataset.wordKey;
 document.querySelector('.recall-known').click();
-await until(() => document.querySelector('.reinforcement-status')?.textContent.includes('还需 1 次'), 'another known still relearning');
-await readyClick('下一个单词');
-await until(() => document.querySelector('.recall-known')?.disabled === false, 'last validation appears again');
+await readyClick('下一词');
+await until(() => document.querySelector('.learning-card')?.dataset.wordKey !== secondValidationKey && document.querySelector('.recall-known')?.disabled === false, 'last validation reappears after manual next');
+const lastValidationTask = await dailyApi.task(Number(router.currentRoute.value.params.batchId));
+assert.equal((await dailyApi.item(lastValidationTask.batchId, lastValidationTask.nextItemId)).reinforcementRemaining, 1);
 document.querySelector('.recall-known').click();
 await until(() => [...document.querySelectorAll('button')].some(el => el.textContent.trim() === '完成本轮'), 'last answer still visible');
 await readyClick('完成本轮');
@@ -415,7 +426,7 @@ http.defaults.adapter = async config => {
 clickText('学习历史');
 await until(() => document.querySelectorAll('.history-group').length === 2, 'DAILY and PRACTICE history groups remain separate');
 assert.match(document.querySelectorAll('.history-group')[0].textContent, /本页每日学习事件/);
-assert.match(document.querySelectorAll('.history-group')[1].textContent, /本页专项练习事件/);
+assert.match(document.querySelectorAll('.history-group')[1].textContent, /本页认识专项事件/);
 document.querySelector('button[aria-label="关闭弹窗"]').click();
 await until(() => !document.querySelector('[role="dialog"]'), 'mixed history closes');
 
@@ -475,7 +486,8 @@ document.querySelector('button[aria-label="关闭弹窗"]').click();
 await until(() => !document.querySelector('[role="dialog"]'), 'removed history closes');
 await router.push('/books/2');
 await until(() => document.querySelectorAll('.preview-word-row').length === 10, 'book history entry');
-clickText('学习历史');
+const emptyHistoryRow = [...document.querySelectorAll('.preview-word-row')].find(row => row.querySelector('strong')?.textContent === 'abstract');
+emptyHistoryRow.querySelector('button').click();
 await until(() => document.querySelector('[role="dialog"] .state-panel')?.textContent.includes('不能解释为从未学习'), 'empty history preserves legacy-data uncertainty');
 document.querySelector('button[aria-label="关闭弹窗"]').click();
 await until(() => !document.querySelector('[role="dialog"]'), 'empty history closes');
@@ -528,8 +540,13 @@ const continuedStudyPath = router.currentRoute.value.path;
 const continuedBatchId = router.currentRoute.value.params.batchId;
 for (let index = 0; index < 7; index++) {
   await until(() => document.querySelector('.recall-known')?.disabled === false, `first group item ${index + 1}`);
+  const previousKey = document.querySelector('.learning-card').dataset.wordKey;
   document.querySelector('.recall-known').click();
-  await readyClick(index === 6 ? '完成本轮' : '下一个单词');
+  if (index === 6) await readyClick('完成本轮');
+  else {
+    await readyClick('下一词');
+    await until(() => document.querySelector('.learning-card')?.dataset.wordKey !== previousKey && document.querySelector('.recall-known')?.disabled === false, 'manual next in first group');
+  }
 }
 await until(() => document.querySelector('.live-daily-result .session-stats'), 'first seven result');
 assert.match(document.querySelector('.session-stat-grid').textContent, /7 \/ 7/);
@@ -556,12 +573,17 @@ await readyClick('继续学习');
 await until(() => document.querySelector('.memory-title h1')?.textContent.trim() === 'access', 'explicit today continue appends new words');
 assert.equal(router.currentRoute.value.path, continuedStudyPath);
 assert.equal(startCount(), 2);
-assert.match(document.querySelector('.session-stat-grid').textContent, /7 \/ 10/);
-assert.match(document.querySelector('.live-daily-stats').textContent, /本任务目标 7 词/);
+assert.match(document.querySelector('.study-progress').textContent, /7 \/ 10/);
+assert.equal((await dailyApi.task(Number(continuedBatchId))).dailyTarget, 7);
 for (let index = 0; index < 3; index++) {
   await until(() => document.querySelector('.recall-known')?.disabled === false, `continued item ${index + 1}`);
+  const previousKey = document.querySelector('.learning-card').dataset.wordKey;
   document.querySelector('.recall-known').click();
-  await readyClick(index === 2 ? '完成本轮' : '下一个单词');
+  if (index === 2) await readyClick('完成本轮');
+  else {
+    await readyClick('下一词');
+    await until(() => document.querySelector('.learning-card')?.dataset.wordKey !== previousKey && document.querySelector('.recall-known')?.disabled === false, 'manual next in continuation');
+  }
 }
 await until(() => document.querySelector('.live-daily-result .session-stats'), 'ten cumulative words result');
 assert.match(document.querySelector('.session-stat-grid').textContent, /10 \/ 10/);
@@ -582,11 +604,18 @@ await until(() => document.querySelector('.memory-title h1')?.textContent.trim()
 assert.equal(startCount(), 3);
 for (let attempt = 1; attempt <= 6; attempt++) {
   await until(() => document.querySelector('.recall-known')?.disabled === false, `attempt ${attempt} available`);
-  assert.match(document.querySelector('.reinforcement-status').textContent, new RegExp(`本词第 ${attempt} / 6`));
+  const task = await dailyApi.task(Number(continuedBatchId));
+  const detail = await dailyApi.item(task.batchId, task.nextItemId);
+  assert.equal(detail.nextAttemptNo, attempt);
+  assert.equal(detail.attemptLimit, 6);
+  const previousKey = document.querySelector('.learning-card').dataset.wordKey;
   document.querySelector(attempt === 6 ? '.recall-known' : '.recall-forgot').click();
-  if (attempt < 6) await readyClick('下一个单词');
+  if (attempt < 6) {
+    await readyClick('下一词');
+    await until(() => document.querySelector('.learning-card')?.dataset.wordKey !== previousKey && document.querySelector('.recall-known')?.disabled === false, 'reinforcement returns without word deduplication');
+  }
 }
-await until(() => document.querySelector('.reinforcement-status')?.textContent.includes('当天暂时结束，仍需巩固'), 'LIMIT_REACHED message despite latest known result');
+await until(() => document.querySelector('.learning-notice')?.textContent.includes('当天暂时结束，仍需巩固'), 'LIMIT_REACHED message despite latest known result');
 assert.equal(document.querySelector('.recall-known').getAttribute('aria-pressed'), 'true');
 assert.equal(document.body.textContent.includes('已掌握'), false);
 await readyClick('完成本轮');

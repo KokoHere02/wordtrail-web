@@ -32,3 +32,9 @@ dist-ssr
 .qa-visual-dist
 .qa-daily-dist
 .qa-books-dist
+.qa-words-dist
+.qa-insights-dist
+.qa-translation-dist
+.qa-book-transfer-dist
+.qa-dictation-dist
+.qa-sentences-dist
