@@ -96,22 +96,33 @@ console.log('PASS explicit read-only service fixtures: source/date aggregation, 
 
 // This simulated server date intentionally differs from the device clock.
 const serverDay = '2032-03-01';
-let phase = 'unfinished', empty = false, recordsMissing = false;
+let phase = 'unfinished', empty = false, recordsMissing = false, activityCase;
 let failSummary = false, failTrend = false;
 const pending = [];
 let hold;
 const coverage = source => ({ dataScope: source === 'DAILY' ? 'RECORDED_ANSWERS_AND_DAILY_ITEMS' : 'RECORDED_ANSWERS', coverageScope: 'ALL_RETAINED_SOURCE_ITEMS', statisticsComplete: source === 'PRACTICE', incompleteWordCount: source === 'DAILY' ? 2 : 0, firstRecordedAt: '2018-02-03T09:00:00', lastRecordedAt: '2032-02-29T10:00:00' });
 function summaryData(source) {
+  if (activityCase) return { learningDate: serverDay, source, currentStreak: 1, longestStreak: 1, totalStudyDays: 1, hasStudiedToday: true,
+    todayTrainingCount: 1, todayAnswerCount: activityCase === 'wrong' ? 1 : 0, todayStudiedCount: 1, todayCompletedCount: 0, todayRecalledCount: 0,
+    goal: { dailyTarget: 20, completedCount: 0, remainingCount: 20, reached: false, targetSource: 'TASK_SNAPSHOT', batchId: 801, taskStatus: 'IN_PROGRESS' }, coverage: coverage(source) };
   const completedCount = phase === 'over' ? 22 : phase === 'setting' ? 0 : 7;
   const dailyTarget = phase === 'setting' ? 50 : 20;
-  return { learningDate: serverDay, source, currentStreak: source === 'DAILY' ? 6 : 2, longestStreak: source === 'DAILY' ? 14 : 9, totalStudyDays: source === 'DAILY' ? 58 : 12, hasStudiedToday: source === 'PRACTICE' || phase === 'over', todayStudiedCount: source === 'PRACTICE' ? 2 : phase === 'over' ? 22 : 0, todayCompletedCount: source === 'PRACTICE' ? 2 : completedCount, todayAnswerCount: source === 'PRACTICE' ? 3 : phase === 'over' ? 24 : 0, goal: source === 'PRACTICE' ? null : { dailyTarget, completedCount, remainingCount: phase === 'over' ? 0 : dailyTarget - completedCount, reached: phase === 'over', targetSource: phase === 'setting' ? 'SETTING' : 'TASK_SNAPSHOT', batchId: phase === 'setting' ? null : 801, taskStatus: phase === 'setting' ? null : phase === 'over' ? 'IN_PROGRESS' : 'COMPLETED' }, coverage: coverage(source) };
+  return { learningDate: serverDay, source, currentStreak: source === 'DAILY' ? 6 : 2, longestStreak: source === 'DAILY' ? 14 : 9, totalStudyDays: source === 'DAILY' ? 58 : 12, hasStudiedToday: source === 'PRACTICE' || phase === 'over', todayStudiedCount: source === 'PRACTICE' ? 2 : phase === 'over' ? 22 : 0, todayCompletedCount: source === 'PRACTICE' ? 2 : completedCount, todayAnswerCount: source === 'PRACTICE' ? 3 : phase === 'over' ? 24 : 0, todayTrainingCount: source === 'PRACTICE' ? 3 : phase === 'over' ? 25 : 0, todayRecalledCount: 0, goal: source === 'PRACTICE' ? null : { dailyTarget, completedCount, remainingCount: phase === 'over' ? 0 : dailyTarget - completedCount, reached: phase === 'over', targetSource: phase === 'setting' ? 'SETTING' : 'TASK_SNAPSHOT', batchId: phase === 'setting' ? null : 801, taskStatus: phase === 'setting' ? null : phase === 'over' ? 'IN_PROGRESS' : 'COMPLETED' }, coverage: coverage(source) };
 }
 function trendData(source, days) {
-  const records = Array.from({ length: days }, (_, index) => ({ learningDate: offset(serverDay, index - days + 1), completedCount: empty ? 0 : index === days - 1 ? source === 'DAILY' ? 7 : 2 : index === 0 ? 1 : 0, answerCount: empty ? 0 : index === days - 1 ? source === 'DAILY' ? 0 : 3 : index === 0 ? 2 : 0, studiedCount: empty ? 0 : index === days - 1 ? source === 'DAILY' ? 0 : 2 : index === 0 ? 1 : 0, hasRecordedAnswers: !empty && (index === 0 || source === 'PRACTICE' && index === days - 1) }));
-  return { source, days, from: records[0].learningDate, to: serverDay, totalCompletedCount: empty ? 0 : source === 'DAILY' ? 8 : 3, totalAnswerCount: empty ? 0 : source === 'DAILY' ? 2 : 5, coverage: coverage(source), records: recordsMissing ? [] : records };
+  if (activityCase) {
+    const records = Array.from({ length: days }, (_, index) => ({ learningDate: offset(serverDay, index - days + 1), trainingCount: index === days - 1 ? 1 : 0,
+      answerCount: activityCase === 'wrong' && index === days - 1 ? 1 : 0, completedCount: 0, recalledCount: 0, studiedCount: index === days - 1 ? 1 : 0,
+      hasRecordedAnswers: activityCase === 'wrong' && index === days - 1, hasLearningActivity: index === days - 1 }));
+    return { source, days, from: records[0].learningDate, to: serverDay, records, totalTrainingCount: 1, totalAnswerCount: activityCase === 'wrong' ? 1 : 0, totalCompletedCount: 0, totalRecalledCount: 0, coverage: coverage(source) };
+  }
+  const records = Array.from({ length: days }, (_, index) => ({ learningDate: offset(serverDay, index - days + 1), completedCount: empty ? 0 : index === days - 1 ? source === 'DAILY' ? 7 : 2 : index === 0 ? 1 : 0, answerCount: empty ? 0 : index === days - 1 ? source === 'DAILY' ? 0 : 3 : index === 0 ? 2 : 0, studiedCount: empty ? 0 : index === days - 1 ? source === 'DAILY' ? 0 : 2 : index === 0 ? 1 : 0, trainingCount: empty ? 0 : index === 0 ? 2 : source === 'PRACTICE' && index === days - 1 ? 3 : 0, recalledCount: 0, hasLearningActivity: !empty && (index === 0 || source === 'PRACTICE' && index === days - 1), hasRecordedAnswers: !empty && (index === 0 || source === 'PRACTICE' && index === days - 1) }));
+  return { source, days, from: records[0].learningDate, to: serverDay, totalCompletedCount: empty ? 0 : source === 'DAILY' ? 8 : 3, totalAnswerCount: empty ? 0 : source === 'DAILY' ? 2 : 5, totalTrainingCount: records.reduce((sum, row) => sum + row.trainingCount, 0), totalRecalledCount: 0, coverage: coverage(source), records: recordsMissing ? [] : records };
 }
 const makeResponse = config => response(config, config.url.endsWith('/summary') ? summaryData(config.params.source) : trendData(config.params.source, config.params.days));
 override = async config => {
+  if (activityCase && config.url === '/learning/statistics/daily') return response(config, { learningDate: serverDay, trainingCount: 1, answerCount: activityCase === 'wrong' ? 1 : 0, studiedCount: 1, completedCount: 0, recalledCount: 0, newCompletedCount: 0, reviewCompletedCount: 0, unfamiliarCount: 0, hasLearningActivity: true, statisticsComplete: true, incompleteWordCount: 0 });
+  if (activityCase && config.url === '/learning/statistics/calendar') return response(config, { month: serverDay.slice(0, 7), statisticsComplete: true, days: [{ learningDate: serverDay, trainingCount: 1, answerCount: activityCase === 'wrong' ? 1 : 0, completedCount: 0, recalledCount: 0, hasLearningActivity: true, statisticsComplete: true, incompleteWordCount: 0 }] });
   if (!config.url.startsWith('/learning/statistics/trends') && !config.url.endsWith('/statistics/summary')) return fixture(config);
   if (hold?.(config)) return new Promise(resolve => pending.push({ config, resolve }));
   if (config.url.endsWith('/summary') && failSummary || config.url.endsWith('/trends') && failTrend) throw new AxiosError('fixture network error', 'ERR_NETWORK', config);
@@ -121,7 +132,7 @@ click('刷新统计');
 await until(() => document.querySelector('.insights-summary-heading')?.textContent.includes(serverDay), 'server date shown');
 await until(() => document.querySelector('.trend-readout time')?.textContent === serverDay, 'chart uses returned date');
 assert.deepEqual(streaks(), ['6', '14', '58']);
-assert.match(document.querySelector('.insights-today-status').textContent, /尚无正常作答/);
+assert.match(document.querySelector('.insights-today-status').textContent, /尚无学习活动/);
 assert.match(document.querySelector('.insights-goal-status').textContent, /当前任务已结束/);
 assert.match(document.querySelector('.insights-goal-progress').textContent, /剩余目标 13 词/);
 assert.equal(document.querySelector('.insights-goal-reached').textContent.includes('已达到'), false);
@@ -205,6 +216,21 @@ assert.equal(insightCalls().some(call => call.method !== 'get'), false);
 assert.equal(insightCalls().some(call => call.url.endsWith('/summary') && Object.hasOwn(call.params, 'days')), false);
 assert.equal(calls.filter(call => call.url === '/learning/today/start').length, 0);
 console.log('PASS exceeded/setting goals, zero-data and empty-array states, readonly endpoints and no automatic start');
+for (const value of ['reveal', 'wrong']) {
+  activityCase = value;
+  await router.push('/today'); await router.push('/statistics');
+  await until(() => document.querySelector('.insights-today-status.recorded') && document.querySelector('.calendar-day.has-activity') && document.querySelector('.statistics-grid'), `${value} activity rendered`);
+  assert.deepEqual([...document.querySelectorAll('.insights-today-counts strong')].map(node => node.textContent), ['1', value === 'wrong' ? '1' : '0', '1', '0', '0']);
+  assert.match(document.querySelector('.calendar-day.has-activity').getAttribute('aria-label'), /训练 1 次.*完成 0 词.*有学习活动/);
+  assert.equal(document.querySelector('.trend-zero-note'), null, 'REVEAL or wrong input is not an empty learning day');
+  assert.match(document.querySelector('.trend-readout').textContent, /训练 1 次/);
+  const last = document.querySelector('[data-trend-index="6"]');
+  assert.match(last.getAttribute('aria-label'), new RegExp(value === 'wrong' ? '有作答' : '无作答'));
+  assert.match(last.getAttribute('aria-label'), /有学习活动/);
+  assert.match(document.querySelector('.insights-window-totals').textContent, /1窗口训练合计/);
+  assert.deepEqual([...document.querySelectorAll('.statistics-grid strong')].slice(0, 5).map(node => node.textContent), ['0', '1', value === 'wrong' ? '1' : '0', '1', '0']);
+}
+console.log('PASS reveal-only and wrong-only activity in summary, calendar, daily details and trend; no inferred completion or recalled counts');
 console.log('Learning insights Vue DOM / explicit fixture checks passed. Real backend and mobile geometry are not verified.');
 app.unmount();
 await window.happyDOM.close();

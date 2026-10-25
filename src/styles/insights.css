@@ -39,6 +39,8 @@
 .trend-legend > span { display: flex; gap: var(--s2); align-items: center; }
 .trend-key { width: var(--s5); height: 0; border-top: 2px solid var(--accent); }
 .trend-key.answers { border-top: 2px dashed var(--amber); }
+.trend-key.training { border-top-color: var(--muted); }
+.trend-key.recalled { border-top: 2px dotted var(--success); }
 .trend-plot { display: flex; gap: var(--s3); height: calc(var(--s16) * 3 + var(--s6)); }
 .trend-y-axis { flex: 0 0 var(--s10); display: flex; justify-content: space-between; align-items: flex-end; flex-direction: column; padding-block: var(--s2); color: var(--muted); font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
 .trend-plot > svg { display: block; min-width: 0; width: 0; flex: 1; height: 100%; overflow: hidden; }
@@ -46,11 +48,15 @@
 .trend-series { fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 .trend-series.completed { stroke: var(--accent); }
 .trend-series.answers { stroke: var(--amber); stroke-dasharray: 5 4; }
+.trend-series.training { stroke: var(--muted); }
+.trend-series.recalled { stroke: var(--success); stroke-dasharray: 2 5; }
 .trend-hit-area { fill: transparent; cursor: pointer; }
 .trend-selected-line { stroke: var(--checkbox-border); stroke-dasharray: 3 4; vector-effect: non-scaling-stroke; pointer-events: none; }
 .trend-point { pointer-events: none; }
 .trend-point.completed { fill: var(--accent); }
 .trend-point.answers { fill: var(--amber); }
+.trend-point.training { fill: var(--muted); }
+.trend-point.recalled { fill: var(--success); }
 .trend-plot [data-trend-index]:focus { outline: none; }
 .trend-plot [data-trend-index]:focus-visible .trend-hit-area { fill: var(--sage); fill-opacity: .35; }
 .trend-x-axis { position: relative; height: var(--s5); margin-left: calc(var(--s10) + var(--s3)); color: var(--muted); font-size: var(--text-sm); margin-top: var(--s2); }
