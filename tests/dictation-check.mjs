@@ -19,7 +19,7 @@ async function until(predicate, label) {
   while (!predicate()) { if (Date.now() > deadline) throw new Error(`Timed out: ${label}\n${document.body.textContent}`); await sleep(20); }
 }
 function input(selector, value) { const element = document.querySelector(selector); assert.ok(element, selector); element.value = value; element.dispatchEvent(new window.Event('input', { bubbles: true })); }
-function button(text) { return [...document.querySelectorAll('button')].find(element => element.textContent.trim() === text); }
+function button(text) { return [...document.querySelectorAll('button')].find(element => { const label = element.cloneNode(true); label.querySelectorAll('kbd[aria-hidden=true]').forEach(node => node.remove()); return label.textContent.trim() === text; }); }
 async function click(text) { await until(() => button(text)?.disabled === false, `enabled ${text}`); button(text).click(); }
 const ok = (config, value, status = 200) => ({ config, status, headers: {}, data: { code: 'OK', message: '成功', data: clone(value) } });
 function reject(config, code, message = code, status = 409) { throw new AxiosError('explicit fixture rejection', 'ERR_BAD_RESPONSE', config, undefined, { config, status, headers: {}, data: { code, message, data: null } }); }
@@ -129,7 +129,7 @@ await until(() => document.querySelector('#username'), 'login');
 input('#username', 'dictation_reader'); input('#password', 'example123'); await click('登录');
 await until(() => document.querySelector('.daily-equation'), 'authenticated');
 const beforeDaily = await dailyApi.today();
-await router.push('/dictation/mistakes'); await until(() => document.querySelector('.state-panel')?.textContent.includes('暂无已记录'), 'empty mistakes');
+await router.push('/dictation/mistakes'); await until(() => document.querySelector('.state-panel')?.textContent.includes('暂无默写待巩固词'), 'empty mistakes');
 assert.equal(button('重练待巩固词').disabled, true);
 await router.push('/dictation'); await until(() => document.querySelectorAll('.dictation-plan-row').length === 10, 'eligible plan candidates');
 assert.equal(creates().length, 0, 'GET entry never creates tasks');
@@ -167,7 +167,7 @@ input('#username', 'dictation_reader'); input('#password', 'example123'); await 
 await until(() => document.querySelector('.daily-equation'), 'relogged in');
 await router.push(`/dictation/${mainId}`); await until(() => document.querySelector('.dictation-error')?.textContent.includes('上次提交结果尚未确认'), 'pending survives same-account relogin');
 assert.equal(nexts().length, issuedBeforeReload);
-await click('重试原请求'); await until(() => document.querySelector('.dictation-verdict')?.textContent === '未命中本题目标词', 'retry shows server verdict');
+await click('重试原请求'); await until(() => document.querySelector('.dictation-verdict')?.textContent === '拼写错误', 'retry shows server verdict');
 assert.deepEqual(writes().at(-1).body, firstBody); assert.equal(events.length, 1);
 assert.equal(document.querySelector('.dictation-expected').textContent, 'apple');
 assert.equal(nexts().length, issuedBeforeReload, 'feedback waits for explicit next');
@@ -256,7 +256,7 @@ await router.push('/dictation/9999'); await until(() => document.querySelector('
 wrongModeOnce = true; await router.push(`/dictation/${noQueue.task.batchId}`); await until(() => document.querySelector('.dictation-error')?.textContent.includes('这不是默写任务'), 'type endpoint isolation');
 emptyResult = true; await router.push(`/dictation/${mainId}/result`); await until(() => document.querySelector('.state-panel')?.textContent.includes('本轮暂无可回顾'), 'empty result words'); emptyResult = false;
 failMistakes = true; await router.push('/dictation/mistakes'); await until(() => document.querySelector('.state-panel')?.textContent.includes('错词列表暂不可用'), 'mistakes failure');
-await click('重新加载'); await until(() => document.querySelector('.state-panel')?.textContent.includes('暂无已记录'), 'empty mistakes retry');
+await click('重新加载'); await until(() => document.querySelector('.state-panel')?.textContent.includes('暂无默写待巩固词'), 'empty mistakes retry');
 emptyPlan = true; createMode = 'empty'; await router.push('/dictation'); await until(() => document.querySelector('.wordlist-sheet .state-panel')?.textContent.includes('暂无符合条件'), 'empty plan');
 await click('从计划开始默写'); await until(() => document.querySelector('.dictation-launch-error')?.textContent.includes('没有可选默写题'), 'no empty batch creation');
 assert.equal(tasks.size, 4);

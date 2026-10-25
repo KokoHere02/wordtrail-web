@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
+import { ArrowLeft, BookOpen, ListRestart, RotateCcw } from 'lucide-vue-next';
 import { useStudyWorkspace } from '../../../stores/studyWorkspace';
 import { useStudySurface } from '../../../composables/useStudySurface';
 import DictationStudyView from '../../dictation/DictationStudyView.vue';
@@ -11,11 +12,27 @@ const settingsVisited = ref(false);
 const source = ref<'PLAN' | 'MISTAKES'>('PLAN');
 const mistakesVisited = ref(false);
 const openedBatch = ref<number>();
+const choosing = computed(() => !workspace.dictationId || surface.state.settings);
 watch([() => workspace.dictationId, surface.active], ([id, active]) => { if (id && active) openedBatch.value = id; }, { immediate: true });
 watch(source, value => { if (value === 'MISTAKES') mistakesVisited.value = true; });
 watch(() => surface.state.settings, open => { if (open) settingsVisited.value = true; }, { immediate: true });
 watch(() => workspace.dictationId, value => { if (value) surface.state.settings = false; });
 </script>
 <template>
-  <div class="workspace-dictation-mode"><section v-if="settingsVisited" v-show="surface.state.settings" class="workspace-configuration"><label class="workspace-setting-fields">内容范围<select v-model="source"><option value="PLAN">计划词</option><option value="MISTAKES">默写待巩固</option></select></label><DictationHomeView v-show="source === 'PLAN'" embedded /><DictationMistakesView v-if="mistakesVisited" v-show="source === 'MISTAKES'" /></section><DictationStudyView v-if="workspace.dictationId &amp;&amp; openedBatch === workspace.dictationId" :key="workspace.dictationId" :requested-batch-id="workspace.dictationId" /><div v-else class="workspace-start"><h2>根据释义，写出英文</h2><p>选择计划词开始，或继续上次默写。</p><button class="btn btn-secondary" @click="surface.state.settings = true">选择默写内容</button><DictationTasks resume-only /></div></div>
+  <div class="workspace-dictation-mode">
+    <section v-if="settingsVisited || !workspace.dictationId" v-show="choosing" class="dictation-picker">
+      <div class="dictation-picker-heading">
+        <div class="dictation-source-switch" role="group" aria-label="内容范围">
+          <button type="button" :aria-pressed="source === 'PLAN'" @click="source = 'PLAN'"><BookOpen :size="17" aria-hidden="true" />计划单词</button>
+          <button type="button" :aria-pressed="source === 'MISTAKES'" @click="source = 'MISTAKES'"><RotateCcw :size="17" aria-hidden="true" />待巩固词</button>
+        </div>
+        <button v-if="workspace.dictationId" type="button" class="dictation-quiet-button" @click="surface.state.settings = false"><ArrowLeft :size="16" aria-hidden="true" />返回当前练习</button>
+      </div>
+      <DictationHomeView v-show="source === 'PLAN'" embedded />
+      <DictationMistakesView v-if="mistakesVisited" v-show="source === 'MISTAKES'" embedded />
+      <DictationTasks resume-only />
+    </section>
+    <div v-if="!choosing" class="dictation-active-actions"><button type="button" class="dictation-quiet-button" @click="surface.state.settings = true"><ListRestart :size="17" aria-hidden="true" />重新选词</button></div>
+    <DictationStudyView v-if="workspace.dictationId && openedBatch === workspace.dictationId" v-show="!choosing" :key="workspace.dictationId" :requested-batch-id="workspace.dictationId" :active="!choosing" />
+  </div>
 </template>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
+import { ArrowRight, Search, X } from 'lucide-vue-next';
 import { useRoute, useRouter } from 'vue-router';
 import { dailyApi } from '../../api/daily';
 import { useResource } from '../../composables/useResource';
@@ -53,14 +54,17 @@ onMounted(refresh);
   <div class="wordlist-page dictation-home">
     <header class="library-heading"><div><h1>单词默写</h1><p class="subtle-copy">独立拼写训练 · 不抵扣每日目标，不改变长期复习安排</p></div><div class="live-actions"><RouterLink to="/dictation/mistakes" class="btn btn-secondary">默写错词重练</RouterLink><RouterLink to="/learning" class="muted-link">认识专项</RouterLink></div></header>
     <section class="wordlist-sheet" aria-labelledby="dictation-plan-heading">
-      <div class="wordlist-tools"><div><h2 id="dictation-plan-heading">计划选词</h2><p class="subtle-copy">启用且已开始学习的词；释义不可用时不能选题。</p></div><form role="search" class="library-search" @submit.prevent="search"><SearchField v-model="keyword" label="搜索默写计划词" placeholder="搜索计划词" :disabled="locked" :maxlength="255" /><AppButton type="submit" variant="secondary" :disabled="locked || loading">搜索</AppButton></form></div>
-      <div class="wordlist-selection"><label><input type="checkbox" :checked="pageSelected" :indeterminate="!pageSelected && pageIds.some(id => selected.has(id))" :disabled="locked || loading || !!error || !pageIds.length" @change="togglePage(pageIds, !pageSelected)" />选择当前页</label><span>已选 {{ count }} 词</span><button class="muted-link" :disabled="locked || !count" @click="clear">清空选择</button></div>
-      <StatePanel :loading="loading" :error="error" :empty="data?.total === 0" :message="applied ? '没有符合搜索条件的计划词，试试其他关键词。' : '暂无符合条件的计划词，先完成计划中的首次学习。'" @retry="refresh" />
-      <div v-if="!loading && !error"><label v-for="word in data?.records" :key="word.wordId" class="dictation-plan-row"><input type="checkbox" :checked="selected.has(word.wordId)" :disabled="locked || !eligible(word)" :aria-label="`默写选词 ${word.word}`" @change="toggle(word.wordId, !selected.has(word.wordId))" /><strong lang="en">{{ word.word }}</strong><WordMeaning :translation="word.translation" :translation-groups="word.translationGroups" /><span v-if="!eligible(word)" class="subtle-copy">暂不符合出题条件</span></label></div>
-      <AppPagination v-if="data" :page="page" :size="size" :total="data.total" :disabled="loading || locked" @change="page = $event" />
-      <div class="dictation-launch-actions"><AppButton :busy="busy" :disabled="locked || loading || !!error || !count || count > 100" @click="start(true)">默写所选 {{ count }} 词</AppButton><label for="dictation-count">自动选题数量<input id="dictation-count" v-model.number="roundCount" type="number" min="1" max="100" step="1" :disabled="locked" /></label><AppButton variant="secondary" :disabled="locked || loading || !!error" @click="start(false)">从计划开始默写</AppButton></div>
+      <h2 id="dictation-plan-heading" class="sr-only">计划选词</h2>
+      <div class="dictation-picker-toolbar">
+        <form role="search" class="dictation-search" @submit.prevent="search"><SearchField v-model="keyword" label="搜索默写计划词" placeholder="搜索计划中的单词…" :disabled="locked" :maxlength="255" /><button type="submit" :disabled="locked || loading"><Search :size="16" aria-hidden="true" /><span>搜索</span></button></form>
+        <div class="dictation-auto-controls"><label for="dictation-count">本轮词数<input id="dictation-count" v-model.number="roundCount" type="number" min="1" max="100" step="1" :disabled="locked" /></label><AppButton :busy="busy" :disabled="locked || loading || !!error" @click="start(false)">从计划开始默写<ArrowRight :size="16" aria-hidden="true" /></AppButton></div>
+      </div>
+      <div class="wordlist-selection dictation-selection"><label><input type="checkbox" :checked="pageSelected" :indeterminate="!pageSelected && pageIds.some(id => selected.has(id))" :disabled="locked || loading || !!error || !pageIds.length" @change="togglePage(pageIds, !pageSelected)" />选择当前页</label><span class="dictation-selection-count">已选 {{ count }} 词</span><button class="dictation-clear-button" :disabled="locked || !count" @click="clear"><X :size="14" aria-hidden="true" />清空选择</button><AppButton v-if="count" :busy="busy" :disabled="locked || loading || !!error || count > 100" @click="start(true)">默写所选 {{ count }} 词<ArrowRight :size="16" aria-hidden="true" /></AppButton></div>
       <p v-if="validation || count > 100" class="inline-error" role="alert">{{ validation || '每轮最多 100 个不同单词，请减少选择。' }}</p>
       <DictationLaunchNotice :error="createError" :uncertain="uncertain" :batch-id="created?.batchId" @refresh="refreshRecords" />
+      <StatePanel :loading="loading" :error="error" :empty="data?.total === 0" :message="applied ? '没有符合搜索条件的计划词，试试其他关键词。' : '暂无符合条件的计划词，先完成计划中的首次学习。'" @retry="refresh" />
+      <div v-if="!loading && !error"><label v-for="word in data?.records" :key="word.wordId" :class="['dictation-plan-row', { 'is-selected': selected.has(word.wordId) }]"><input type="checkbox" :checked="selected.has(word.wordId)" :disabled="locked || !eligible(word)" :aria-label="`默写选词 ${word.word}`" @change="toggle(word.wordId, !selected.has(word.wordId))" /><strong lang="en">{{ word.word }}</strong><WordMeaning :translation="word.translation" :translation-groups="word.translationGroups" /><span v-if="!eligible(word)" class="subtle-copy">暂不符合出题条件</span></label></div>
+      <AppPagination v-if="data" :page="page" :size="size" :total="data.total" :disabled="loading || locked" @change="page = $event" />
     </section>
     <DictationTasks v-if="!embedded" ref="tasks" />
   </div>
