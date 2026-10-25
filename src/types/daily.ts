@@ -17,7 +17,7 @@ export interface WordHistoryEvent {
   scheduleBefore: Record<string, unknown> | null; scheduleAfter: Record<string, unknown> | null;
   scheduleAvailable: boolean;
 }
-export interface LearningSettings { dailyTarget: number }
+export interface LearningSettings { dailyTarget: number; preferredStudyMode?: import('./dailyTraining').DailyStudyMode }
 export interface JoinPlanResult {
   requestedCount: number; addedCount: number; reactivatedCount: number; unchangedCount: number;
 }
@@ -33,6 +33,8 @@ export interface TodayOverview {
   task: DailyTask | null;
 }
 export interface DailyTask {
+  // Optional only for pre-011 history/legacy practice adapters. Unified DAILY validates these at its boundary.
+  studyMode?: import('./dailyTraining').DailyStudyMode; modeVersion?: number; trainingCount?: number;
   batchId: number; learningDate: string; dailyTarget: number; taskType: 'DAILY'; status: Status;
   totalCount: number; completedCount: number; skippedCount: number; answerCount: number; unfamiliarCount: number;
   newCount: number; reviewCount: number; nextItemId: number | null;
@@ -53,11 +55,13 @@ export interface DailyAnswerResult extends TranslationFields {
 }
 export interface DailyStatistics {
   learningDate: string; completedCount: number; answerCount: number;
+  trainingCount: number; studiedCount: number; recalledCount: number;
   newCompletedCount: number; reviewCompletedCount: number; unfamiliarCount: number;
   hasLearningActivity: boolean; statisticsComplete: boolean; incompleteWordCount: number;
 }
 export interface CalendarDay {
   learningDate: string; completedCount: number; answerCount: number;
+  trainingCount: number; recalledCount: number;
   hasLearningActivity: boolean; statisticsComplete: boolean; incompleteWordCount: number;
 }
 export interface LearningCalendar { month: string; statisticsComplete: boolean; days: CalendarDay[] }

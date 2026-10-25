@@ -15,6 +15,9 @@ export interface LearningTrendDay {
   completedCount: number;
   answerCount: number;
   studiedCount: number;
+  trainingCount: number;
+  recalledCount: number;
+  hasLearningActivity: boolean;
   hasRecordedAnswers: boolean;
 }
 export interface LearningTrend {
@@ -24,6 +27,8 @@ export interface LearningTrend {
   to: string | null;
   totalCompletedCount: number;
   totalAnswerCount: number;
+  totalTrainingCount: number;
+  totalRecalledCount: number;
   coverage: LearningCoverage;
   records: LearningTrendDay[];
 }
@@ -46,6 +51,8 @@ export interface LearningSummary {
   todayStudiedCount: number;
   todayCompletedCount: number;
   todayAnswerCount: number;
+  todayTrainingCount: number;
+  todayRecalledCount: number;
   goal: LearningGoal | null;
   coverage: LearningCoverage;
 }

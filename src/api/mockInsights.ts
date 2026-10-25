@@ -50,12 +50,12 @@ export function mockInsights(context: Context): { data: LearningTrend | Learning
   const recordFor = (day: string): LearningTrendDay => {
     const normal = answerDays.get(day) || [];
     const studiedCount = new Set(normal.map(event => event.wordId)).size;
-    return { learningDate: day, completedCount: source === 'DAILY' ? completedDays.get(day)?.size ?? 0 : studiedCount, answerCount: normal.length, studiedCount, hasRecordedAnswers: normal.length > 0 };
+    return { learningDate: day, completedCount: source === 'DAILY' ? completedDays.get(day)?.size ?? 0 : studiedCount, answerCount: normal.length, studiedCount, trainingCount: normal.length, recalledCount: source === 'DAILY' ? new Set(daily.tasks.filter(fixture => fixture.task.learningDate === day).flatMap(fixture => fixture.items).filter(item => item.learningStatus === 'DONE' && item.completionReason === 'RECALLED' && item.result === 1 && !incomplete.has(item.wordId)).map(item => item.wordId)).size : 0, hasLearningActivity: normal.length > 0, hasRecordedAnswers: normal.length > 0 };
   };
   if (url.endsWith('/trends')) {
     const days = daysText === '30' ? 30 : 7;
     const records = Array.from({ length: days }, (_, index) => recordFor(offset(today, index - days + 1)));
-    return { data: { source, days, from: records[0]!.learningDate, to: today, totalCompletedCount: records.reduce((sum, record) => sum + record.completedCount, 0), totalAnswerCount: records.reduce((sum, record) => sum + record.answerCount, 0), coverage, records } };
+    return { data: { source, days, from: records[0]!.learningDate, to: today, totalCompletedCount: records.reduce((sum, record) => sum + record.completedCount, 0), totalAnswerCount: records.reduce((sum, record) => sum + record.answerCount, 0), totalTrainingCount: records.reduce((sum, record) => sum + record.trainingCount, 0), totalRecalledCount: records.reduce((sum, record) => sum + record.recalledCount, 0), coverage, records } };
   }
   const studyDays = [...answerDays.keys()].sort();
   let longestStreak = 0, streak = 0;
@@ -73,5 +73,5 @@ export function mockInsights(context: Context): { data: LearningTrend | Learning
     const dailyTarget = task?.dailyTarget ?? daily.dailyTarget;
     goal = { dailyTarget, completedCount: current.completedCount, remainingCount: Math.max(0, dailyTarget - current.completedCount), reached: current.completedCount >= dailyTarget, targetSource: task ? 'TASK_SNAPSHOT' : 'SETTING', batchId: task?.batchId ?? null, taskStatus: task?.status ?? null };
   }
-  return { data: { learningDate: today, source, currentStreak, longestStreak, totalStudyDays: studyDays.length, hasStudiedToday: current.hasRecordedAnswers, todayStudiedCount: current.studiedCount, todayCompletedCount: current.completedCount, todayAnswerCount: current.answerCount, goal, coverage } };
+  return { data: { learningDate: today, source, currentStreak, longestStreak, totalStudyDays: studyDays.length, hasStudiedToday: current.hasRecordedAnswers, todayStudiedCount: current.studiedCount, todayCompletedCount: current.completedCount, todayAnswerCount: current.answerCount, todayTrainingCount: current.trainingCount, todayRecalledCount: current.recalledCount, goal, coverage } };
 }

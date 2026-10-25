@@ -15,6 +15,8 @@
     "dev:api": "node --experimental-strip-types node_modules/vite/bin/vite.js --configLoader native --mode api",
     "dev:preview": "node --experimental-strip-types node_modules/vite/bin/vite.js --configLoader native --mode preview",
     "test:daily": "node tests/daily-check.mjs",
+    "test:daily-training": "node tests/daily-training-check.mjs",
+    "test:daily-training:live": "node tests/daily-training-live.mjs",
     "test:api-ui": "node tests/api-ui-check.mjs",
     "test:books": "node tests/books-check.mjs",
     "test:words": "node tests/words-check.mjs",
