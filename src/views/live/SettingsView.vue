@@ -6,6 +6,7 @@ import { useResource } from '../../composables/useResource';
 import type { LearningSettings } from '../../types/daily';
 import StatePanel from '../../components/ui/StatePanel.vue';
 import AppButton from '../../components/ui/AppButton.vue';
+import { dailyModeLabels } from '../../types/dailyTraining';
 const { data, loading, error, load } = useResource<LearningSettings>();
 const target = ref('');
 const busy = ref(false);
@@ -46,6 +47,7 @@ onMounted(refresh);
       <AppButton type="submit" :busy="busy">保存每日目标</AppButton>
     </form>
     <p v-if="notice" class="live-notice" role="status">{{ notice }}</p>
+    <p v-if="data?.preferredStudyMode" class="subtle-copy">每日学习偏好：{{ dailyModeLabels[data.preferredStudyMode] }}。在学习页切换方式后自动保存，下次任务沿用。</p>
     <RouterLink to="/settings/security" class="btn btn-secondary">账户安全与设备</RouterLink>
   </div>
 </template>

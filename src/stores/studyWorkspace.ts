@@ -5,7 +5,9 @@ import type { StudyMode } from '../composables/useStudySurface';
 export const useStudyWorkspace = defineStore('study-workspace', () => {
   const auth = useAuthStore();
   const mode = ref<StudyMode>('recognition');
+  const lane = ref<'daily' | 'practice' | 'independent' | 'sentences'>('daily');
+  const extraDailyItemId = ref<number>();
   const dailyId = ref<number>(), dictationId = ref<number>(), sentenceId = ref<number>(), practiceId = ref<number>();
-  watch(() => auth.user?.id, () => { mode.value = 'recognition'; dailyId.value = undefined; dictationId.value = undefined; sentenceId.value = undefined; practiceId.value = undefined; }, { flush: 'sync' });
-  return { mode, dailyId, dictationId, sentenceId, practiceId };
+  watch(() => auth.user?.id, () => { mode.value = 'recognition'; lane.value = 'daily'; extraDailyItemId.value = undefined; dailyId.value = undefined; dictationId.value = undefined; sentenceId.value = undefined; practiceId.value = undefined; }, { flush: 'sync' });
+  return { mode, lane, extraDailyItemId, dailyId, dictationId, sentenceId, practiceId };
 });

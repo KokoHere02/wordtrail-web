@@ -15,7 +15,7 @@ export function useLearningKeys(actions: {
     if (event.repeat || event.isComposing || event.altKey || event.ctrlKey || event.metaKey || document.querySelector('[role="dialog"]')) return;
     const target = event.target instanceof HTMLElement ? event.target : undefined;
     const shortcutOnLearningButton = ['ArrowLeft', 'ArrowRight', '1', '2', '3', 'r', 'R', 'Escape'].includes(event.key)
-      && target?.closest('button') && target.closest('.learning-card, .learning-controls');
+      && target?.closest('button') && target.closest('.learning-card, .learning-controls, .daily-training-feedback');
     if (target?.closest('input,select,textarea,button,a,summary,[contenteditable=true]') && !shortcutOnLearningButton) return;
     const result = ({ '1': 3, '2': 2, '3': 1 } as const)[event.key as '1' | '2' | '3'];
     if (event.code === 'Space' || event.key === ' ') { event.preventDefault(); void actions.reveal(); }
