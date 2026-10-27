@@ -3,8 +3,8 @@ import type { DailyTask } from '../types/daily';
 import type { Page } from '../types/api';
 import type { DailyStudyMode, TrainingTask, TrainingQuestion, TrainingAnswerBody, TrainingAnswer, TrainingStatistics, TrainingHistory, TrainingItem } from '../types/dailyTraining';
 
-export function requireTrainingTask(task: DailyTask): TrainingTask {
-  if (!['RECOGNITION', 'DICTATION', 'FOLLOW_TYPING'].includes(task.studyMode ?? '') ||
+export function requireTrainingTask(task: DailyTask | TrainingTask): TrainingTask {
+  if (!['RECOGNITION', 'DICTATION', 'FOLLOW_TYPING', 'LISTEN_DICTATION'].includes(task.studyMode ?? '') ||
       !Number.isInteger(task.modeVersion) || !Number.isInteger(task.trainingCount)) {
     throw new ApiError('当前后端尚未提供统一每日训练。请先完成 011 迁移并启动新版后端，再重新同步。', 'TRAINING_DEPLOYMENT_REQUIRED');
   }
@@ -12,6 +12,8 @@ export function requireTrainingTask(task: DailyTask): TrainingTask {
 }
 const root = (batchId: number) => `/learning-batches/${batchId}/daily`;
 export function requireTrainingQuestion(question: TrainingQuestion): TrainingQuestion {
+  if (question.mode === 'LISTEN_DICTATION' && !question.audioUrl)
+    throw new ApiError('听音题未提供音频地址，请确认已启动支持第 33 节的新后端。', 'TRAINING_DEPLOYMENT_REQUIRED');
   if (!['QUESTION', 'AWAITING_SELF_ASSESSMENT', 'AWAITING_INPUT'].includes(question.phase) || typeof question.answerRevealed !== 'boolean' ||
       !['PENDING', 'RELEARNING', 'DONE'].includes(question.itemStatus)) {
     throw new ApiError('当前后端未提供第 30 节的训练阶段和词项状态，请重启新版后端后重新同步；无需新增 SQL 迁移。', 'TRAINING_DEPLOYMENT_REQUIRED');
@@ -19,8 +21,10 @@ export function requireTrainingQuestion(question: TrainingQuestion): TrainingQue
   return question;
 }
 export const dailyTrainingApi = {
-  mode: (batchId: number, mode: DailyStudyMode, expectedVersion: number) =>
-    request<TrainingTask>('PUT', `${root(batchId)}/mode`, { mode, expectedVersion }),
+  mode: async (batchId: number, mode: DailyStudyMode, expectedVersion: number) => {
+    if (mode === 'FOLLOW_TYPING') throw new ApiError('跟拼已移至独立练习，请使用跟拼练习入口。', 'FOLLOW_TYPING_PRACTICE_REQUIRED');
+    return request<TrainingTask>('PUT', `${root(batchId)}/mode`, { mode, expectedVersion });
+  },
   next: async (batchId: number, itemId?: number) =>
     requireTrainingQuestion(await request<TrainingQuestion>('POST', `${root(batchId)}/training/next`, itemId === undefined ? {} : { itemId })),
   answer: (batchId: number, itemId: number, body: TrainingAnswerBody) =>

@@ -21,6 +21,11 @@ onMounted(refresh);
       <StatePanel :loading="loading" :error="error" @retry="refresh" />
       <template v-if="data && !loading && !error">
         <p class="live-date">{{ data.learningDate }} · {{ data.task ? '本任务目标' : '今日目标' }} {{ data.dailyTarget }} 词 · <RouterLink to="/settings" class="violet-link">设置目标</RouterLink></p>
+        <p v-if="(data.task ? data.task.newWordTarget : data.newWordTarget) != null && (data.task ? data.task.reviewLimit : data.reviewLimit) != null" class="subtle-copy">{{ data.task ? '当前任务配额快照' : '下一任务配额' }}：新词 {{ data.task ? data.task.newWordTarget : data.newWordTarget }} · 复习上限 {{ data.task ? data.task.reviewLimit : data.reviewLimit }}</p>
+        <p v-else class="subtle-copy">当前任务策略：优先复习，再补新词。</p>
+        <p class="subtle-copy">未编入今日任务的到期复习：{{ data.reviewBacklogCount ?? '—' }} 词 · 逾期复习：{{ data.overdueReviewCount ?? '—' }} 词</p>
+        <p class="subtle-copy">逾期指上海今日零点前已到期、仍未完成的启用词，可能包含今日已安排的词。是否可追加以任务状态为准。</p>
+        <p v-if="data.task?.status === 'COMPLETED'" class="subtle-copy">本组已完成{{ data.task.completedCount >= data.task.dailyTarget ? '，每日目标已达成。' : '；尚未达到每日目标。可用词不足时不会挤占另一类配额。' }}</p>
         <div class="daily-equation reveal" style="--delay: 180ms">
           <div><strong>{{ data.dueCount }}</strong><span>待复习</span></div><b>·</b>
           <div><strong>{{ data.newCount }}</strong><span>计划内新词</span></div><b>·</b>
@@ -44,6 +49,6 @@ onMounted(refresh);
       </div>
     </section>
     <TodayStatistics />
-    <div class="today-streak live-actions"><RouterLink to="/learn" class="muted-link">每日单词 · 认读／默写／跟拼<ArrowUpRight :size="18" /></RouterLink><RouterLink to="/dictation" class="muted-link">独立默写专项<ArrowUpRight :size="18" /></RouterLink><RouterLink to="/sentences" class="muted-link">句子英译中<ArrowUpRight :size="18" /></RouterLink><RouterLink to="/records" class="muted-link">查看学习记录<ArrowUpRight :size="18" /></RouterLink></div>
+    <div class="today-streak live-actions"><RouterLink to="/learn" class="muted-link">每日单词 · 认读／默写／听音<ArrowUpRight :size="18" /></RouterLink><RouterLink to="/follow-typing" class="muted-link">跟拼练习<ArrowUpRight :size="18" /></RouterLink><RouterLink to="/consolidation" class="muted-link">错因与巩固<ArrowUpRight :size="18" /></RouterLink><RouterLink to="/dictation" class="muted-link">独立默写专项<ArrowUpRight :size="18" /></RouterLink><RouterLink to="/sentences" class="muted-link">句子英译中<ArrowUpRight :size="18" /></RouterLink><RouterLink to="/records" class="muted-link">查看学习记录<ArrowUpRight :size="18" /></RouterLink></div>
   </div>
 </template>

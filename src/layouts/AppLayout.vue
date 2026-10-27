@@ -29,7 +29,7 @@ const activeIndex = computed(() => {
   if (path.startsWith('/books') || path.startsWith('/words/') || path.startsWith('/sentences') || path === '/weak-words' || path === '/plan' || path === '/dictation/mistakes') return 2;
   return path === '/today' || path.startsWith('/settings') ? 0 : 1;
 });
-const isReview = computed(() => route.path === '/learn' || route.path.startsWith('/learn/') || route.path.startsWith('/study/') || /^\/dictation\/\d+$/.test(route.path) || /^\/sentences\/sessions\/\d+$/.test(route.path));
+const isReview = computed(() => route.path === '/learn' || route.path.startsWith('/learn/') || route.path.startsWith('/study/') || route.path.startsWith('/consolidation/batches/') || route.path.startsWith('/follow-typing') || /^\/dictation\/\d+$/.test(route.path) || /^\/sentences\/sessions\/\d+$/.test(route.path));
 watch(() => route.path, () => { profileOpen.value = false; });
 async function logout() {
   if (signingOut.value || auth.accountBusy) return;

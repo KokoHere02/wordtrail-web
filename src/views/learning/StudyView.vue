@@ -32,7 +32,7 @@ useLearningKeys({ reveal: revealMeaning, pronounce, rate: result => card.value?.
       <p v-if="current" class="study-position sr-only">第 {{ current.sortOrder }} 个 / 共 {{ progress?.wordCount }} 个</p>
       <div v-if="error" class="learning-error form-error" role="alert"><p>{{ error }}</p><button v-if="pending && !syncAvailable" class="violet-link" :disabled="busy" @click="retry">重试原请求</button><button v-if="syncAvailable" class="violet-link" :disabled="busy" @click="session.load">按最新进度恢复</button></div>
       <template v-if="current && !loadError">
-        <LearningCard ref="card" :word="current.word" :phonetic="current.phonetic" :word-key="displayKey" variant="practice" :visible="visible" :definition="definition" :reveal-loading="revealLoading" :reveal-error="revealError" :busy="busy" :rate-disabled="!canRate || revealLoading" :result="answer?.result" :past="isPast" :can-correct="canCorrect" @reveal="revealMeaning" @rate="rate" @correct="session.correct" />
+        <LearningCard ref="card" :word="current.word" :word-id="current.wordId" :phonetic="current.phonetic" :word-key="displayKey" variant="practice" :visible="visible" :definition="definition" :reveal-loading="revealLoading" :reveal-error="revealError" :busy="busy" :rate-disabled="!canRate || revealLoading" :result="answer?.result" :past="isPast" :can-correct="canCorrect" @reveal="revealMeaning" @rate="rate" @correct="session.correct" />
         <LearningControls :previous-disabled="!canPrevious" :next-disabled="!canNext" :final="!isPast && progress?.status === 'COMPLETED'" @previous="session.previous" @next="session.next" />
       </template>
     </div>

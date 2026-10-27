@@ -17,7 +17,11 @@ export interface WordHistoryEvent {
   scheduleBefore: Record<string, unknown> | null; scheduleAfter: Record<string, unknown> | null;
   scheduleAvailable: boolean;
 }
-export interface LearningSettings { dailyTarget: number; preferredStudyMode?: import('./dailyTraining').DailyStudyMode }
+export interface LearningSettings {
+  dailyTarget: number; preferredStudyMode?: import('./dailyTraining').DailyStudyMode;
+  newWordTarget: number | null; reviewLimit: number | null;
+  pronunciation: import('./dailyTraining').Pronunciation;
+}
 export interface JoinPlanResult {
   requestedCount: number; addedCount: number; reactivatedCount: number; unchangedCount: number;
 }
@@ -28,11 +32,13 @@ export interface PlanWord extends TranslationFields {
   nextReviewAt: string | null; reviewLevel: number;
 }
 export interface TodayOverview {
+  newWordTarget: number | null; reviewLimit: number | null; reviewBacklogCount: number; overdueReviewCount: number;
   learningDate: string; dailyTarget: number; activeCount: number; dueCount: number; newCount: number;
   unassignedCount: number; canAddMore: boolean;
   task: DailyTask | null;
 }
 export interface DailyTask {
+  newWordTarget?: number | null; reviewLimit?: number | null;
   // Optional only for pre-011 history/legacy practice adapters. Unified DAILY validates these at its boundary.
   studyMode?: import('./dailyTraining').DailyStudyMode; modeVersion?: number; trainingCount?: number;
   batchId: number; learningDate: string; dailyTarget: number; taskType: 'DAILY'; status: Status;

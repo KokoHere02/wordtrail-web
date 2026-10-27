@@ -2,20 +2,25 @@ import type { Page, Result } from './api';
 import type { DailyTask } from './daily';
 import type { TranslationFields } from './translation';
 
-export type DailyStudyMode = 'RECOGNITION' | 'DICTATION' | 'FOLLOW_TYPING';
+export type DailyStudyMode = 'RECOGNITION' | 'DICTATION' | 'FOLLOW_TYPING' | 'LISTEN_DICTATION';
+export type TrainingScope = 'DAILY' | 'CONSOLIDATION' | 'FOLLOW_TYPING';
+export interface Pronunciation { autoPlay: boolean; accent: 'US' | 'UK'; playbackRate: number; repeatCount: number }
 export type TrainingPhase = 'QUESTION' | 'AWAITING_SELF_ASSESSMENT' | 'AWAITING_INPUT';
 export type TrainingItemStatus = 'PENDING' | 'RELEARNING' | 'DONE' | 'SKIPPED';
 export type CompletionReason = 'RECALLED' | 'FOLLOW_TYPED' | 'ASSISTED' | 'LIMIT_REACHED';
 export interface TrainingItemState { itemStatus: TrainingItemStatus; completionReason?: CompletionReason | null }
 export const dailyModeLabels: Record<DailyStudyMode, string> = {
-  RECOGNITION: '看英文认中文', DICTATION: '单词默写', FOLLOW_TYPING: '跟拼',
+  RECOGNITION: '看英文认中文', DICTATION: '单词默写', FOLLOW_TYPING: '跟拼', LISTEN_DICTATION: '听音默写',
 };
-export interface TrainingTask extends DailyTask {
+export interface TrainingTask extends Omit<DailyTask, 'taskType' | 'learningDate'> {
+  followTypingTarget?: number | null;
+  taskType: 'DAILY' | 'PRACTICE'; learningDate: string | null;
   studyMode: DailyStudyMode; modeVersion: number; trainingCount: number;
 }
 export interface TrainingQuestion extends TranslationFields, TrainingItemState {
   itemId: number; mode: DailyStudyMode; modeVersion: number; presentationId: string; attemptNo: number;
   wordId?: number; word?: string; phonetic?: string | null;
+  audioUrl?: string | null; pronunciation?: Pronunciation;
   phase: TrainingPhase; answerRevealed: boolean;
   hintUsed: boolean; extraTraining: boolean; progress: TrainingTask;
 }

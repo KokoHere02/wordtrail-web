@@ -6,7 +6,7 @@ import type { TranslationFields } from '../../types/translation';
 import WordMeaning from '../word/WordMeaning.vue';
 import WordPronunciation from '../word/WordPronunciation.vue';
 const props = defineProps<{
-  word: string; phonetic?: string | null; wordKey: string; variant: 'daily' | 'practice';
+  word: string; wordId?: number; phonetic?: string | null; wordKey: string; variant: 'daily' | 'practice';
   visible: boolean; definition?: TranslationFields; revealLoading: boolean; revealError: string;
   busy: boolean; rateDisabled: boolean; result?: Result | null; past: boolean; canCorrect: boolean;
 }>();
@@ -39,7 +39,7 @@ defineExpose({ pronounce: () => pronunciation.value?.pronounce(), openCorrection
     <p v-if="past" class="learning-past-label" role="status">回看已答单词</p>
     <div class="learning-word-area memory-word-content">
       <div class="memory-title"><h1 :class="[variant === 'practice' ? 'study-word' : 'learning-word', { 'long-word': word.length > 14, 'long-memory-word': word.length > 14 }]" lang="en">{{ word }}</h1></div>
-      <WordPronunciation ref="pronunciation" :word="word" :phonetic="phonetic" :word-key="wordKey" />
+      <WordPronunciation ref="pronunciation" :word="word" :word-id="wordId" :phonetic="phonetic" :word-key="wordKey" />
     </div>
     <div class="learning-reveal-area">
       <button v-if="!visible" type="button" class="reveal-button" aria-keyshortcuts="Space" :aria-controls="meaningId" :disabled="busy" @click="$emit('reveal')"><Eye :size="19" />点击或按 Space 查看释义</button>
