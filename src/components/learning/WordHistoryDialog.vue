@@ -37,10 +37,10 @@ function changePage(value: number) { page.value = value; refresh(); }
       <section v-for="group in groups.filter(entry => entry.events.length)" :key="group.label" class="history-group">
         <h3>{{ group.label }}</h3>
         <article v-for="event in group.events" :key="event.logId" class="history-event">
-          <div class="live-actions"><span class="learning-badge">{{ event.eventType === 'CORRECTION' ? '更正事件' : '正常作答' }}</span><strong>{{ labels[event.result] }}</strong></div>
+          <div class="live-actions"><span class="learning-badge">{{ event.eventType === 'CORRECTION' ? '更正事件' : '正常作答' }}</span><strong>{{ event.taskType === 'PRACTICE' ? labels[event.result] : '队列反馈记录' }}</strong></div>
           <p>{{ event.answeredAt.replace('T', ' ') }}</p>
           <p v-if="event.eventType === 'CORRECTION'">更正原作答 #{{ event.correctsLogId ?? '未提供' }} · 不另计次数</p>
-          <details class="copy-note"><summary>事件详情</summary>
+          <details class="copy-note"><summary>事件详情</summary><p v-if="event.taskType === 'DAILY'">原始反馈值 {{ event.result }} · 不用于判断熟悉程度</p>
             <p>事件 #{{ event.logId }} · 批次 #{{ event.batchId }} · 学习日 {{ event.learningDate }}</p>
             <p>当日作答序号 {{ event.attemptNo }}（含专项） · {{ event.affectsSchedule ? '影响长期安排' : '不影响长期安排' }}</p>
             <template v-if="event.scheduleAvailable && event.scheduleBefore && event.scheduleAfter"><span>事件前</span><pre>{{ JSON.stringify(event.scheduleBefore, null, 2) }}</pre><span>事件后</span><pre>{{ JSON.stringify(event.scheduleAfter, null, 2) }}</pre></template>

@@ -12,7 +12,6 @@ import WordMeaning from '../word/WordMeaning.vue';
 const props = defineProps<{ initialDate?: string }>();
 const statistics = useStatistics(props.initialDate);
 const { daily, calendar, words, selectedDate, dateInput, monthInput, inputError, page, size } = statistics;
-const labels = { 1: '认识', 2: '模糊', 3: '不认识' };
 const historyWord = ref<StatisticsWord>();
 const historyOpen = ref(false);
 const leadingDays = computed(() => {
@@ -36,7 +35,7 @@ function showHistory(word: StatisticsWord) { historyWord.value = word; historyOp
       <StatisticsCards v-if="daily.data.value && !daily.loading.value && !daily.error.value" :statistics="daily.data.value" />
       <h3 class="statistics-words-heading">当日已学习单词</h3>
       <StatePanel :loading="words.loading.value || daily.loading.value" :error="words.error.value" :empty="!!words.data.value && !words.data.value.records.length" message="暂无已学习单词。" @retry="statistics.loadWords" />
-      <template v-if="!daily.loading.value && !words.loading.value && !daily.error.value && !words.error.value"><article v-for="word in words.data.value?.records" :key="word.wordId" class="statistics-word-row"><div><strong lang="en">{{ word.word }}</strong><WordMeaning :translation="word.translation" :translation-groups="word.translationGroups" /></div><div><span>{{ word.itemType === 'NEW' ? '新词' : word.itemType === 'REVIEW' ? '复习' : '分类未提供' }} · {{ word.lastResult ? labels[word.lastResult] : '反馈未提供' }}</span><p>正常作答 {{ word.answerCount }} 次 · {{ word.completed ? '已完成' : '未计为完成' }}</p><p v-if="!word.statisticsComplete" class="statistics-word-warning">统计不完整：次数仅含已记录事件</p></div><button class="violet-link" @click="showHistory(word)">学习历史</button></article></template>
+      <template v-if="!daily.loading.value && !words.loading.value && !daily.error.value && !words.error.value"><article v-for="word in words.data.value?.records" :key="word.wordId" class="statistics-word-row"><div><strong lang="en">{{ word.word }}</strong><WordMeaning :translation="word.translation" :translation-groups="word.translationGroups" /></div><div><span>{{ word.itemType === 'NEW' ? '新词' : word.itemType === 'REVIEW' ? '复习' : '分类未提供' }} · {{ word.completed ? '已完成' : '未计为完成' }}</span><p>已记录作答 {{ word.answerCount }} 次</p><p v-if="!word.statisticsComplete" class="statistics-word-warning">统计不完整：次数仅含已记录事件</p></div><button class="violet-link" @click="showHistory(word)">学习历史</button></article></template>
       <AppPagination v-if="words.data.value && !daily.loading.value" :page="page" :size="size" :total="words.data.value.total" :disabled="words.loading.value" @change="statistics.changePage" />
     </section>
     <WordHistoryDialog v-model="historyOpen" :word-id="historyWord?.wordId ?? null" :word="historyWord?.word || ''" />
