@@ -1,0 +1,95 @@
+历史记录：前端第 31～35 节接入与验证记录
+跟拼已按第 36 节改为独立练习；本记录中跟拼共用每日任务及抵扣每日目标的旧描述已失效。最新实现与验证见 frontend-follow-typing-verification.txt。
+日期：2026-10-27
+
+实现范围
+1. 错因清单仅提供四类真实错因；保留原因筛选、分页、最近输入、发生次数、手选去重、按数量创建和历史批次恢复。跟拼不新增或清除错因、薄弱词。
+2. 集中巩固复用统一训练会话和 DailyView；接口、待确认请求、批次进度与 DAILY 隔离，支持跨日、切换方式、提示恢复、词项追加和训练历史。
+3. 配额通过 allocation 保存并采用服务端响应；当前任务使用创建时快照，积压和逾期分开展示，追加权限仍由 canAddMore 决定。
+4. LISTEN_DICTATION 初始隐藏英文、中文、音标和答案长度；通过题目 audioUrl 获取鉴权 Blob，应用口音、速度、重复次数、自动播放偏好。
+5. 音频切题、切换方式、页面失活或卸载时停止并释放资源；过期展示重新同步，音源失败支持重试及切换方式。
+6. 设置页导出个人 ZIP，读取响应文件名，处理 JSON 错误与 ZIP 传输截断，防重复点击，离开页面取消迟到下载；不提供导入功能。
+7. 保留现有词本 CSV、独立默写、句子流程。浏览器 TTS 仅留在已有预览流程。
+
+验证结果
+PASS npm run build（含 vue-tsc 类型检查）
+PASS npm run test:daily-training：27 项统一 DAILY 协议场景
+PASS npm run test:learning-expansion：12 项新增协议场景，及新增实际 Vue 页面检查
+PASS npm run test:learning-expansion:browser：8 项 Edge 场景；真实浏览器音频事件验证倍率、顺序重播、自动播放恢复与模式切换停止；ZIP 下载；1440/390/320 像素浅色和深色布局
+PASS npm run test:workspace
+PASS npm run test:workspace:browser：7 项已有工作区 Edge 场景
+PASS npm run test:dictation
+PASS npm run test:insights
+PASS npm run test:book-transfer
+PASS npm run test:translation（已更新过时的 TTS/旧每日协议夹具，验证现行快照释义及普通发音）
+PASS npm run test:follow-typing：纯跟拼输错及完成、共享进度去重、真实错因保留、原始 result=2 不误判、历史恢复和停用参数拦截
+PASS npm run test:words：薄弱词、源隔离、专项重试、历史更正和统计完整性
+PASS git diff --check
+
+验证边界与尚需配合
+上述自动化检查使用明确的测试夹具，不替代真实后端联调；浏览器音频检查使用可解码的测试 WAV，未验证新版后端在线 MP3 来源。
+真实 HTTP 检查 npm run test:daily-training:live 未运行：当前未配置 WORDTRAIL_LIVE_USERNAME / WORDTRAIL_LIVE_PASSWORD；脚本明确拒绝使用示例账号或模拟回退。
+目前未配置专用测试登录态，无法对正在运行的服务进行完整的用户数据验收；健康检查 UP 不能替代接口行为验收。
+新版后端就绪后，需真实验证错因消除与幂等建批、跨日练习和每日统计隔离、下一份每日任务使用新配额、实际 MP3 来源及个人 ZIP 内容。
+前端未执行 SQL；本次无需重复执行 012。本地提交情况以 Git 历史为准，未推送代码，提交排除 PNG 或 Markdown 文件。
+本记录不表示已完成真实服务验收。
+
+跟拼规则更新（2026-10-27，按后端第 31.1～31.2、16.2、29.2 节）
+移除旧分类入口、筛选、计数和文案；列表与汇总只使用四类真实错因。
+旧筛选的未确认创建请求保持本地原凭据，不改写内容或 requestId，不再发送；通过批次列表恢复已有练习。
+跟拼输入错误只展示本次反馈。完成状态、训练次数、正确率、每日唯一完成数和不熟悉数量均采用服务端响应。
+统计词项、计划和单词详情不再把原始队列 result=2 映射为“模糊”；原始历史仍保留在事件详情中。
+真实默写、自评错因和薄弱证据在跟拼后继续显示；不进行本地删除，也不修改复习时间。
+本轮重新通过构建、跟拼专项、统一每日协议、工作区、新增接口与页面、统计、薄弱词检查，以及 8 项 Edge 检查。
+真实服务验收仍因缺少专用测试账号而未运行，自动化夹具不替代该验收。
+
+本次修改/新增文件（不含原有未跟踪 README.md、接口文档和图片）
+.gitignore
+docs/frontend-learning-expansion-verification.txt
+package.json
+playwright.expansion.config.ts
+src/api/consolidation.ts
+src/api/daily.ts
+src/api/dailyTraining.ts
+src/api/learningMedia.ts
+src/components/learning/DailyStatisticsDetails.vue
+src/components/learning/DailyStats.vue
+src/components/learning/LearningCard.vue
+src/components/learning/PlanWordRow.vue
+src/components/learning/PronunciationSettings.vue
+src/components/learning/StatisticsCards.vue
+src/components/learning/TrainingHistory.vue
+src/components/learning/TrainingItems.vue
+src/components/learning/WordHistoryDialog.vue
+src/components/learning/WordPracticeToolbar.vue
+src/components/ui/AppSelect.vue
+src/components/word/WordPronunciation.vue
+src/composables/useAudioPlayer.ts
+src/composables/useDailyTraining.ts
+src/composables/useStudySurface.ts
+src/layouts/AppLayout.vue
+src/router/index.ts
+src/stores/pronunciation.ts
+src/stores/studyPreferences.ts
+src/styles/workspace.css
+src/types/daily.ts
+src/types/dailyTraining.ts
+src/views/learning/ConsolidationBatchView.vue
+src/views/learning/ConsolidationView.vue
+src/views/learning/StudyView.vue
+src/views/learning/StudyWorkspaceView.vue
+src/views/learning/modes/GuidedSpellingView.vue
+src/views/live/DailyView.vue
+src/views/live/SettingsView.vue
+src/views/live/TodayView.vue
+src/views/live/WeakWordsView.vue
+src/views/live/WordDetailView.vue
+tests/daily-training-live.mjs
+tests/e2e/learning-expansion.spec.ts
+tests/e2e/workspace.spec.ts
+tests/follow-typing-check.mjs
+tests/learning-expansion-check.mjs
+tests/learning-expansion-ui-check.mjs
+tests/training-entry.ts
+tests/translation-check.mjs
+tests/words-check.mjs

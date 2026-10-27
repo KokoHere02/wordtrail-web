@@ -26,7 +26,7 @@ for (const width of [1440, 390, 320]) for (const theme of ['light', 'dark']) {
         if (config.url === '/learning-plan/words' && config.method === 'get') { planQueries.push(structuredClone(config.params)); return ok({ page: 1, size: 10, total: 1, records: [{ wordId: 1001, word: 'abandon', translation: 'v. 放弃', translationGroups: promptGroups, planStatus: 'ACTIVE', firstLearnedAt: '2026-01-01T00:00:00', lastLearnedAt: '2026-10-23T00:00:00' }] }); }
         if (!config.url.startsWith('/dictation/')) return original(config);
         if (config.url === '/dictation/batches' && config.method === 'post') return ok(task, 201);
-        if (config.url === '/dictation/batches') return ok({ page: 1, size: 8, total: 1, records: [{ ...task, batchId: 89999, totalCount: 12, completedCount: 3, attemptCount: 5 }] });
+        if (config.url === '/dictation/batches') return ok({ page: 1, size: 8, total: 2, records: [{ ...task, batchId: 89999, totalCount: 12, completedCount: 3, attemptCount: 5 }, { ...task, batchId: 89998, status: 'COMPLETED', totalCount: 8, completedCount: 8, nextItemId: null }] });
         if (config.url === '/dictation/mistakes') return ok({ page: 1, size: 10, total: 0, records: [] });
         if (config.url === '/dictation/batches/90001') return ok(task);
         if (config.url.endsWith('/next')) {
@@ -51,6 +51,8 @@ for (const width of [1440, 390, 320]) for (const theme of ['light', 'dark']) {
     await expect(page.getByRole('link', { name: '继续默写', exact: true })).toBeVisible();
     await expect(page.locator('.dictation-task-row h3')).toContainText('单词默写 · 12 词');
     await expect(page.locator('.dictation-task-number')).toHaveText('#89999');
+    await expect(page.locator('.dictation-resume .dictation-task-row')).toHaveCount(1);
+    await expect(page.locator('.dictation-resume a[href="/dictation/89998/result"]')).toHaveCount(0);
     await expect(page.getByText('跨词本默写', { exact: true })).toHaveCount(0);
     await page.getByRole('searchbox', { name: '搜索默写计划词' }).fill('aban');
     await page.locator('.dictation-search').getByRole('button', { name: '搜索', exact: true }).click();
@@ -100,5 +102,7 @@ for (const width of [1440, 390, 320]) for (const theme of ['light', 'dark']) {
     await page.getByRole('button', { name: '查看默写结果', exact: true }).click();
     await expect(page.locator('.dictation-stats dd')).toHaveText(['1', '1', '1', '0', '3']);
     await page.screenshot({ path: `docs/screenshots/dictation-result-${theme}-${width}.png`, fullPage: true, animations: 'disabled' });
+    await page.locator('.dictation-result-actions a[href="/dictation"]').click();
+    await expect(page.locator('.dictation-resume')).toHaveCount(0);
   });
 }

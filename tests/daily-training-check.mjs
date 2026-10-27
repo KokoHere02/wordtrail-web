@@ -20,9 +20,10 @@ const groups = [{ partOfSpeech: 'n.', meaning: '苹果' }];
 function question(extra = false) {
   presentation ??= `p-${state.modeVersion}-${number}`;
   return { itemId: 123, mode: state.studyMode, modeVersion: state.modeVersion, presentationId: presentation, attemptNo: number,
+    audioUrl: '/api/learning-batches/45/training/items/123/audio?presentationId=test&modeVersion=0',
     phase: state.studyMode === 'RECOGNITION' ? revealedModes.has(state.studyMode) ? 'AWAITING_SELF_ASSESSMENT' : 'QUESTION' : 'AWAITING_INPUT',
     answerRevealed: revealedModes.has(state.studyMode), itemStatus: state.completedCount ? 'DONE' : 'PENDING', completionReason: reason,
-    ...(state.studyMode !== 'DICTATION' || revealedModes.has(state.studyMode) ? { wordId: 999, word: 'apple', phonetic: '/ˈæpəl/' } : {}),
+    ...(!['DICTATION', 'LISTEN_DICTATION'].includes(state.studyMode) || revealedModes.has(state.studyMode) ? { wordId: 999, word: 'apple', phonetic: '/ˈæpəl/' } : {}),
     ...(state.studyMode !== 'RECOGNITION' || revealedModes.has(state.studyMode) ? { translation: '苹果', translationGroups: groups } : {}), hintUsed: state.studyMode !== 'DICTATION' || number > 1, extraTraining: extra, progress: clone(state) };
 }
 function answer(body, progress = {}) {
@@ -78,7 +79,7 @@ await check('reading/restoring does not start/append or use legacy/dictation API
   assert.equal(writes().length, 0, 'opening alone never reveals or answers');
 });
 await check('no task reads saved preference; explicit start alone creates shared task and applies chosen mode', async () => {
-  noTask = true; const { s } = session(); await s.open(); assert.equal(s.mode.value, 'FOLLOW_TYPING');
+  noTask = true; const { s } = session(); await s.open(); assert.equal(s.mode.value, 'RECOGNITION');
   assert.equal(s.task.value, undefined); assert.ok(calls.every(c => c.method === 'get'));
   await s.changeMode('DICTATION'); assert.ok(!calls.some(c => c.url.endsWith('/mode')));
   await s.start(); assert.equal(s.mode.value, 'DICTATION'); assert.equal(s.question.value.word, undefined);
@@ -126,33 +127,37 @@ await check('mid-task modes share batch, item, position and server counters; dic
   const { s } = session(); await s.open(); await s.changeMode('DICTATION'); s.input.value = 'app';
   assert.equal(s.task.value.batchId, 45); assert.equal(s.question.value.itemId, 123); assert.equal(s.question.value.word, undefined);
   assert.deepEqual(calls.find(c => c.url.endsWith('/mode')).body, { mode: 'DICTATION', expectedVersion: 0 });
-  await s.changeMode('FOLLOW_TYPING'); assert.equal(s.question.value.word, 'apple'); assert.equal(s.question.value.modeVersion, 2);
+  await s.changeMode('LISTEN_DICTATION'); assert.equal(s.question.value.word, undefined); assert.equal(s.question.value.modeVersion, 2);
   await s.changeMode('DICTATION'); assert.equal(s.input.value, 'app'); assert.equal(s.task.value.completedCount, 0);
   assert.ok(!calls.some(c => c.url.includes('/dictation/') || /\/items\/\d+$/.test(c.url)));
 });
-await check('follow typing wrong is a training event only; correct completion uses server progress', async () => {
-  state.studyMode = 'FOLLOW_TYPING'; const { s } = session(); await s.open(); s.input.value = 'aple';
-  pendingHook = (_c, b, ok) => { const result = answer(b); result.verdict = 'INCORRECT'; return ok(result); };
-  await s.action('ANSWER'); assert.equal(s.task.value.completedCount, 0); assert.equal(s.task.value.answerCount, 0);
-  s.continueTraining(); s.input.value = ' apple ';
-  pendingHook = (_c, b, ok) => ok(answer(b, { completedCount: 1, status: 'COMPLETED', nextItemId: null, answerCount: 1 }));
-  await s.action('ANSWER'); assert.equal(writes()[1].body.input, ' apple '); assert.equal('result' in writes()[1].body, false);
-  assert.equal(s.task.value.completedCount, 1); assert.equal(s.receipt.value.mode, 'FOLLOW_TYPING');
-});
-await check('follow typing training events are not capped by the six effective-feedback limit', async () => {
+await check('legacy daily follow is read-only until explicit migration, with historical completion preserved', async () => {
   state.studyMode = 'FOLLOW_TYPING'; const { s } = session(); await s.open();
-  pendingHook = (_c, b, ok) => { const result = answer(b); result.verdict = 'INCORRECT'; return ok(result); };
-  for (let index = 0; index < 8; index++) { s.input.value = 'wrong'; await s.action('ANSWER'); s.continueTraining(); }
-  assert.equal(s.task.value.completedCount, 0); assert.equal(s.task.value.answerCount, 0);
-  assert.equal(s.question.value.attemptNo, 9); assert.equal(s.task.value.trainingCount, 8);
+  assert.equal(s.legacyFollow.value, true); assert.equal(s.question.value, undefined);
+  await s.action('ANSWER'); assert.equal(writes().length, 0);
+  assert.ok(!calls.some(call => call.url.endsWith('/next')));
+  await s.changeMode('DICTATION'); assert.equal(s.task.value.batchId, 45); assert.equal(s.question.value.mode, 'DICTATION');
+  assert.equal(s.task.value.completedCount, 0);
 });
-await check('completed follow word can switch and append dictation without double-completing goal', async () => {
+await check('new daily follow selection never calls mode endpoint or creates another daily queue', async () => {
+  const { s } = session(); await s.open(); const before = calls.length;
+  await s.changeMode('FOLLOW_TYPING'); assert.equal(s.mode.value, 'RECOGNITION'); assert.match(s.notice.value, /独立/);
+  assert.equal(calls.length, before); await assert.rejects(dailyTrainingApi.mode(45, 'FOLLOW_TYPING', 0));
+  assert.equal(calls.length, before);
+});
+await check('legacy pending follow is archived without rewriting or replaying its original body', async () => {
+  state.studyMode = 'FOLLOW_TYPING';
+  const body = { action: 'ANSWER', input: 'apple', requestId: 'original-follow', presentationId: 'old', modeVersion: 0, attemptNo: 1 };
+  const raw = JSON.stringify({ kind: 'training', batchId: 45, itemId: 123, body });
+  sessionStorage.setItem('wordtrail.training.pending.7.45', raw);
+  const { s } = session(); await s.open(); assert.equal(s.pending.value, undefined);
+  assert.equal(sessionStorage.getItem('wordtrail.training.pending.7.45.legacy-follow'), raw);
+  await s.changeMode('DICTATION'); assert.equal(s.question.value.mode, 'DICTATION'); assert.equal(writes().length, 0);
+});
+await check('completed historical follow keeps original daily completion when switched to another daily mode', async () => {
   state.studyMode = 'FOLLOW_TYPING'; Object.assign(state, { completedCount: 1, status: 'COMPLETED', nextItemId: null, trainingCount: 1 });
-  const { s } = session(); await s.open(); await s.extra(123); await s.changeMode('DICTATION');
-  assert.equal(s.question.value.extraTraining, true); assert.equal(s.question.value.word, undefined);
-  s.input.value = 'apple'; await s.action('ANSWER'); assert.equal(s.receipt.value.extraTraining, true);
-  assert.equal(s.task.value.completedCount, 1); assert.equal(s.task.value.trainingCount, 2);
-  assert.deepEqual(calls.filter(c => c.url.endsWith('/next')).at(-1).body, { itemId: 123 });
+  const { s } = session(); await s.open(); await s.changeMode('DICTATION'); await s.extra(123);
+  assert.equal(s.task.value.completedCount, 1); assert.equal(s.question.value.extraTraining, true);
 });
 await check('new dictation REVEAL does not complete the word; continued hinted input uses new identity', async () => {
   state.studyMode = 'DICTATION'; const { s } = session(); await s.open(); await s.action('REVEAL');
@@ -180,13 +185,13 @@ await check('a failed next after confirmed save never repeats the successful ans
 });
 await check('stale answer refreshes task and presentation without replaying old content', async () => {
   state.studyMode = 'DICTATION'; const { s } = session(); await s.open(); s.input.value = 'apple';
-  pendingHook = c => { state.studyMode = 'FOLLOW_TYPING'; state.modeVersion++; presentation = undefined; return failure(c, 'STALE_TRAINING_ANSWER'); };
-  await s.action('ANSWER'); assert.equal(s.mode.value, 'FOLLOW_TYPING'); assert.equal(s.pending.value, undefined);
+  pendingHook = c => { state.studyMode = 'LISTEN_DICTATION'; state.modeVersion++; presentation = undefined; return failure(c, 'STALE_TRAINING_ANSWER'); };
+  await s.action('ANSWER'); assert.equal(s.mode.value, 'LISTEN_DICTATION'); assert.equal(s.pending.value, undefined);
   assert.equal(writes().length, 1); assert.match(s.notice.value, /旧提交/);
 });
 await check('stale mode version resolves server mode without automatically resending mode write', async () => {
   const { s } = session(); await s.open(); state.modeVersion = 3; state.studyMode = 'DICTATION';
-  await s.changeMode('FOLLOW_TYPING'); assert.equal(s.mode.value, 'DICTATION'); assert.equal(s.task.value.modeVersion, 3);
+  await s.changeMode('LISTEN_DICTATION'); assert.equal(s.mode.value, 'DICTATION'); assert.equal(s.task.value.modeVersion, 3);
   assert.equal(calls.filter(c => c.url.endsWith('/mode')).length, 1);
 });
 await check('request-key conflict stops replay and does not generate an automatic replacement answer', async () => {
@@ -208,7 +213,7 @@ await check('paused/removed plan invalidates old input then uses refreshed queue
 await check('missing Chinese prompt allows switching the same word instead of drawing another', async () => {
   state.studyMode = 'DICTATION'; nextError = 'TRAINING_PROMPT_UNAVAILABLE'; const { s } = session(); await s.open();
   assert.equal(s.promptUnavailable.value, true); assert.equal(s.question.value, undefined);
-  nextError = undefined; await s.changeMode('FOLLOW_TYPING'); assert.equal(s.question.value.itemId, 123); assert.equal(s.task.value.batchId, 45);
+  nextError = undefined; await s.changeMode('RECOGNITION'); assert.equal(s.question.value.itemId, 123); assert.equal(s.task.value.batchId, 45);
 });
 await check('historical task is read-only and does not POST a presentation', async () => {
   learningDate = '2026-10-26'; const { s } = session(); await s.open(45);

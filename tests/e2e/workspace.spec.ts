@@ -89,26 +89,30 @@ for (const width of [1440, 390, 320]) for (const theme of ['dark', 'light']) {
     await page.getByRole('button', { name: '登录', exact: true }).click();
     await expect(page.locator('.daily-equation')).toBeVisible();
     await page.evaluate(async () => {
-      const spoken: { text: string; lang: string }[] = [];
-      Reflect.set(window, '__studySpeech', spoken);
-      Object.defineProperty(window, 'SpeechSynthesisUtterance', { configurable: true, value: class {
-        text: string; lang = ''; rate = 1;
-        constructor(text: string) { this.text = text; }
-      } });
-      Object.defineProperty(window, 'speechSynthesis', { configurable: true, value: {
-        cancel() {}, getVoices: () => [],
-        speak: (utterance: { text: string; lang: string }) => spoken.push({ text: utterance.text, lang: utterance.lang }),
+      const audioCalls: { src: string; rate: number }[] = [], audioRequests: string[] = [];
+      Reflect.set(window, '__studyAudio', audioCalls); Reflect.set(window, '__studyAudioRequests', audioRequests);
+      Object.defineProperty(window, 'Audio', { configurable: true, value: class {
+        src: string; playbackRate = 1; currentTime = 0; onended = null; onerror = null;
+        constructor(src: string) { this.src = src; }
+        play() { audioCalls.push({ src: this.src, rate: this.playbackRate }); return Promise.resolve(); }
+        pause() {} removeAttribute() {} load() {}
       } });
       const httpPath = '/src/api/http.ts', routerPath = '/src/router/index.ts';
       const { http } = await import(/* @vite-ignore */ httpPath), { router } = await import(/* @vite-ignore */ routerPath);
       const original = http.defaults.adapter;
       let mode = 'DICTATION', version = 0, count = 0;
+      let pronunciation = { autoPlay: false, accent: 'US', playbackRate: 1, repeatCount: 1 };
       const revealedModes = new Set<string>();
       const groups = [{ partOfSpeech: 'n.', meaning: '难以理解的事物；复杂事物；'.repeat(20) }, { partOfSpeech: null, meaning: '保留后端释义顺序。' }];
       const progress = () => ({ batchId: 50, learningDate: '2026-10-25', dailyTarget: 20, taskType: 'DAILY', status: 'IN_PROGRESS', totalCount: 20, completedCount: 6, skippedCount: 0, answerCount: 6, unfamiliarCount: 0, newCount: 20, reviewCount: 0, nextItemId: 51, studyMode: mode, modeVersion: version, trainingCount: count });
       http.defaults.adapter = async (config: { url: string; method: string; data?: string }) => {
         const body = config.data ? JSON.parse(config.data) : {};
         const ok = (data: unknown) => ({ config, status: 200, headers: {}, data: { code: 'OK', message: '成功', data: structuredClone(data) } });
+        if (config.url === '/learning/settings' || config.url === '/learning/settings/pronunciation') {
+          if (config.method === 'put') pronunciation = body;
+          return ok({ dailyTarget: 20, newWordTarget: 10, reviewLimit: 10, pronunciation });
+        }
+        if (config.url.includes('/audio?')) { audioRequests.push(config.url); return { config, status: 200, headers: { 'content-type': 'audio/mpeg' }, data: new Blob(['fixture audio'], { type: 'audio/mpeg' }) }; }
         if (config.url === '/learning/today') return ok({ learningDate: '2026-10-25', dailyTarget: 20, activeCount: 20, dueCount: 0, newCount: 20, unassignedCount: 0, canAddMore: false, task: progress() });
         if (config.url === '/learning-batches/50/daily') return ok(progress());
         if (config.url.endsWith('/daily/mode')) { mode = body.mode; version++; return ok(progress()); }
@@ -125,6 +129,7 @@ for (const width of [1440, 390, 320]) for (const theme of ['dark', 'light']) {
     await expect(page.locator('#daily-training-input')).toBeFocused();
     await expect(page.locator('.daily-training-card .letter-slot')).toHaveCount(1);
     await expect(page.getByRole('tab')).toHaveCount(2);
+    await expect(page.getByRole('tab', { name: '跟拼练习', exact: true })).toHaveCount(0);
     await expect(page.getByRole('tab', { name: '单词练习', exact: true })).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByRole('button', { name: '朗读单词', exact: true })).toBeDisabled();
     const changeMode = async (label: string) => {
@@ -140,7 +145,8 @@ for (const width of [1440, 390, 320]) for (const theme of ['dark', 'light']) {
     expect(await page.locator('.daily-training-card .letter-slots').evaluate(node => getComputedStyle(node).outlineStyle)).toBe('none');
     expect(await page.locator('html').evaluate(node => node.scrollWidth <= window.innerWidth)).toBe(true);
     await page.screenshot({ path: `docs/screenshots/daily-dictation-${theme}-${width}.png`, fullPage: true, animations: 'disabled' });
-    await changeMode('跟拼');
+    await page.locator('#daily-training-input').press('F2');
+    await expect(page.locator('.daily-assisted-note')).toBeVisible();
     await expect(page.locator('.daily-training-card .learning-word')).toHaveText('incomprehensibilities');
     await expect(page.locator('.daily-training-card .letter-slot')).toHaveCount(21);
     await expect(page.locator('.daily-word-phonetic')).toBeVisible();
@@ -149,11 +155,12 @@ for (const width of [1440, 390, 320]) for (const theme of ['dark', 'light']) {
     await page.getByRole('button', { name: '显示音标', exact: true }).click();
     await expect(page.locator('.daily-word-phonetic')).toBeVisible();
     await page.getByRole('button', { name: '朗读单词', exact: true }).click();
-    expect(await page.evaluate(() => Reflect.get(window, '__studySpeech').at(-1))).toEqual({ text: 'incomprehensibilities', lang: 'en-US' });
+    await expect.poll(() => page.evaluate(() => Reflect.get(window, '__studyAudioRequests').at(-1))).toContain('accent=US');
     await page.getByRole('button', { name: '练习设置', exact: true }).click();
-    await page.getByRole('combobox', { name: '发音口音' }).selectOption('en-GB');
-    await page.getByRole('switch', { name: '自动朗读单词' }).check();
-    await expect.poll(() => page.evaluate(() => Reflect.get(window, '__studySpeech').at(-1)?.lang)).toBe('en-GB');
+    await page.getByRole('combobox', { name: '发音口音' }).selectOption('UK');
+    await page.getByRole('checkbox', { name: '自动播放', exact: true }).check();
+    await page.getByRole('button', { name: '保存发音设置', exact: true }).click();
+    await expect.poll(() => page.evaluate(() => Reflect.get(window, '__studyAudioRequests').at(-1))).toContain('accent=UK');
     const panel = await page.getByRole('region', { name: '练习设置面板' }).boundingBox();
     expect(panel).not.toBeNull();
     expect(panel!.x).toBeGreaterThanOrEqual(0);
@@ -162,7 +169,7 @@ for (const width of [1440, 390, 320]) for (const theme of ['dark', 'light']) {
     await page.keyboard.press('Escape');
     await expect(page.getByRole('region', { name: '练习设置面板' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: '练习设置', exact: true })).toBeFocused();
-    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('wordtrail.study.preferences') || '{}'))).toMatchObject({ accent: 'en-GB', autoPronounce: true });
+    expect(await page.evaluate(() => Reflect.get(window, '__studyAudio').at(-1).src)).toMatch(/^blob:/);
     await page.locator('#daily-training-input').fill('incom');
     expect(await page.locator('html').evaluate(node => node.scrollWidth <= window.innerWidth)).toBe(true);
     await page.screenshot({ path: `docs/screenshots/daily-follow-${theme}-${width}.png`, fullPage: true, animations: 'disabled' });
@@ -170,9 +177,16 @@ for (const width of [1440, 390, 320]) for (const theme of ['dark', 'light']) {
     await expect(page.locator('.daily-training-card .word-meaning')).toHaveCount(0);
     await page.getByRole('button', { name: '显示中文释义', exact: true }).click();
     await expect(page.locator('.daily-training-card .word-meaning')).toBeVisible();
+    await page.getByRole('button', { name: '显示中文释义', exact: true }).click();
+    await expect(page.locator('.daily-training-card .word-meaning')).toHaveCount(0);
+    await changeMode('单词拼读');
     await changeMode('单词默写');
-    await expect(page.getByRole('button', { name: '朗读单词', exact: true })).toBeDisabled();
-    await expect(page.locator('#daily-training-input')).toHaveValue('draft');
+    await expect(page.locator('.daily-training-card .word-meaning')).toBeVisible();
+    await expect(page.locator('.workspace-history')).toHaveCount(0);
+    await expect(page.getByText('学习计划与任务设置', { exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: '朗读单词', exact: true })).toBeEnabled();
+    await expect(page.locator('#daily-training-input')).toHaveValue('incom');
+    await page.locator('#daily-training-input').fill('draft');
     await page.locator('#daily-training-input').press('Enter');
     await expect(page.locator('.daily-training-feedback.is-incorrect')).toBeVisible();
     await expect(page.locator('.daily-feedback-error')).toContainText('拼写错误');

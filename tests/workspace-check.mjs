@@ -25,7 +25,7 @@ async function tab(id) {
   if (settings.getAttribute('aria-expanded') !== 'true') { settings.click(); await until(() => document.querySelector(`#word-mode-${id}`), 'mode options'); }
   await until(() => !document.querySelector('.word-practice-modes').disabled, `enabled ${id}`);
   document.querySelector(`#word-mode-${id}`).click();
-  await until(() => currentMode === ({ recognition: 'RECOGNITION', dictation: 'DICTATION', spelling: 'FOLLOW_TYPING' })[id] && !document.querySelector('.word-practice-modes').disabled, id);
+  await until(() => currentMode === ({ recognition: 'RECOGNITION', dictation: 'DICTATION', listen: 'LISTEN_DICTATION' })[id] && !document.querySelector('.word-practice-modes').disabled, id);
   settings.click(); await until(() => !document.querySelector('#word-practice-settings'), 'settings closed');
 }
 const fallback = http.defaults.adapter;
@@ -51,9 +51,10 @@ http.defaults.adapter = async config => {
   if (config.url.endsWith('/training/next')) {
     extra = body.itemId === 51; presentation ??= `question-${version}-${eventNo}`;
     return ok(config, { itemId: 51, mode: currentMode, modeVersion: version, presentationId: presentation, attemptNo: eventNo,
+      audioUrl: '/api/learning-batches/50/training/items/51/audio?presentationId=current&modeVersion=0',
       phase: currentMode === 'RECOGNITION' ? revealedModes.has(currentMode) ? 'AWAITING_SELF_ASSESSMENT' : 'QUESTION' : 'AWAITING_INPUT', answerRevealed: revealedModes.has(currentMode),
-      itemStatus: completed ? 'DONE' : 'PENDING', completionReason: completed ? 'FOLLOW_TYPED' : null,
-      ...(currentMode !== 'DICTATION' || revealedModes.has(currentMode) ? { wordId: 1001, word: 'apple', phonetic: '/ˈæp.əl/' } : {}),
+      itemStatus: completed ? 'DONE' : 'PENDING', completionReason: completed ? 'ASSISTED' : null,
+      ...(!['DICTATION', 'LISTEN_DICTATION'].includes(currentMode) || revealedModes.has(currentMode) ? { wordId: 1001, word: 'apple', phonetic: '/ˈæp.əl/' } : {}),
       ...(currentMode !== 'RECOGNITION' || revealedModes.has(currentMode) ? { translationGroups: groups } : {}), hintUsed: eventNo > 1 || currentMode !== 'DICTATION', extraTraining: extra, progress: daily() });
   }
   if (config.url.endsWith('/training-answer')) {
@@ -62,7 +63,7 @@ http.defaults.adapter = async config => {
     if (body.action === 'ANSWER') completed = true;
     if (body.action === 'REVEAL') revealedModes.add(currentMode); else revealedModes.delete(currentMode);
     const answer = { trainingId: attempts.length + 1, itemId: 51, wordId: 1001, mode: currentMode, action: body.action, verdict: body.action === 'REVEAL' ? 'REVEALED' : currentMode === 'RECOGNITION' ? 'SELF_ASSESSED' : 'CORRECT', input: body.input ?? null, selfAssessment: body.result ?? null, word: 'apple', translationGroups: groups, hintUsed: true, extraTraining: extra, attemptNo: eventNo, reviewLogId: 71, affectsSchedule: false, answeredAt: '2026-10-25T12:00:00' };
-    answer.itemStatus = completed ? 'DONE' : 'PENDING'; answer.completionReason = completed ? 'FOLLOW_TYPED' : null;
+    answer.itemStatus = completed ? 'DONE' : 'PENDING'; answer.completionReason = completed ? 'ASSISTED' : null;
     attempts.unshift(answer); eventNo++; presentation = undefined; return ok(config, { ...answer, progress: daily() });
   }
   if (config.url.endsWith('/training/attempts')) return ok(config, page(attempts.map(row => ({ ...row, progress: daily() })), config.params));
@@ -73,7 +74,7 @@ http.defaults.adapter = async config => {
       completionReason: ['FOLLOW_TYPED', null, null, 'ASSISTED', 'RECALLED', 'LIMIT_REACHED', null][index] ?? null,
       answerCount: index === 1 || index === 2 ? 0 : 1, trainingCount: index === 1 || index === 2 ? 0 : 2, completedAt: null,
       current: index === 1 && todayDate === '2026-10-25', canExtraTrain: index === 0 && todayDate === '2026-10-25' }))
-      : [{ itemId: 51, wordId: 1001, word: 'apple', sortOrder: 1, itemType: 'NEW', itemStatus: completed ? 'DONE' : 'PENDING', completionReason: completed ? 'FOLLOW_TYPED' : null, answerCount: 1, trainingCount: attempts.length, completedAt: null, current: !completed, canExtraTrain: completed }];
+      : [{ itemId: 51, wordId: 1001, word: 'apple', sortOrder: 1, itemType: 'NEW', itemStatus: completed ? 'DONE' : 'PENDING', completionReason: completed ? 'ASSISTED' : null, answerCount: 1, trainingCount: attempts.length, completedAt: null, current: !completed, canExtraTrain: completed }];
     const value = page(rows, config.params); value.records = rows.slice((value.page - 1) * value.size, value.page * value.size); return ok(config, value);
   }
   if (config.url === '/learning/statistics/words') return ok(config, page([{ wordId: 1001, word: 'apple', translationGroups: groups, itemType: 'NEW', lastResult: 2, answerCount: 1, completed, statisticsComplete: true }], config.params));
@@ -90,7 +91,7 @@ http.defaults.adapter = async config => {
 await until(() => document.querySelector('#username'), 'login'); input('#username', 'workspace_reader'); input('#password', 'example123'); await click('登录'); await until(() => document.querySelector('.daily-equation'), 'home');
 await router.push('/learn/50'); await until(() => document.querySelector('.daily-training-card')?.dataset.mode === 'RECOGNITION', 'recognition');
 const root = document.querySelector('.unified-daily-page');
-assert.equal(document.querySelectorAll('.workspace-tabs [role="tab"]').length, 2, 'word modes share one content tab');
+assert.equal(document.querySelectorAll('.workspace-tabs [role="tab"]').length, 2, 'follow and daily share one word tab');
 assert.equal(document.querySelector('#mode-tab-words').getAttribute('aria-selected'), 'true');
 document.querySelector('button[aria-label="显示音标"]').click(); await until(() => !document.querySelector('.daily-word-phonetic'), 'phonetic hidden');
 document.querySelector('button[aria-label="显示音标"]').click(); await until(() => document.querySelector('.daily-word-phonetic'), 'phonetic restored');
@@ -101,13 +102,23 @@ assert.equal(calls.filter(c => c.url.endsWith('/training-answer')).length, 1); a
 document.querySelector('button[aria-label="显示中文释义"]').click(); await until(() => !document.querySelector('.daily-training-card .word-meaning'), 'Chinese hidden');
 key(' '); await until(() => document.querySelector('.daily-training-card .word-meaning'), 'Chinese restored with Space');
 assert.equal(calls.filter(c => c.url.endsWith('/training-answer')).length, 1, 'showing known definition sends no extra reveal');
-await router.push('/today'); await router.push('/learn/50');
+await router.push('/today'); await router.push('/learn/50'); await delay(0);
 await until(() => document.querySelector('.daily-training-rating button')?.disabled === false, 'revealed recognition restored after reentry');
 assert.ok(document.querySelector('.daily-training-card .word-meaning')); assert.equal(calls.filter(c => c.url.endsWith('/training-answer')).length, 1);
+document.querySelector('button[aria-label="显示中文释义"]').click(); await until(() => !document.querySelector('.daily-training-card .word-meaning'), 'Chinese hidden before mode switch');
+const beforeDictation = calls.filter(c => c.url.endsWith('/training-answer')).length;
 await tab('dictation'); assert.equal(document.querySelector('.daily-training-card .learning-word'), null, 'dictation target hidden');
+await until(() => document.querySelector('.daily-training-card .word-meaning'), 'dictation automatically shows Chinese');
+assert.equal(calls.filter(c => c.url.endsWith('/training-answer')).length, beforeDictation, 'showing dictation Chinese does not reveal the English answer');
+assert.equal(document.querySelector('.unified-daily-page .workspace-history'), null);
+assert.equal(document.querySelector('.unified-daily-page .workspace-configuration'), null);
+assert.equal(document.querySelector('.word-practice-more'), null);
+
+document.querySelector('button[aria-controls="word-practice-settings"]').click(); await until(() => document.querySelector('#word-mode-spelling'), 'follow is a word practice mode');
+assert.equal(document.querySelector('#mode-tab-follow'), null); document.querySelector('button[aria-label="关闭练习设置"]').click(); await until(() => !document.querySelector('#word-practice-settings'), 'settings closed after checking follow');
 assert.equal(document.querySelector('.daily-training-card .review-pronunciation'), null); assert.equal(document.querySelectorAll('#daily-training-input').length, 1);
-input('#daily-training-input', 'app'); await tab('spelling'); assert.equal(root, document.querySelector('.unified-daily-page'));
-assert.equal(document.querySelectorAll('.daily-training-card .letter-slot').length, 5);
+input('#daily-training-input', 'app'); await tab('listen'); assert.equal(root, document.querySelector('.unified-daily-page'));
+assert.equal(document.querySelectorAll('.daily-training-card .letter-slot').length, 1, 'listening keeps the target length hidden');
 input('#daily-training-input', 'appl'); await until(() => document.querySelector('.daily-training-card .letter-slot.is-caret') === document.querySelectorAll('.daily-training-card .letter-slot')[4], 'native caret');
 await tab('dictation'); assert.equal(document.querySelector('#daily-training-input').value, 'app', 'unsubmitted mode draft retained');
 await click('不会／看答案'); await until(() => document.querySelector('.daily-assisted-note'), 'revealed assisted input');
@@ -116,19 +127,19 @@ await router.push('/today'); await router.push('/learn/50');
 await until(() => document.querySelector('.daily-assisted-note'), 'assisted dictation restored after reentry');
 assert.equal(document.querySelector('.daily-training-card .learning-word').textContent, 'apple');
 assert.equal(calls.filter(c => c.url.endsWith('/training-answer')).length, revealWrites);
-await tab('spelling'); assert.equal(document.querySelector('#daily-training-input').value, 'appl');
+await tab('listen'); assert.equal(document.querySelector('#daily-training-input').value, 'appl');
 assert.equal(document.querySelector('.daily-training-card .letter-slot.is-caret'), document.querySelectorAll('.daily-training-card .letter-slot')[4], 'restored draft caret follows the native input');
 const count = calls.filter(c => c.url.endsWith('/training-answer')).length;
 document.querySelector('#daily-training-input').dispatchEvent(new window.Event('compositionstart', { bubbles: true })); input('#daily-training-input', 'apple'); key('Enter', '#daily-training-input'); await delay(20); assert.equal(calls.filter(c => c.url.endsWith('/training-answer')).length, count);
 document.querySelector('#daily-training-input').dispatchEvent(new window.Event('compositionend', { bubbles: true })); key('Enter', '#daily-training-input');
-await until(() => document.querySelector('.daily-training-feedback')?.textContent.includes('跟拼完成'), 'follow typing completes goal');
+await until(() => document.querySelector('.daily-training-feedback')?.textContent.includes('辅助完成'), 'listening completes shared daily goal');
 assert.match(document.querySelector('.workspace-progress').textContent, /1 \/ 1/); await click('查看完成状态 →');
 await until(() => document.querySelector('.learning-empty')?.textContent.includes('本组训练已结束'), 'shared completion');
 assert.ok(button('继续学习'), 'fresh server canAddMore is available without another start POST');
 document.querySelector('.workspace-items').open = true; document.querySelector('.workspace-items').dispatchEvent(new window.Event('toggle'));
 await until(() => button('追加训练此词'), 'completed words from server'); await click('追加训练此词');
 await until(() => document.querySelector('.daily-training-card'), 'extra presentation'); await tab('dictation'); input('#daily-training-input', 'apple'); key('Enter', '#daily-training-input');
-await until(() => document.querySelector('.daily-training-feedback')?.textContent.includes('追加训练 · 原词项跟拼完成'), 'extra dictation preserves original completion reason');
+await until(() => document.querySelector('.daily-training-feedback')?.textContent.includes('追加训练 · 原词项辅助完成'), 'extra dictation preserves original completion reason');
 assert.match(document.querySelector('.workspace-progress').textContent, /1 \/ 1/); assert.equal(attempts[0].extraTraining, true);
 await tab('sentences'); await until(() => document.querySelector('a[href="/sentences/sessions/650"]'), 'sentence resume'); document.querySelector('a[href="/sentences/sessions/650"]').click();
 await until(() => document.querySelector('#sentence-translation')?.disabled === false, 'sentence input'); input('#sentence-translation', '我每天阅读。');
@@ -139,8 +150,8 @@ await router.push('/dictation'); await until(() => document.querySelector('.work
 assert.ok(!calls.some(c => c.url === '/dictation/batches' && c.method === 'post'), 'daily never creates independent dictation');
 assert.ok(!calls.some(c => /\/daily\/items\/\d+$|\/daily\/items\/\d+\/answer$/.test(c.url)), 'no legacy daily item/answer calls');
 await router.push('/learn/50'); await until(() => !document.querySelector('#mode-tab-words').disabled, 'daily restore');
-holdMode = true; const switching = tab('spelling'); await until(() => releaseMode, 'mode request in flight'); document.querySelector('#word-mode-recognition').click(); releaseMode(); await switching;
-assert.equal(document.querySelector('.daily-training-card').dataset.mode, 'FOLLOW_TYPING', 'conflicting mode clicks blocked');
+holdMode = true; const switching = tab('listen'); await until(() => releaseMode, 'mode request in flight'); document.querySelector('#word-mode-recognition').click(); releaseMode(); await switching;
+assert.equal(document.querySelector('.daily-training-card').dataset.mode, 'LISTEN_DICTATION', 'conflicting mode clicks blocked');
 await router.push('/today'); append = true; await router.push('/learn/50'); await until(() => document.querySelector('.workspace-progress').textContent.includes('1 / 2'), 'same-day append restored by GET');
 assert.equal(calls.filter(c => c.url.endsWith('/today/start')).length, 0);
 listCase = true; await router.push('/today'); await router.push('/learn/50');
@@ -163,7 +174,7 @@ assert.equal(document.querySelectorAll('.training-items button.muted-link').leng
 assert.ok(!calls.slice(beforeHistory).some(call => call.url.endsWith('/training/next')), 'historical reads do not create a presentation');
 todayDate = '2026-10-25';
 await router.push('/statistics'); await until(() => document.querySelector('.training-mode-statistics'), 'training statistics'); assert.match(document.querySelector('.training-statistics').textContent, /输入正确率/);
-console.log('PASS mounted Vue: unified tabs and shared progress, hidden dictation target, native input/caret/IME, per-mode drafts, follow completion, hinted extra dictation counted once');
+console.log('PASS mounted Vue: unified tabs and shared progress, hidden dictation target, native input/caret/IME, per-mode drafts, listening completion, hinted extra dictation counted once');
 console.log('PASS sentence input/self-review preserved, independent dictation entry retained, mode double clicks blocked, cached same-day GET restore, server training statistics');
 console.log('PASS persisted recognition phase without duplicate reveal, completion labels, item pagination, hidden pending/skipped answers, historical and unavailable extra entries');
 app.unmount(); await window.happyDOM.close();

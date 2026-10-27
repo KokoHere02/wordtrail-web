@@ -86,27 +86,36 @@ assert.equal(root.querySelector('.review-example-translation').textContent, exam
 exampleProps.value = { example: '', exampleZh: '不能单独捏造英文' }; await nextTick();
 assert.equal(root.querySelector('blockquote'), null);
 exampleApp.unmount();
-const utterances = [];
-Object.defineProperty(window, 'speechSynthesis', { configurable: true, value: { cancel() {}, getVoices: () => [], speak: utterance => utterances.push(utterance) } });
-Object.defineProperty(window, 'SpeechSynthesisUtterance', { configurable: true, value: class { constructor(text) { this.text = text; } } });
-const audioProps = ref({ word: 'state', phonetic: '/steɪt/', wordKey: 1 });
+const audioFixture = http.defaults.adapter, players = [];
+let settingsReady = false;
+globalThis.Audio = class {
+  constructor(src) { this.src = src; this.playbackRate = 1; this.currentTime = 0; players.push(this); }
+  play() { return Promise.resolve(); }
+  pause() {} removeAttribute() {} load() {}
+};
+http.defaults.adapter = async config => {
+  if (config.url === '/learning/settings') {
+    settingsReady = true;
+    return { config, status: 200, headers: {}, data: { code: 'OK', data: { dailyTarget: 20, newWordTarget: null, reviewLimit: null, pronunciation: { autoPlay: false, accent: 'US', playbackRate: 1, repeatCount: 1 } } } };
+  }
+  if (config.url.includes('/audio?')) return { config, status: 200, headers: { 'content-type': 'audio/mpeg' }, data: new Blob(['explicit audio fixture'], { type: 'audio/mpeg' }) };
+  return audioFixture(config);
+};
+const audioProps = ref({ word: 'state', wordId: 101, phonetic: '/steɪt/', wordKey: 1 });
 const audioApp = createApp({ setup: () => () => h(WordPronunciation, audioProps.value) });
 audioApp.mount('#meaning-test');
-root.querySelector('button').click(); await nextTick();
-assert.equal(utterances.at(-1).text, 'state');
-assert.equal(root.querySelector('button').getAttribute('aria-pressed'), 'true');
-utterances.at(-1).onend(); await nextTick();
+await until(() => settingsReady, 'audio settings'); await new Promise(resolve => setTimeout(resolve, 0));
+root.querySelector('button').click();
+await until(() => root.querySelector('button').getAttribute('aria-pressed') === 'true', 'Blob audio playback');
+assert.match(players.at(-1).src, /^blob:/);
+players.at(-1).onended(); await nextTick();
 assert.equal(root.querySelector('button').getAttribute('aria-pressed'), 'false');
-audioProps.value = { word: 'antidisestablishmentarianism', phonetic: null, wordKey: 2 }; await nextTick();
+audioProps.value = { word: 'antidisestablishmentarianism', wordId: 102, phonetic: null, wordKey: 2 }; await nextTick();
 assert.equal(root.querySelector('.review-phonetic'), null);
-root.querySelector('button').click(); await nextTick();
-assert.equal(utterances.at(-1).text, audioProps.value.word);
-delete window.speechSynthesis;
-root.querySelector('button').click(); await nextTick();
-assert.match(root.querySelector('[role="status"]').textContent, /暂不支持/);
-Object.defineProperty(window, 'speechSynthesis', { configurable: true, value: { cancel() {}, getVoices: () => [], speak: utterance => utterances.push(utterance) } });
-audioApp.unmount();
-console.log('PASS grouped/legacy meanings, four-item previews, professional/all expansion, lossless punctuation, reset, examples and real speech event wiring');
+root.querySelector('button').click(); await until(() => root.querySelector('button').getAttribute('aria-pressed') === 'true', 'next word audio');
+players.at(-1).onerror(); await nextTick(); assert.match(root.querySelector('[role="status"]').textContent, /重试/);
+audioApp.unmount(); http.defaults.adapter = audioFixture;
+console.log('PASS grouped/legacy meanings, four-item previews, professional/all expansion, lossless punctuation, reset, examples and authenticated audio event wiring');
 
 const fixture = http.defaults.adapter;
 const marker = [{ partOfSpeech: 'n. & v.', meaning: '服务端分组释义' }, { partOfSpeech: null, meaning: '服务端第二组' }];
@@ -162,247 +171,72 @@ await dailyApi.join(1, [1001]);
 await router.push('/plan'); await expectGroups('.plan-word');
 console.log('PASS dictionary, system/personal books, word detail and plan consume server groups');
 
+// Current DAILY uses presentation snapshots, not the retired dictionary-GET reveal flow.
 const daily = await dailyApi.start();
-await router.push(`/learn/${daily.batchId}`);
-await until(() => document.querySelector('.recall-known')?.disabled === false, 'daily ready');
-assert.ok(document.querySelector('.main-nav'), 'learning reuses homepage navigation');
-assert.equal(document.querySelector('.learning-header a[aria-label="退出本轮学习"]').getAttribute('href'), '/today');
-assert.equal(document.querySelector('.learning-progress [role="progressbar"]').getAttribute('aria-valuenow'), '0');
-assert.match(document.querySelector('.review-progress-count').textContent, /剩余 1 词/);
-assert.deepEqual([...document.querySelectorAll('.learning-rating button')].map(node => node.getAttribute('aria-pressed')), ['false', 'false', 'false']);
-const definitionsBeforeReveal = [];
-let failReveal = true;
-const originalWithMarkers = http.defaults.adapter;
+const withMarkers = http.defaults.adapter;
+let trainingCount = 0, revealed = false;
+const trainingWrites = [], dictionaryReads = [];
+const modernProgress = () => ({ batchId: daily.batchId, learningDate: '2026-10-27', taskType: 'DAILY', dailyTarget: 3, totalCount: 3, completedCount: 0, skippedCount: 0, answerCount: 0, unfamiliarCount: 0, newCount: 3, reviewCount: 0, nextItemId: 801, status: 'IN_PROGRESS', studyMode: 'RECOGNITION', modeVersion: 0, trainingCount });
+const meaningSnapshot = () => answerMode === 'groups' ? { translationGroups: marker } : answerMode === 'legacy' ? { translation: '最新旧版释义' } : answerMode === 'empty' ? { translationGroups: [], translation: '禁止回退' } : {};
 http.defaults.adapter = async config => {
-  if (/^\/words\/\d+$/.test(config.url)) {
-    definitionsBeforeReveal.push(config.url);
-    if (failReveal) { failReveal = false; throw new AxiosError('dictionary unavailable', 'ERR_NETWORK', config); }
+  const ok = data => ({ config, status: 200, headers: {}, data: { code: 'OK', data: structuredClone(data) } });
+  if (/^\/words\/\d+$/.test(config.url)) dictionaryReads.push(config.url);
+  if (config.url === '/learning/today') return ok({ learningDate: '2026-10-27', dailyTarget: 3, activeCount: 3, dueCount: 0, newCount: 3, canAddMore: false, unassignedCount: 0, task: modernProgress() });
+  if (config.url === `/learning-batches/${daily.batchId}/daily`) return ok(modernProgress());
+  if (config.url.endsWith('/daily/training/next')) return ok({ itemId: 801, wordId: 1001, word: 'abandon', mode: 'RECOGNITION', modeVersion: 0, presentationId: `translation-${trainingCount}`, attemptNo: trainingCount + 1, phase: revealed ? 'AWAITING_SELF_ASSESSMENT' : 'QUESTION', answerRevealed: revealed, hintUsed: true, itemStatus: 'PENDING', completionReason: null, extraTraining: false, ...(revealed ? meaningSnapshot() : {}), progress: modernProgress() });
+  if (config.url.endsWith('/training-answer')) {
+    const body = JSON.parse(config.data); trainingWrites.push(body); trainingCount++; revealed = body.action === 'REVEAL';
+    return ok({ trainingId: trainingCount, itemId: 801, wordId: 1001, mode: 'RECOGNITION', action: body.action, verdict: revealed ? 'REVEALED' : 'SELF_ASSESSED', input: null, selfAssessment: body.result ?? null, word: 'abandon', hintUsed: true, extraTraining: false, attemptNo: body.attemptNo, reviewLogId: null, affectsSchedule: false, itemStatus: 'PENDING', completionReason: null, answeredAt: '2026-10-27T12:00:00', ...meaningSnapshot(), progress: modernProgress() });
   }
-  return originalWithMarkers(config);
+  return withMarkers(config);
 };
-assert.equal(document.querySelector('.memory-meaning'), null);
-const speechBefore = utterances.length;
-document.body.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'p', code: 'KeyP', bubbles: true }));
-await nextTick();
-assert.equal(utterances.length, speechBefore + 1);
-assert.equal(utterances.at(-1).text, 'abandon');
-assert.equal(definitionsBeforeReveal.length, 0, 'P never reveals the answer');
-const answersBeforeReveal = writes.length;
-document.body.dispatchEvent(new window.KeyboardEvent('keydown', { key: ' ', code: 'Space', bubbles: true }));
-await until(() => document.querySelector('.learning-state[role="alert"]'), 'reveal GET failure stays on word');
-assert.equal(writes.length, answersBeforeReveal);
-assert.equal(document.querySelector('.learning-word').textContent, 'abandon');
-await click('重新加载释义');
-await expectGroups('.memory-meaning');
-assert.equal(definitionsBeforeReveal.length, 2);
-assert.equal(writes.length, answersBeforeReveal, 'Space uses read-only word detail');
-assert.equal((await dailyApi.task(daily.batchId)).answerCount, 0);
-document.querySelector('button[aria-label="切换深色主题"]').click(); await nextTick();
-assert.equal(document.documentElement.dataset.theme, 'dark');
-document.querySelector('button[aria-label="切换浅色主题"]').click(); await nextTick();
-assert.equal(document.documentElement.dataset.theme, 'light');
-await click('认识');
-await until(() => button('完成本轮')?.disabled === false, 'last word retains completion action');
-await expectGroups('.memory-meaning');
-answerMode = 'legacy'; await click('记错了'); await click('改为不认识');
-await until(() => document.querySelector('.memory-meaning .translation-legacy')?.textContent === '最新旧版释义', 'daily correction stays revealed');
-await click('下一词');
-await until(() => document.querySelector('.recall-known')?.disabled === false, 'corrected daily word reappears after manual next');
-assert.equal(document.querySelector('.memory-meaning'), null);
-assert.equal((await dailyApi.task(daily.batchId)).answerCount, 1);
-await click('上一词');
-await until(() => document.querySelector('.memory-meaning .translation-legacy')?.textContent === '最新旧版释义', 'daily history uses latest correction');
-assert.equal(document.querySelector('.recall-known').disabled, true, 'history cannot submit a second normal answer');
-await click('下一词'); await until(() => document.querySelector('.recall-known')?.disabled === false, 'return to current queue');
-assert.equal(document.querySelector('.memory-meaning'), null);
-answerMode = 'missing'; await click('认识');
-await until(() => document.querySelector('.meaning-placeholder')?.textContent.includes('释义暂未返回'), 'known validation waits on its saved answer');
-await click('下一词');
-await until(() => document.querySelector('.recall-known')?.disabled === false && button('上一词')?.disabled === false, 'manual next reaches another attempt');
-await click('上一词');
-await until(() => document.querySelector('.meaning-placeholder')?.textContent.includes('释义暂未返回'), 'history with missing latest fields stays empty');
-assert.equal(document.querySelector('.memory-meaning'), null);
-answerMode = 'groups'; await click('记错了'); await click('改为不认识');
-await expectGroups('.memory-meaning');
-await click('下一词');
-await until(() => document.querySelector('.recall-known')?.disabled === false, 'manual next after history correction returns to server queue');
-assert.equal((await dailyApi.task(daily.batchId)).answerCount, 2);
-const writesBeforeRefresh = writes.length;
-await router.push('/today'); await until(() => document.querySelector('.daily-equation'), 'leave daily');
-await router.push(`/learn/${daily.batchId}`); await until(() => document.querySelector('.recall-known')?.disabled === false, 'GET daily restore');
-assert.equal(document.querySelector('.memory-meaning'), null);
-assert.equal(writes.length, writesBeforeRefresh);
-await router.push('/weak-words'); await expectGroups('.weak-word-copy');
-await router.push('/statistics'); await expectGroups('.statistics-word-row');
-console.log('PASS P-only speech, explicit Space GET, no automatic reveal, daily history/correction, repeated attempts, GET restore and unchanged definition rendering');
+await router.push(`/learn/${daily.batchId}`);
+await until(() => document.querySelector('.daily-training-rating button')?.disabled === false, 'unified daily ready');
+assert.equal(document.querySelector('.daily-training-card .word-meaning'), null);
+document.querySelector('.daily-recall-prompt').click(); await expectGroups('.daily-training-card');
+const revealCount = trainingWrites.length;
+await router.push('/today'); await router.push(`/learn/${daily.batchId}`); await new Promise(resolve => setTimeout(resolve, 0)); await expectGroups('.daily-training-card');
+await until(() => document.querySelector('.daily-training-rating button')?.disabled === false, 'restored recognition enabled');
+assert.equal(trainingWrites.length, revealCount, 'restoring a snapshot never reveals again');
+for (const variant of ['groups', 'legacy', 'missing', 'empty']) {
+  answerMode = variant;
+  document.querySelector('.daily-training-rating button:last-child').click();
+  await until(() => document.querySelector('.daily-training-feedback'), `feedback ${variant}`);
+  if (variant === 'groups') await expectGroups('.daily-training-feedback');
+  else if (variant === 'legacy') assert.equal(document.querySelector('.daily-training-feedback .translation-legacy').textContent, '最新旧版释义');
+  else assert.equal(document.querySelector(`.daily-training-feedback ${variant === 'missing' ? '.translation-legacy' : '.translation-empty'}`).textContent, '暂无释义');
+  if (variant !== 'groups') assert.equal(document.querySelector('.daily-training-feedback .translation-group'), null, 'latest snapshot never reuses an earlier group');
+  document.querySelector('.daily-training-feedback > .btn').click();
+  await until(() => document.querySelector('.daily-training-rating button')?.disabled === false, 'next question');
+  assert.equal(document.querySelector('.daily-training-card .word-meaning'), null);
+}
+assert.equal(dictionaryReads.length, 0, 'unified training only uses backend presentation snapshots');
+console.log('PASS unified DAILY snapshot reveal/restore, grouped/legacy/missing/empty feedback and no stale definition reuse');
 
+// Existing recognition practice still reads meanings and automatically advances in the workspace.
+answerMode = 'groups';
 const batch = await api.create({ bookId: 1, selectionType: 'MANUAL', wordIds: [1001, 1002, 1003] });
 await router.push(`/study/${batch.batchId}`);
-await until(() => document.querySelector('.study-word')?.textContent === 'abandon', 'practice ready');
-await until(() => document.querySelector('.learning-rating button')?.disabled === false, 'practice accepts shortcuts');
-assert.equal(document.querySelector('.site-header .main-nav a.active')?.textContent, '学习');
+await until(() => document.querySelector('.study-word')?.textContent === 'abandon' && document.querySelector('.answer-button')?.disabled === false, 'practice ready');
 assert.equal(document.querySelector('.study-meaning'), null);
-answerMode = 'groups'; loseAnswer = true;
-document.body.dispatchEvent(new window.KeyboardEvent('keydown', { key: '3', bubbles: true }));
-await until(() => document.querySelector('.form-error')?.textContent.includes('请求超时'), 'failed answer');
-assert.equal(document.querySelector('.study-meaning'), null);
+document.querySelector('.reveal-button').click(); await expectGroups('.study-meaning');
+loseAnswer = true; await click('认识');
+await until(() => document.querySelector('.form-error')?.textContent.includes('请求超时'), 'unknown practice save');
 assert.equal(document.querySelector('.study-word').textContent, 'abandon');
-const pendingWrites = writes.length;
-document.body.dispatchEvent(new window.KeyboardEvent('keydown', { key: '1', bubbles: true })); await nextTick();
-assert.equal(writes.length, pendingWrites);
 await click('重试原请求');
-await expectGroups('.study-meaning');
-assert.equal(document.querySelector('.study-word').textContent, 'abandon', 'saved retry stays on current answer');
-assert.equal(writes.at(-1).body, writes.at(-2).body, 'same requestId on retry');
-await click('下一词');
-await until(() => document.querySelector('.study-word')?.textContent === 'absorb', 'practice advances on manual next');
-assert.equal(document.querySelector('.study-meaning'), null);
+await until(() => document.querySelector('.study-word')?.textContent === 'absorb', 'confirmed retry advances');
+assert.equal(writes.at(-1).body, writes.at(-2).body); assert.equal(document.querySelector('.study-meaning'), null);
 await click('上一词'); await expectGroups('.study-meaning');
 answerMode = 'legacy'; await click('记错了'); await click('改为不认识');
-await until(() => document.querySelector('.study-meaning .translation-legacy')?.textContent === '最新旧版释义', 'corrected past practice stays revealed');
-await click('下一词');
-await until(() => document.querySelector('.study-word')?.textContent === 'absorb' && document.querySelector('.learning-rating button')?.disabled === false, 'manual next after corrected past practice returns to queue');
-await click('上一词');
-await until(() => document.querySelector('.study-meaning .translation-legacy')?.textContent === '最新旧版释义', 'practice correction clears groups');
-await click('下一词'); await until(() => document.querySelector('.learning-rating button')?.disabled === false, 'current second practice');
-answerMode = 'groups'; await click('认识');
-await expectGroups('.study-meaning');
-assert.equal(document.querySelector('.study-word').textContent, 'absorb');
-await click('下一词');
-await until(() => document.querySelector('.study-word')?.textContent === 'abstract', 'second answer advances on manual next');
-await click('上一词'); await expectGroups('.study-meaning');
-answerMode = 'missing'; await click('记错了'); await click('改为不认识');
-await until(() => document.querySelector('.meaning-placeholder')?.textContent.includes('释义暂未返回'), 'missing corrected response stays on current word');
-await click('下一词');
-await until(() => document.querySelector('.study-word')?.textContent === 'abstract' && document.querySelector('.learning-rating button')?.disabled === false, 'manual next after missing correction');
-await click('上一词');
-await until(() => document.querySelector('.meaning-placeholder')?.textContent.includes('释义暂未返回'), 'no stale definition in practice history');
-await click('下一词');
-await router.push('/learning'); await until(() => document.querySelector('.batch-card'), 'leave practice');
-await router.push(`/study/${batch.batchId}`); await until(() => document.querySelector('.study-word')?.textContent === 'abstract', 'GET practice restore');
+await until(() => document.querySelector('.study-meaning .translation-legacy')?.textContent === '最新旧版释义', 'practice correction replaces groups');
+assert.equal(document.querySelector('.study-meaning .translation-group'), null);
+await click('下一词'); await until(() => document.querySelector('.study-word')?.textContent === 'absorb' && document.querySelector('.answer-button')?.disabled === false, 'live practice restored');
 assert.equal(document.querySelector('.study-meaning'), null);
-answerMode = 'empty'; await click('认识');
-await until(() => document.querySelector('.study-meaning .translation-empty')?.textContent === '暂无释义', 'explicit empty terminal answer');
-await click('完成本轮'); await expectGroups('.result-row');
-console.log('PASS saved answer waits for manual next, readonly previous/forward, stable retries, latest correction, null fields and empty groups');
-
-// All three feedback choices reveal their saved answer and wait for an explicit keyboard next.
-const manualBatch = await api.create({ bookId: 1, selectionType: 'MANUAL', wordIds: [1001, 1002, 1003] });
-await router.push(`/study/${manualBatch.batchId}`);
-answerMode = 'groups';
-for (const [index, key] of ['1', '2', '3'].entries()) {
-  await until(() => document.querySelector('.answer-button')?.disabled === false, `manual choice ${key} ready`);
-  const encounter = document.querySelector('.learning-card').dataset.wordKey;
-  const count = writes.length;
-  document.body.dispatchEvent(new window.KeyboardEvent('keydown', { key, bubbles: true }));
-  await expectGroups('.study-meaning');
-  assert.equal(document.querySelector('.learning-card').dataset.wordKey, encounter, `choice ${key} does not advance`);
-  assert.equal((await api.progress(manualBatch.batchId)).answeredCount, index + 1);
-  assert.equal(writes.length, count + 1);
-  const nextButton = button(index === 2 ? '完成本轮' : '下一词');
-  await until(() => nextButton.disabled === false, 'manual next enabled');
-  document.querySelector('.answer-button').focus();
-  document.querySelector('.answer-button').dispatchEvent(new window.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
-  if (index < 2) {
-    await until(() => document.querySelector('.learning-card')?.dataset.wordKey !== encounter && document.querySelector('.answer-button')?.disabled === false, 'arrow next works with focus on rating button');
-    assert.equal(document.querySelector('.study-meaning'), null);
-  } else await until(() => document.querySelector('.result-stats'), 'arrow completes final answer');
-  assert.equal(writes.length, count + 1, 'next never submits a second answer');
-}
-console.log('PASS all three choices reveal before keyboard next, including focused rating controls');
-
-// Correction is an explicit choice, not a second normal answer or an immediate downgrade.
-const correctionBatch = await api.create({ bookId: 1, selectionType: 'MANUAL', wordIds: [1001, 1002] });
-async function press(key, target = document.body) {
-  target.dispatchEvent(new window.KeyboardEvent('keydown', { key, bubbles: true }));
-  await nextTick();
-}
-for (const source of ['daily', 'practice']) {
-  const batchId = source === 'daily' ? daily.batchId : correctionBatch.batchId;
-  await router.push(source === 'daily' ? `/learn/${batchId}` : `/study/${batchId}`);
-  const readProgress = () => source === 'daily' ? dailyApi.task(batchId) : api.progress(batchId);
-  const countAnswers = value => source === 'daily' ? value.answerCount : value.answeredCount;
-  for (const result of [2, 3]) {
-    await until(() => document.querySelector('.learning-rating button')?.disabled === false, `${source} correction fixture ready`);
-    const beforeAnswer = writes.length;
-    await press('r');
-    assert.equal(document.querySelector('.learning-correction-choices'), null, 'R cannot correct an unanswered word');
-    assert.equal(writes.length, beforeAnswer);
-    await press('3');
-    await until(() => button('记错了')?.disabled === false, `${source} known answer saved`);
-    const encounter = document.querySelector('.learning-card').dataset.wordKey;
-    const normalBody = JSON.parse(writes.at(-1).body);
-    const answered = countAnswers(await readProgress());
-    const itemId = Number(encounter.split(':')[1]);
-    const originalLogId = source === 'daily' ? (await dailyApi.item(batchId, itemId)).correctableLogId : undefined;
-    const beforeCorrection = writes.length;
-    await press('R');
-    assert.ok(document.querySelector('.learning-correction-choices'));
-    assert.equal(writes.length, beforeCorrection, 'opening correction never submits');
-    await press('Escape');
-    assert.equal(document.querySelector('.learning-correction-choices'), null);
-    assert.equal(writes.length, beforeCorrection, 'cancel never submits');
-    const trigger = button('记错了'); trigger.focus();
-    await press('r', trigger);
-    assert.ok(document.querySelector('.learning-correction-choices'));
-    loseAnswer = result === 2;
-    if (result === 2) {
-      await press('2', trigger);
-      await until(() => document.querySelector('.learning-error')?.textContent.includes('请求超时'), `${source} correction outcome unknown`);
-      assert.equal(button('下一词')?.disabled ?? button('完成本轮')?.disabled, true);
-      await press('1'); await press('r');
-      assert.equal(writes.length, beforeCorrection + 1, 'pending correction cannot change its result');
-      await click('重试原请求');
-      await until(() => document.querySelector('.recall-uncertain')?.getAttribute('aria-pressed') === 'true', `${source} uncertain correction retried`);
-      assert.equal(writes.at(-1).body, writes.at(-2).body, 'correction retry retains result and requestId');
-    } else {
-      // Mouse selection shares the same choice logic as the numeric shortcuts.
-      await click('改为不认识');
-      await until(() => document.querySelector('.recall-forgot')?.getAttribute('aria-pressed') === 'true', `${source} unknown correction saved`);
-    }
-    const correctionBody = JSON.parse(writes.at(-1).body);
-    assert.equal(correctionBody.result, result);
-    assert.notEqual(correctionBody.requestId, normalBody.requestId);
-    if (source === 'daily') {
-      assert.equal(correctionBody.logId, originalLogId, 'daily correction references the original ANSWER');
-      assert.ok(writes.at(-1).url.endsWith('/correction'));
-    }
-    assert.equal(countAnswers(await readProgress()), answered, 'correction does not count as a normal answer');
-    assert.equal(document.querySelector('.learning-card').dataset.wordKey, encounter, 'correction waits for manual next');
-    await expectGroups(source === 'daily' ? '.memory-meaning' : '.study-meaning');
-    if (result === 2) {
-      await click('下一词');
-      await until(() => document.querySelector('.learning-card')?.dataset.wordKey !== encounter && document.querySelector('.learning-rating button')?.disabled === false, 'manual next after correction');
-      assert.equal(document.querySelector('.learning-correction-choices'), null, 'next word resets correction mode');
-    }
-  }
-}
-console.log('PASS DAILY/PRACTICE correction choices: R, 1/2, Escape, mouse, stable retry, original log and unchanged answer counts');
-const leaveBatch = await api.create({ bookId: 1, selectionType: 'MANUAL', wordIds: [1001, 1002] });
-await router.push(`/study/${leaveBatch.batchId}`);
-await until(() => document.querySelector('.answer-button')?.disabled === false, 'leave-during-save fixture');
-const beforeLeaveAdapter = http.defaults.adapter;
-let releaseSave;
-let waiting = false;
-const queueReadsAfterLeave = [];
-http.defaults.adapter = async config => {
-  if (config.url.endsWith('/answer')) {
-    const result = await beforeLeaveAdapter(config);
-    waiting = true;
-    await new Promise(resolve => { releaseSave = resolve; });
-    return result;
-  }
-  if (waiting && config.url.includes(`/learning-batches/${leaveBatch.batchId}/items/`)) queueReadsAfterLeave.push(config.url);
-  return beforeLeaveAdapter(config);
-};
-await click('认识');
-await until(() => waiting && releaseSave, 'save response delayed after commit');
-await router.push('/books'); await until(() => document.querySelector('.library-grid'), 'left learning before response');
-releaseSave();
-await until(() => !document.querySelector('.study-word'), 'old study unmounted');
-assert.equal((await api.progress(leaveBatch.batchId)).answeredCount, 1);
-assert.equal(router.currentRoute.value.path, '/books');
-assert.equal(queueReadsAfterLeave.length, 0, 'an unmounted save never auto-advances or hijacks navigation');
-http.defaults.adapter = beforeLeaveAdapter;
-app.unmount();
-await window.happyDOM.close();
+answerMode = 'groups'; await click('认识'); await until(() => document.querySelector('.study-word')?.textContent === 'abstract', 'practice advances');
+await click('上一词'); await expectGroups('.study-meaning');
+answerMode = 'empty'; await click('记错了'); await click('改为不认识');
+await until(() => document.querySelector('.study-meaning .translation-empty')?.textContent === '暂无释义', 'explicit empty correction');
+assert.equal(document.querySelector('.study-meaning .translation-legacy'), null);
+assert.equal((await api.progress(batch.batchId)).answeredCount, 2);
+console.log('PASS recognition practice group reveal, raw retry identity, automatic next, readonly history and replacement/empty correction');
+app.unmount(); await window.happyDOM.close();

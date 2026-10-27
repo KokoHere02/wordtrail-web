@@ -1,0 +1,73 @@
+独立跟拼接入与验证记录（第 36 节）
+日期：2026-10-27
+
+本记录取代此前验证记录中“跟拼共用每日任务、抵扣每日目标”的描述。
+已完整阅读后端接口文档第 36 节，并参考第 33 节的发音协议。
+
+界面更新：跟拼归入同一个“单词练习”标签，通过共用“练习设置”选择拼读、默写、听音默写或跟拼；不再提供单独的跟拼标签。
+各方式共用工具栏、进度区和单词展示区域，移除跟拼独立卡片外框及重复的进度栏。
+跟拼使用 /learn?mode=follow&followBatchId=轮次ID，旧 /follow-typing 链接兼容跳转。
+右上角可分别遮蔽英文、中文与音标，偏好刷新后保留；遮蔽英文时也隐藏音标和目标长度。
+遮蔽仅影响本地显示，不发送 REVEAL 或修改练习统计。切换练习方式保留各自任务与草稿，并停止隐藏区域音频。
+
+实现
+1. 每日方式仅保留认识、默写、听音默写；学习页与今日页新增独立跟拼入口。
+2. 进入跟拼先查询进行中轮次，无轮次才创建。申请词数默认 20，可选 10～20；实际词数使用 totalCount，选词与限制由后端决定。
+3. URL 保留 batchId，刷新与跨日恢复服务器进度。创建、作答的未确认请求在发送前保存，重试保持原 requestId 和完整请求内容。
+4. 跟拼只提交 ANSWER 与原始输入。每次作答后 next 获取新展示；错误可继续输入，无本地失败上限；next=null 后读取进度并结束，不自动创建新轮次。
+5. 提供英文、音标、释义、鉴权 Blob 发音、词单分页、作答历史、历史轮次和放弃功能。音频切题及卸载停止并释放资源。
+6. 完成页显示“本轮跟拼完成”。日期统计读取独立 statistics，使用 answerCount、correctCount、inputAccuracy、practicedWordCount、completedWordCount；本轮输入次数使用 trainingCount。
+7. 跟拼不调用每日作答、自评、更正、复习调度或错因写入；保留既有真实错因与历史记录。旧每日跟拼只读，用户明确切换允许的每日方式后继续原任务。
+
+本次主要新增文件
+src/api/followTyping.ts
+src/composables/useFollowTyping.ts
+src/views/learning/FollowTypingView.vue
+src/components/learning/FollowTypingStatistics.vue
+playwright.follow.config.ts
+tests/e2e/follow-typing.spec.ts
+
+主要调整文件
+src/composables/useDailyTraining.ts
+src/api/dailyTraining.ts
+src/types/dailyTraining.ts
+src/components/learning/WordPracticeToolbar.vue
+src/components/learning/TrainingItems.vue
+src/components/learning/TrainingHistory.vue
+src/views/learning/StudyWorkspaceView.vue
+src/views/learning/ConsolidationBatchView.vue
+src/views/live/DailyView.vue
+src/views/live/TodayView.vue
+src/views/live/SettingsView.vue
+src/composables/useAudioPlayer.ts
+src/router/index.ts
+src/layouts/AppLayout.vue
+src/styles/workspace.css
+src/stores/studyWorkspace.ts
+src/stores/studyPreferences.ts
+package.json
+tests/training-entry.ts
+tests/follow-typing-check.mjs
+tests/daily-training-check.mjs
+tests/workspace-check.mjs
+tests/e2e/workspace.spec.ts
+tests/daily-training-live.mjs
+
+验证结果
+PASS npm run build（包括 vue-tsc）
+PASS npm run test:follow-typing：创建与输入精确重试、重复点击、原始输入、新展示、连续错误无上限、刷新与跨日恢复、实际词数、独立统计、陈旧展示、计划跳过、冲突恢复、放弃、无词提示、全程 DAILY 隔离及旧任务迁移。
+PASS npm run test:follow-typing:browser：8 项 Edge 场景，包括实际刷新、丢失响应重试、Bearer Blob 音频、自动聚焦、结束与新轮次、1440/390/320 像素浅深色布局，以及单词练习内方式切换、答案遮蔽与偏好恢复、草稿保留和每日进度隔离。
+PASS npm run test:daily-training：28 项
+PASS npm run test:workspace
+PASS npm run test:workspace:browser：7 项 Edge 场景
+PASS npm run test:learning-expansion：12 项协议场景及实际 Vue 页面检查
+PASS npm run test:insights
+PASS npm run test:dictation
+PASS npm run test:translation
+PASS git diff --check
+
+验证边界
+上述自动化使用明确的测试夹具，不能代替真实后端联调。
+npm run test:daily-training:live 明确返回 NOT RUN：缺少 WORDTRAIL_LIVE_USERNAME / WORDTRAIL_LIVE_PASSWORD，未使用示例账户或模拟回退。
+尚需专用测试账号及确认已部署 013 对应新版后端，验证真实选词权重、困难词上限、冷却和重复限制、跨日持久化与统计隔离，以及在线音源。
+前端未执行 SQL、未重启后端；本地提交情况以 Git 历史为准，未推送代码。
