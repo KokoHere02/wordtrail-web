@@ -30,7 +30,7 @@ watch(() => workspace.dictationId, value => { if (value) surface.state.settings 
       </div>
       <DictationHomeView v-show="source === 'PLAN'" embedded />
       <DictationMistakesView v-if="mistakesVisited" v-show="source === 'MISTAKES'" embedded />
-      <DictationTasks resume-only />
+      <DictationTasks resume-only :active="choosing && surface.active.value" />
     </section>
     <div v-if="!choosing" class="dictation-active-actions"><button type="button" class="dictation-quiet-button" @click="surface.state.settings = true"><ListRestart :size="17" aria-hidden="true" />重新选词</button></div>
     <DictationStudyView v-if="workspace.dictationId && openedBatch === workspace.dictationId" v-show="!choosing" :key="workspace.dictationId" :requested-batch-id="workspace.dictationId" :active="!choosing" />
