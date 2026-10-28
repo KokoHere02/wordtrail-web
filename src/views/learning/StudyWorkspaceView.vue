@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { BookOpen, History, PencilLine, Settings2 } from 'lucide-vue-next';
+import { BookOpen, PencilLine, Settings2 } from 'lucide-vue-next';
 import { useStudyWorkspace } from '../../stores/studyWorkspace';
 import { useAuthStore } from '../../stores/auth';
 import type { StudyMode, StudySurfaceState } from '../../composables/useStudySurface';
@@ -86,7 +86,6 @@ function selectTab(id: 'words' | 'sentences') {
       <RouterLink to="/learn" :class="{ 'is-active': ['daily', 'follow'].includes(workspace.lane) }" :aria-current="['daily', 'follow'].includes(workspace.lane) ? 'page' : undefined"><BookOpen :size="16" :stroke-width="1.7" aria-hidden="true" /><span>每日单词</span></RouterLink>
       <RouterLink to="/dictation" :class="{ 'is-active': workspace.lane === 'independent' }" :aria-current="workspace.lane === 'independent' ? 'page' : undefined"><PencilLine :size="16" :stroke-width="1.7" aria-hidden="true" /><span>独立默写专项</span></RouterLink>
       <RouterLink to="/consolidation"><BookOpen :size="16" aria-hidden="true" /><span>错因与巩固</span></RouterLink>
-      <RouterLink to="/records/dictation"><History :size="16" :stroke-width="1.7" aria-hidden="true" /><span>专项历史</span></RouterLink>
     </nav>
     <div v-if="workspace.lane !== 'independent'" class="workspace-navigation">
       <div class="workspace-tabs" role="tablist" aria-label="学习内容"><button v-for="(entry, index) in tabs" :id="`mode-tab-${entry.id}`" :key="entry.id" role="tab" :aria-selected="activeTab === entry.id" :aria-controls="entry.id === 'sentences' ? 'mode-panel-sentences' : 'mode-panel-words'" :tabindex="activeTab === entry.id ? 0 : -1" :disabled="workspace.lane === 'daily' && dailyBlocked" @click="selectTab(entry.id)" @keydown="keyboard($event, index)">{{ entry.label }}</button></div>
@@ -102,7 +101,7 @@ function selectTab(id: 'words' | 'sentences') {
       </WordPracticeToolbar>
       <button v-else class="workspace-settings" :aria-expanded="current.settings" @click="current.settings = !current.settings"><Settings2 :size="19" />练习设置</button>
     </div>
-    <div v-if="workspace.lane !== 'independent' || (workspace.dictationId && !current.settings)" class="workspace-meta"><div class="workspace-source"><small>SOURCE</small><span>{{ current.source }}</span></div><div class="workspace-progress"><small>PROGRESS</small><div><span>{{ current.completed }} / {{ current.total || '—' }} {{ current.noun }} · 剩余 {{ current.remaining }} {{ current.noun }}</span><div class="workspace-progress-track" role="progressbar" aria-label="当前任务完成进度" :aria-valuenow="current.completed" :aria-valuemax="current.total || 1"><span :style="{ width: `${current.total ? Math.min(100, current.completed / current.total * 100) : 0}%` }" /></div></div></div></div>
+    <div v-if="workspace.lane !== 'independent' || (workspace.dictationId && !current.settings)" class="workspace-meta" :class="{ 'is-follow-meta': following }"><div v-if="!following" class="workspace-source"><small>SOURCE</small><span>{{ current.source }}</span></div><div class="workspace-progress"><small>PROGRESS</small><div><span>{{ current.completed }} / {{ current.total || '—' }} {{ current.noun }} · 剩余 {{ current.remaining }} {{ current.noun }}</span><div class="workspace-progress-track" role="progressbar" aria-label="当前任务完成进度" :aria-valuenow="current.completed" :aria-valuemax="current.total || 1"><span :style="{ width: `${current.total ? Math.min(100, current.completed / current.total * 100) : 0}%` }" /></div></div></div></div>
     <section id="mode-panel-words" v-show="activeTab === 'words' && workspace.lane !== 'independent'" role="tabpanel" tabindex="-1" aria-labelledby="mode-tab-words" class="workspace-panel">
       <div id="mode-panel-daily" v-show="workspace.lane === 'daily'"><StudyModeHost v-if="visited.has('daily')" :active="workspace.lane === 'daily'" :state="states.daily!"><UnifiedDailyView ref="dailyView" :requested-batch-id="workspace.dailyId" @mode="confirmedMode" @blocked="dailyBlocked = $event" /></StudyModeHost></div>
       <div id="mode-panel-follow" v-show="following"><StudyModeHost v-if="visited.has('follow')" :active="following" :state="states.follow!"><FollowTypingView ref="followView" :requested-batch-id="workspace.followId" @batch="workspace.followId = $event" /></StudyModeHost></div>

@@ -1,0 +1,71 @@
+每日新词/复习互相补位与持续续学对接（2026-10-28）
+
+依据与部署边界
+完整阅读本地及后端最新《接口文档.md》第 5.2 节与第 32 节。
+后端原运行服务尚未重启；本次没有将旧服务响应当成新版联调结果，没有修改数据库、执行 SQL 或重启后端。
+下列前端测试使用明确的协议快照与真实 Vue/浏览器页面；选词与补位均由后端决定，前端没有实现选词算法或正式环境模拟回退。
+
+修改文件
+src/types/daily.ts
+  TodayOverview 增加 needsMoreWords。
+src/composables/useDailyGoal.ts（新增）
+  从 source=DAILY 的统计概览读取 goal.reached、remainingCount，校验日期/批次，不用队列状态或本地加减推断达标。
+src/composables/useStartDaily.ts
+  仅显式操作调用 start；NO_DAILY_WORDS 作为正常缺词状态，重新查询今日概览。
+src/composables/useDailyTraining.ts
+  初次无词返回正常状态；完成后继续 GET 今日进度，保留同一批次、modeVersion、展示标识与精确重试协议。
+  无候选且返回原完成任务时不额外写入模式；跟拼与集中巩固保持独立。
+src/views/live/DailyView.vue
+src/views/learning/StudyWorkspaceView.vue
+  删除进入页面的自动 start；恢复仅查询当前任务/展示。
+  缺词时显示“添加单词到学习计划”，完成后依 canAddMore 提供续学，并展示服务端目标状态。
+src/views/live/TodayView.vue
+src/views/live/DailyResultView.vue
+  canAddMore、needsMoreWords 与进行中恢复分别处理，不把 COMPLETED 当作每日达标。
+  今日页面与学习详情保留目标和缺词入口，达标后仍可续学；分类数量展示后端实际 newCount/reviewCount。
+src/views/live/SettingsView.vue
+  改为“每轮优先分配/优先新词/优先复习”，解释双向及零偏好补位；保留各 0～200、合计 1～200 的配置验证。
+src/composables/useBookContents.ts
+src/views/live/WordListView.vue
+  加入计划成功后重新 GET 今日进度，提供返回每日学习入口；单纯收藏不改变计划/续学状态。
+src/styles/live.css
+  缺词和每日目标提示沿用现有主题。
+src/api/mockDaily.ts
+  仅为已有离线演示概览补全 needsMoreWords 字段；没有将真实选词/补位规则迁到前端。
+
+检查和测试文件
+新增 tests/daily-continuation-check.mjs；package.json 增加 test:daily-continuation，.gitignore 忽略其临时构建产物。
+更新 tests/e2e/follow-typing.spec.ts：改为显式开始，新增达标后累计 205 词及刷新恢复浏览器检查。
+更新 tests/learning-expansion-ui-check.mjs 中过时的“复习上限”断言。
+更新 tests/daily-training-live.mjs：真实只读审计要求 needsMoreWords 为布尔值，检查与 canAddMore 互斥及进行中状态；旧构建不能通过该检查。
+更新 docs/frontend-follow-typing-verification.txt，移除旧自动开始说明。
+
+已通过
+npm run typecheck
+npm run build
+npm run test:daily-continuation
+  进入/重进不自动开始；两处开始入口的 NO_DAILY_WORDS 正常空状态。
+  3 新词+17 复习、17 新词+3 复习、10+0 和 0+10 的零偏好补位快照展示。
+  实际仅 3 词时仍保留原目标 20/剩余 17；收藏不等于加入计划。
+  加入计划后查询服务端进度，显式续学复用 batchId；重复点击不重复发送。
+  服务端作答快照逐词推进，完成后重新查询今日进度。
+  每日目标达成、已完成 200 词仍可追加到 205/206，首页和结果页都可继续。
+  goal 字段与任务计数独立使用；累计超过 200 不放宽单轮配置上限。
+npm run test:daily-training（28 个协议场景）
+npm run test:daily（23 个原有每日流程场景）
+npm run test:workspace
+npm run test:learning-expansion（12 个协议场景及 Vue 页面检查）
+npm run test:follow-typing
+npm run test:books
+npm run test:insights
+npm run test:dictation
+npm run test:follow-typing:browser（13 个 Edge 场景）
+npm run test:workspace:browser（7 个 Edge 场景）
+本轮共 20 个浏览器场景通过。
+git diff --check
+
+尚需配合
+先将后端重启为包含最新第 5.2/32 节行为的构建，再使用真实测试账号联调。
+真实选词补位、候选排除、并发追加的服务端保证及数据库持久化，需要在新版服务上验证；本次前端夹具回归不替代这些验证。
+没有重新开发独立学习流程，没有把词本收藏视作加入计划，没有新增全天累计 200 词限制。
+保留之前未提交的界面改动，没有创建 Git 提交，未提交或清理 .md/.png。

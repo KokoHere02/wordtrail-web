@@ -141,7 +141,7 @@ export function mockDaily(account: string, url: string, method: string, body: Re
     const p = pools(); const fixture = state.tasks.find(t => t.task.learningDate === date());
     const task = fixture?.task || null;
     const unassignedCount = unassigned(fixture).length;
-    return respond({ learningDate: date(), dailyTarget: task?.dailyTarget ?? state.dailyTarget ?? 20, activeCount: p.active.length, dueCount: p.due.length, newCount: p.fresh.length, unassignedCount, canAddMore: task?.status === 'COMPLETED' && unassignedCount > 0, task });
+    return respond({ learningDate: date(), dailyTarget: task?.dailyTarget ?? state.dailyTarget ?? 20, activeCount: p.active.length, dueCount: p.due.length, newCount: p.fresh.length, unassignedCount, canAddMore: task?.status === 'COMPLETED' && unassignedCount > 0, needsMoreWords: task?.status !== 'IN_PROGRESS' && unassignedCount === 0, task });
   }
   if (url === '/learning/today/start' && method === 'post') {
     const existing = state.tasks.find(t => t.task.learningDate === date());

@@ -34,7 +34,7 @@ export interface PlanWord extends TranslationFields {
 export interface TodayOverview {
   newWordTarget: number | null; reviewLimit: number | null; reviewBacklogCount: number; overdueReviewCount: number;
   learningDate: string; dailyTarget: number; activeCount: number; dueCount: number; newCount: number;
-  unassignedCount: number; canAddMore: boolean;
+  unassignedCount: number; canAddMore: boolean; needsMoreWords: boolean;
   task: DailyTask | null;
 }
 export interface DailyTask {

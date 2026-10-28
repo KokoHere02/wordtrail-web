@@ -2,8 +2,8 @@ import { expect, test, type Page } from '@playwright/test';
 
 // Explicit HTTP route fixtures persist on the test side across real page reloads.
 async function setup(page: Page, existing = false) {
-  const daily = { batchId: 50, taskType: 'DAILY', learningDate: '2026-10-27', dailyTarget: 30, studyMode: 'RECOGNITION', modeVersion: 0, status: 'IN_PROGRESS', totalCount: 1, completedCount: 0, skippedCount: 0, answerCount: 0, unfamiliarCount: 0, newCount: 1, reviewCount: 0, nextItemId: 501, trainingCount: 0 };
-  const control = { creates: 0, nexts: 0, answers: [] as Record<string, unknown>[], day: '2026-10-27', loseAnswer: false, noWords: false, urls: [] as string[], audioAuth: false, daily };
+  const daily = { batchId: 50, taskType: 'DAILY', learningDate: '2026-10-27', dailyTarget: 30, studyMode: 'RECOGNITION', modeVersion: 0, status: 'IN_PROGRESS', totalCount: 1, completedCount: 0, skippedCount: 0, answerCount: 0, unfamiliarCount: 0, newCount: 1, reviewCount: 0, nextItemId: 501 as number | null, trainingCount: 0 };
+  const control = { creates: 0, counts: [] as number[], nexts: 0, answers: [] as Record<string, unknown>[], day: '2026-10-27', loseAnswer: false, noWords: false, urls: [] as string[], audioAuth: false, daily, dailyExists: true, dailyStarts: 0, dailyCanAddMore: false, pronunciationBodies: [] as Record<string, unknown>[], failPronunciation: false };
   const saved = new Map<string, unknown>();
   const pronunciation = { autoPlay: false, accent: 'UK', playbackRate: .75, repeatCount: 1 };
   let task = { batchId: 880, taskType: 'PRACTICE', learningDate: null, dailyTarget: 0, studyMode: 'FOLLOW_TYPING', modeVersion: 0, status: existing ? 'IN_PROGRESS' : 'NONE', totalCount: 1, followTypingTarget: 20, completedCount: 0, skippedCount: 0, answerCount: 0, unfamiliarCount: 0, newCount: 0, reviewCount: 0, nextItemId: 101 as number | null, trainingCount: 0 };
@@ -19,11 +19,19 @@ async function setup(page: Page, existing = false) {
     expect(request.headers()['authorization']).toBe('Bearer fixture-access');
     if (path === '/auth/me') return json(user);
     if (path === '/learning/settings') return json({ dailyTarget: 30, preferredStudyMode: 'RECOGNITION', newWordTarget: 10, reviewLimit: 20, pronunciation });
-    if (path === '/learning/today') return json({ learningDate: daily.learningDate, dailyTarget: 30, activeCount: 1, dueCount: 0, newCount: 1, unassignedCount: 0, canAddMore: false, task: daily });
+    if (path === '/learning/settings/pronunciation') {
+      expect(request.method()).toBe('PUT'); control.pronunciationBodies.push(body);
+      if (control.failPronunciation) return route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ code: 'SAVE_FAILED', message: '发音设置保存失败' }) });
+      Object.assign(pronunciation, body);
+      return json({ dailyTarget: 30, preferredStudyMode: 'RECOGNITION', newWordTarget: 10, reviewLimit: 20, pronunciation });
+    }
+    if (path === '/learning/today') return json({ learningDate: control.day, dailyTarget: daily.dailyTarget, activeCount: 1, dueCount: 0, newCount: 1, unassignedCount: control.dailyExists ? 0 : 1, canAddMore: control.dailyCanAddMore, needsMoreWords: false, task: control.dailyExists ? daily : null });
+    if (path === '/learning/statistics/summary') return json({ learningDate: control.day, source: 'DAILY', goal: { dailyTarget: daily.dailyTarget, completedCount: daily.completedCount, remainingCount: Math.max(0, daily.dailyTarget - daily.completedCount), reached: daily.completedCount >= daily.dailyTarget, batchId: control.dailyExists ? daily.batchId : null, taskStatus: control.dailyExists ? daily.status : null } });
+    if (path === '/learning/today/start') { expect(request.method()).toBe('POST'); control.dailyStarts++; control.dailyExists = true; return json(daily); }
     if (path === '/learning-batches/50/daily') return json(daily);
     if (path === '/learning-batches/50/daily/training/next') return json({ itemId: 501, wordId: 50, word: 'apple', mode: 'RECOGNITION', modeVersion: 0, phase: 'QUESTION', presentationId: 'daily-display', attemptNo: 1, answerRevealed: false, hintUsed: false, extraTraining: false, itemStatus: 'PENDING', completionReason: null, progress: daily });
     if (path.includes('/audio')) {
-      control.audioAuth = true; expect(url.searchParams.has('token')).toBe(false); expect(url.searchParams.get('accent')).toBe('UK');
+      control.audioAuth = true; expect(url.searchParams.has('token')).toBe(false); expect(url.searchParams.get('accent')).toBe(pronunciation.accent);
       const data = Buffer.alloc(44 + 1600), text = (offset: number, value: string) => data.write(value, offset);
       text(0, 'RIFF'); data.writeUInt32LE(data.length - 8, 4); text(8, 'WAVE'); text(12, 'fmt '); data.writeUInt32LE(16, 16); data.writeUInt16LE(1, 20); data.writeUInt16LE(1, 22); data.writeUInt32LE(8000, 24); data.writeUInt32LE(16000, 28); data.writeUInt16LE(2, 32); data.writeUInt16LE(16, 34); text(36, 'data'); data.writeUInt32LE(1600, 40);
       return route.fulfill({ status: 200, contentType: 'audio/wav', body: data });
@@ -33,7 +41,7 @@ async function setup(page: Page, existing = false) {
       if (request.method() === 'GET') return json({ page: 1, size: 20, total: task.status === 'IN_PROGRESS' ? 1 : 0, records: task.status === 'IN_PROGRESS' ? [task] : [] });
       expect(body.count).toBeGreaterThanOrEqual(10); expect(body.count).toBeLessThanOrEqual(20);
       if (control.noWords) return route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ code: 'NO_FOLLOW_TYPING_WORDS', message: '暂无可用词' }) });
-      control.creates++; task = { ...task, batchId: 879 + control.creates, status: 'IN_PROGRESS', followTypingTarget: body.count, trainingCount: 0, completedCount: 0, answerCount: 0, nextItemId: 101 }; return json(task);
+      control.creates++; control.counts.push(body.count); task = { ...task, batchId: 879 + control.creates, status: 'IN_PROGRESS', followTypingTarget: body.count, trainingCount: 0, completedCount: 0, answerCount: 0, nextItemId: 101 }; return json(task);
     }
     if (path === `/learning/follow-typing/batches/${task.batchId}`) return json(task);
     if (path.endsWith('/next')) {
@@ -66,14 +74,14 @@ test('follow survives reload/cross-day and lost save without duplicate training 
   const state = await setup(page);
   await page.goto('/follow-typing'); await expect(page.locator('#follow-typing-input')).toBeEnabled(); await expect(page).toHaveURL(/\/learn\?mode=follow&followBatchId=880$/);
   expect(state.creates).toBe(1); expect(state.urls.indexOf('GET /learning/follow-typing/batches')).toBeLessThan(state.urls.indexOf('POST /learning/follow-typing/batches'));
-  await page.locator('#follow-typing-input').fill('wrong'); await page.locator('#follow-typing-input').press('Enter'); await expect(page.locator('.follow-input-feedback.is-error')).toContainText('再试一次'); await expect(page.locator('#follow-typing-input')).toBeFocused(); await expect(page.locator('#follow-typing-input')).toHaveValue('wrong');
-  state.day = '2026-10-28'; await page.reload(); await expect(page.locator('#follow-typing-input')).toBeEnabled(); expect(state.creates).toBe(1); await expect(page.locator('.workspace-meta')).toContainText('本轮输入 1 次');
+  await page.locator('#follow-typing-input').fill('wrong'); await page.locator('#follow-typing-input').press('Enter'); await expect(page.locator('.follow-input-feedback.is-error')).toContainText('拼写错误'); await expect(page.locator('#follow-typing-input')).toBeFocused(); await expect(page.locator('#follow-typing-input')).toHaveValue('wrong');
+  state.day = '2026-10-28'; await page.reload(); await expect(page.locator('#follow-typing-input')).toBeEnabled(); expect(state.creates).toBe(1); expect(state.answers).toHaveLength(1); await expect(page.locator('.workspace-meta')).not.toContainText('本轮输入');
   await page.getByRole('button', { name: '朗读单词', exact: true }).click(); await expect.poll(() => state.audioAuth).toBe(true);
   state.loseAnswer = true; await page.locator('#follow-typing-input').fill(' incomprehensibilities '); await page.locator('#follow-typing-input').press('Enter'); await expect(page.getByRole('button', { name: '重试原输入请求', exact: true })).toBeEnabled(); const body = state.answers.at(-1);
   await page.reload(); await expect(page.getByRole('button', { name: '重试原输入请求', exact: true })).toBeEnabled(); await page.getByRole('button', { name: '重试原输入请求', exact: true }).click(); await expect(page.getByRole('heading', { name: '本轮跟拼完成', exact: true })).toBeVisible();
   expect(state.answers.at(-1)).toEqual(body); expect(state.creates).toBe(1); await expect(page.locator('.follow-completion')).toContainText('输入 2 次'); await page.getByRole('button', { name: '学习统计', exact: true }).click(); await expect(page.locator('.follow-date-statistics')).toContainText('50.0%');
   expect(state.urls.every(url => !/\/daily|\/learning\/today|correction|weak-words|consolidation/.test(url))).toBe(true);
-  await page.getByRole('combobox', { name: /下一轮词数/ }).click(); await page.getByRole('option', { name: '10 词', exact: true }).click(); await page.getByRole('button', { name: '开始新一轮', exact: true }).click(); await expect(page).toHaveURL(/\/learn\?mode=follow&followBatchId=881$/); await expect(page.locator('.workspace-meta')).toContainText('申请 10 词');
+  await page.getByRole('combobox', { name: /下一轮词数/ }).click(); await page.getByRole('option', { name: '10 词', exact: true }).click(); await page.getByRole('button', { name: '开始新一轮', exact: true }).click(); await expect(page).toHaveURL(/\/learn\?mode=follow&followBatchId=881$/); expect(state.counts.at(-1)).toBe(10);
   await page.getByRole('button', { name: '练习设置', exact: true }).click(); await page.getByRole('button', { name: '放弃本轮', exact: true }).click(); await page.getByRole('dialog', { name: '放弃本轮跟拼？', exact: true }).getByRole('button', { name: '放弃本轮', exact: true }).click(); await expect(page.getByRole('heading', { name: '本轮已放弃', exact: true })).toBeVisible(); state.noWords = true;
   await page.getByRole('button', { name: '开始新一轮', exact: true }).click(); await expect(page.locator('.learning-error')).toContainText('冷却'); expect(state.creates).toBe(2);
 });
@@ -82,24 +90,17 @@ for (const width of [1440, 390, 320]) for (const theme of ['light', 'dark']) {
     await page.setViewportSize({ width, height: 900 }); await page.addInitScript(value => localStorage.setItem('wordtrail.theme', value), theme);
     const state = await setup(page, true); await page.goto('/follow-typing'); await expect(page.locator('#follow-typing-input')).toBeFocused(); expect(state.creates).toBe(0);
     await expect(page.locator('.follow-exercise .learning-word')).toHaveText('incomprehensibilities'); await expect(page.locator('.follow-pronunciation')).toContainText('/'); await expect(page.locator('.word-meaning')).toContainText('难以理解');
-    await expect(page.locator('.workspace-meta')).toContainText('实际 1 词（申请 20 词）'); expect(await page.locator('html').evaluate(node => node.scrollWidth <= innerWidth)).toBe(true);
-    await expect(page.getByRole('button', { name: '完成跟拼', exact: true })).toBeInViewport();
+    await expect(page.locator('.workspace-progress-track')).toHaveAttribute('aria-valuemax', '1'); await expect(page.locator('.workspace-meta .workspace-source')).toHaveCount(0); expect(await page.locator('html').evaluate(node => node.scrollWidth <= innerWidth)).toBe(true);
+    await expect(page.locator('#mode-panel-follow').getByRole('button', { name: '提交 Enter', exact: true })).toBeVisible();
+    await expect(page.locator('#mode-panel-follow .letter-input-label')).toContainText(`${'incomprehensibilities'.length} 个位置`);
     await expect(page.locator('#follow-detail-panel')).toHaveCount(0);
     await page.locator('#follow-typing-input').fill('draft'); await page.screenshot({ path: `test-results/follow-${theme}-${width}.png`, fullPage: true });
-    if (width < 680) {
-      await page.getByRole('button', { name: '展开释义', exact: true }).click(); await expect(page.getByRole('button', { name: '收起释义', exact: true })).toHaveAttribute('aria-expanded', 'true');
-      await page.getByRole('button', { name: '收起释义', exact: true }).click(); await expect(page.locator('#follow-typing-input')).toHaveValue('draft');
-    } else {
-      await expect(page.getByRole('button', { name: '展开释义', exact: true })).toHaveCount(0);
-    }
     await page.getByRole('button', { name: '学习统计', exact: true }).click(); await expect(page.getByRole('region', { name: '独立跟拼日期统计', exact: true })).toBeVisible();
     await page.getByRole('button', { name: '收起练习详情', exact: true }).click(); await expect(page.getByRole('button', { name: '学习统计', exact: true })).toBeFocused();
     await page.locator('#follow-typing-input').focus();
     const inputBefore = await page.locator('#follow-typing-input').boundingBox();
-    const submitBefore = await page.getByRole('button', { name: '完成跟拼', exact: true }).boundingBox();
-    await page.locator('#follow-typing-input').press('Enter'); await expect(page.locator('.follow-input-feedback.is-error')).toContainText('再试一次');
+    await page.locator('#follow-typing-input').press('Enter'); await expect(page.locator('.follow-input-feedback.is-error')).toContainText('拼写错误');
     const inputAfter = await page.locator('#follow-typing-input').boundingBox(); expect(inputAfter!.y).toBeCloseTo(inputBefore!.y, 0); await expect(page.locator('#follow-typing-input')).toBeFocused();
-    const submitAfter = await page.getByRole('button', { name: '完成跟拼', exact: true }).boundingBox(); expect(submitAfter!.y).toBeCloseTo(submitBefore!.y, 0);
     await page.locator('#follow-typing-input').press('Alt+p'); await expect.poll(() => state.audioAuth).toBe(true);
     await page.getByRole('button', { name: '练习设置', exact: true }).click(); await expect(page.getByRole('region', { name: '练习设置面板', exact: true })).toBeVisible(); await page.getByRole('button', { name: '关闭练习设置', exact: true }).click(); await page.locator('#follow-typing-input').focus();
     await page.locator('#follow-typing-input').fill('incomprehensibilities'); await page.locator('#follow-typing-input').press('Enter'); await expect(page.getByRole('heading', { name: '本轮跟拼完成', exact: true })).toBeVisible();
@@ -126,7 +127,7 @@ test('one word tab switches practice modes and preserves masks, drafts and daily
   await expect(panel.locator('.learning-word')).toHaveCount(0);
   await expect(panel.locator('.word-meaning')).toHaveCount(0);
   await expect(panel.locator('.follow-pronunciation [lang=en]')).toHaveCount(0);
-  await expect(panel.locator('.letter-slot')).toHaveCount(6);
+  await expect(panel.locator('.letter-slot')).toHaveCount('incomprehensibilities'.length);
   await expect(page.locator('#follow-typing-input')).toHaveValue('draft');
   expect(state.urls.length).toBe(callsBeforeMask);
   expect(state.answers).toHaveLength(0);
@@ -141,7 +142,7 @@ test('one word tab switches practice modes and preserves masks, drafts and daily
   await page.getByRole('button', { name: '朗读单词', exact: true }).click();
   await expect.poll(() => state.audioAuth).toBe(true);
   await chooseMode(page, '单词拼读');
-  await expect(page.locator('.daily-training-card')).toBeVisible();
+  await expect(page.locator('#mode-panel-daily .daily-training-card')).toBeVisible();
   await expect.poll(() => page.evaluate(() => { const audio = Reflect.get(window, '__followAudio') as HTMLAudioElement | undefined; return !audio || audio.paused; })).toBe(true);
   await expect(page.locator('#follow-typing-input')).toBeDisabled();
   await chooseMode(page, '跟拼');
@@ -158,5 +159,97 @@ test('one word tab switches practice modes and preserves masks, drafts and daily
   expect(state.daily.completedCount).toBe(0); expect(state.daily.trainingCount).toBe(0); expect(state.creates).toBe(0);
   expect(state.urls.filter(url => /learning-batches\/50/.test(url)).every(url => url.startsWith('GET ') || url.endsWith('/training/next'))).toBe(true);
   await chooseMode(page, '单词拼读');
+  await expect(page.locator('#mode-panel-daily .daily-training-card .learning-word')).toHaveText('apple');
+});
+
+test('daily entry and reload are read-only; explicit start reuses the task on reload and mode return', async ({ page }) => {
+  const state = await setup(page);
+  state.dailyExists = false;
+  await page.goto('/learn');
+  await expect(page.getByRole('button', { name: '开始今日学习', exact: true })).toBeVisible();
+  expect(state.dailyStarts).toBe(0);
+  await page.reload();
+  await expect(page.getByRole('button', { name: '开始今日学习', exact: true })).toBeVisible();
+  expect(state.dailyStarts).toBe(0);
+  await page.getByRole('button', { name: '开始今日学习', exact: true }).click();
+  await expect(page.locator('#mode-panel-daily .daily-training-card .learning-word')).toHaveText('apple');
+  await expect(page.getByRole('button', { name: '开始今日学习', exact: true })).toHaveCount(0);
+  expect(state.dailyStarts).toBe(1);
+  await page.reload();
+  await expect(page.locator('#mode-panel-daily .daily-training-card')).toBeVisible();
+  expect(state.dailyStarts).toBe(1);
+  await chooseMode(page, '跟拼');
+  await expect(page.locator('#follow-typing-input')).toBeFocused();
+  await chooseMode(page, '单词拼读');
+  await expect(page.locator('#mode-panel-daily .daily-training-card .learning-word')).toHaveText('apple');
+  expect(state.dailyStarts).toBe(1);
+  expect(state.daily.completedCount).toBe(0);
+});
+
+test('entering a finished daily batch never auto-appends another word group', async ({ page }) => {
+  const state = await setup(page);
+  state.daily.status = 'COMPLETED'; state.daily.completedCount = 1; state.daily.nextItemId = null;
+  state.dailyCanAddMore = true;
+  await page.goto('/learn');
+  await expect(page.getByRole('heading', { name: '本组训练已结束', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '继续学习', exact: true })).toBeVisible();
+  expect(state.dailyStarts).toBe(0);
+});
+
+test('an achieved daily goal still permits explicit continuation beyond 200; reload only restores', async ({ page }) => {
+  const state = await setup(page);
+  Object.assign(state.daily, { dailyTarget: 20, status: 'COMPLETED', totalCount: 200, completedCount: 200, newCount: 3, reviewCount: 197, nextItemId: null });
+  state.dailyCanAddMore = true;
+  await page.goto('/learn');
+  await expect(page.locator('.learning-empty .daily-goal-status')).toHaveText('每日目标已达成');
+  await expect(page.getByRole('button', { name: '继续学习', exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('button', { name: '继续学习', exact: true })).toBeVisible();
+  expect(state.dailyStarts).toBe(0);
+  await page.route('**/api/learning/today/start', async route => {
+    expect(route.request().method()).toBe('POST'); state.dailyStarts++;
+    Object.assign(state.daily, { status: 'IN_PROGRESS', totalCount: 205, reviewCount: 202, nextItemId: 501 });
+    state.dailyCanAddMore = false;
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ code: 'OK', data: state.daily }) });
+  });
+  await page.getByRole('button', { name: '继续学习', exact: true }).click();
   await expect(page.locator('.daily-training-card .learning-word')).toHaveText('apple');
+  await expect(page.locator('.workspace-progress')).toContainText('200 / 205');
+  await page.reload();
+  await expect(page.locator('.daily-training-card .learning-word')).toHaveText('apple');
+  expect(state.dailyStarts).toBe(1); expect(state.daily.batchId).toBe(50); expect(state.daily.dailyTarget).toBe(20);
+});
+
+test('history and failed daily reads never trigger automatic task creation', async ({ page }) => {
+  const state = await setup(page);
+  state.day = '2026-10-28';
+  await page.goto('/learn/50');
+  await expect(page.getByRole('heading', { name: '历史任务仅供回顾', exact: true })).toBeVisible();
+  expect(state.dailyStarts).toBe(0);
+  await page.route('**/api/learning/today', route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ code: 'UNAVAILABLE', message: '测试服务暂不可用' }) }));
+  await page.goto('/learn');
+  await expect(page.locator('.learning-error')).toContainText('测试服务暂不可用');
+  expect(state.dailyStarts).toBe(0);
+});
+
+test('inline accent selection saves existing playback preferences and recovers after failed save', async ({ page }) => {
+  const state = await setup(page, true);
+  await page.goto('/learn?mode=follow');
+  await expect(page.locator('#follow-typing-input')).toBeEnabled();
+  await page.locator('#follow-typing-input').fill('draft');
+  await page.getByRole('button', { name: '美式发音', exact: true }).click();
+  await expect(page.getByRole('button', { name: '美式发音', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  expect(state.pronunciationBodies[0]).toEqual({ autoPlay: false, accent: 'US', playbackRate: .75, repeatCount: 1 });
+  await page.getByRole('button', { name: '朗读单词', exact: true }).click();
+  await expect.poll(() => state.audioAuth).toBe(true);
+  state.failPronunciation = true;
+  await page.getByRole('button', { name: '英式发音', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('发音设置保存失败');
+  await expect(page.getByRole('button', { name: '美式发音', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  state.failPronunciation = false;
+  await page.getByRole('button', { name: '英式发音', exact: true }).click();
+  await expect(page.getByRole('button', { name: '英式发音', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  expect(state.pronunciationBodies.at(-1)).toEqual({ autoPlay: false, accent: 'UK', playbackRate: .75, repeatCount: 1 });
+  await expect(page.locator('#follow-typing-input')).toHaveValue('draft');
+  expect(state.answers).toHaveLength(0); expect(state.dailyStarts).toBe(0);
 });

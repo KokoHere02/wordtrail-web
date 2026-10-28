@@ -127,8 +127,14 @@ for (const width of [1440, 390, 320]) for (const theme of ['dark', 'light']) {
     });
     await expect(page.locator('#daily-training-input')).toBeEnabled();
     await expect(page.locator('#daily-training-input')).toBeFocused();
+    await expect(page.getByText('回想拼写，输入你记得的单词', { exact: true })).toHaveCount(0);
     await expect(page.locator('.daily-training-card .letter-slot')).toHaveCount(1);
     await expect(page.getByRole('tab')).toHaveCount(2);
+    await expect(page.locator('.workspace-items')).toHaveCount(0);
+    await expect(page.getByRole('link', { name: '专项历史', exact: true })).toHaveCount(0);
+    const meaningTool = await page.getByRole('button', { name: '显示中文释义', exact: true }).boundingBox();
+    const accentTool = await page.getByRole('button', { name: '英式发音', exact: true }).boundingBox();
+    expect(accentTool!.y).toBeCloseTo(meaningTool!.y, 0);
     await expect(page.getByRole('tab', { name: '跟拼练习', exact: true })).toHaveCount(0);
     await expect(page.getByRole('tab', { name: '单词练习', exact: true })).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByRole('button', { name: '朗读单词', exact: true })).toBeDisabled();
@@ -156,8 +162,9 @@ for (const width of [1440, 390, 320]) for (const theme of ['dark', 'light']) {
     await expect(page.locator('.daily-word-phonetic')).toBeVisible();
     await page.getByRole('button', { name: '朗读单词', exact: true }).click();
     await expect.poll(() => page.evaluate(() => Reflect.get(window, '__studyAudioRequests').at(-1))).toContain('accent=US');
+    await page.getByRole('button', { name: '英式发音', exact: true }).click();
+    await expect(page.getByRole('button', { name: '英式发音', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await page.getByRole('button', { name: '练习设置', exact: true }).click();
-    await page.getByRole('combobox', { name: '发音口音' }).selectOption('UK');
     await page.getByRole('checkbox', { name: '自动播放', exact: true }).check();
     await page.getByRole('button', { name: '保存发音设置', exact: true }).click();
     await expect.poll(() => page.evaluate(() => Reflect.get(window, '__studyAudioRequests').at(-1))).toContain('accent=UK');

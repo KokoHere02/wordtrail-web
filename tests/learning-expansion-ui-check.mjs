@@ -115,7 +115,7 @@ await click('下载个人学习数据 ZIP');
 await until(() => calls.filter(c => c.url === '/me/learning-data/export').length === exportCount + 1, 'export request');
 await router.push('/today'); await until(() => document.querySelector('.daily-equation'), 'snapshot home');
 releaseExport(); await delay(20); assert.equal(downloads, 1, 'leaving settings cancels late downloads');
-assert.match(document.querySelector('.today-hero').textContent, /新词 5 · 复习上限 10/); assert.match(document.querySelector('.today-hero').textContent, /25 词 · 逾期复习：9 词/); assert.equal(daily.newWordTarget, 5);
+assert.match(document.querySelector('.today-hero').textContent, /新词 5 · 复习 10/); assert.match(document.querySelector('.today-hero').textContent, /25 词 · 逾期复习：9 词/); assert.equal(daily.newWordTarget, 5);
 app.unmount(); URL.createObjectURL = originalCreate; await window.happyDOM.close();
 console.log('PASS mounted Vue: four real issue reasons, pagination, recent input, deduplicated selection, exact lost-create retry');
 console.log('PASS mounted Vue: shared PRACTICE isolation, listening answer/length masking, assisted refresh without repeat REVEAL');

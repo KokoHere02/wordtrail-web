@@ -8,8 +8,20 @@ globalThis.requestAnimationFrame = window.requestAnimationFrame.bind(window); gl
 window.document.body.innerHTML = '<div id="app"></div>';
 const { default: vue } = await import('@vitejs/plugin-vue');
 await build({ configFile: false, plugins: [vue()], mode: 'mock', define: { 'import.meta.env.VITE_UI_PREVIEW': '"false"' }, logLevel: 'warn', build: { target: 'es2022', outDir: '.qa-sentences-dist', emptyOutDir: true, minify: false, lib: { entry: 'tests/sentences-entry.ts', formats: ['es'], fileName: 'ui' }, rolldownOptions: { external: ['vue', 'vue-router', 'pinia', 'axios', 'lucide-vue-next'] } } });
-const { router, http, app } = await import('../.qa-sentences-dist/ui.js');
+const { router, http, app, TrainingItems, useStudyWorkspace } = await import('../.qa-sentences-dist/ui.js');
+const { createApp } = await import('vue');
 const document = window.document, calls = [], attempts = [];
+// The daily page no longer exposes the list. Keep shared item component coverage in isolation.
+let itemApp, itemMount;
+function unmountItems() { itemApp?.unmount(); itemMount?.remove(); itemApp = undefined; }
+function mountItems(allowExtra = false) {
+  unmountItems(); itemMount = document.createElement('div'); document.body.append(itemMount);
+  itemApp = createApp(TrainingItems, { batchId: 50, allowExtra, onExtra: async itemId => {
+    useStudyWorkspace().extraDailyItemId = itemId;
+    await router.push('/today'); await router.push('/learn/50');
+  } }); itemApp.mount(itemMount);
+}
+
 const clone = value => JSON.parse(JSON.stringify(value));
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function until(test, label) { const end = Date.now() + 6000; while (!test()) { if (Date.now() > end) throw new Error(`Timeout ${label}\n${document.body.textContent}`); await delay(10); } }
@@ -136,9 +148,9 @@ await until(() => document.querySelector('.daily-training-feedback')?.textConten
 assert.match(document.querySelector('.workspace-progress').textContent, /1 \/ 1/); await click('查看完成状态 →');
 await until(() => document.querySelector('.learning-empty')?.textContent.includes('本组训练已结束'), 'shared completion');
 assert.ok(button('继续学习'), 'fresh server canAddMore is available without another start POST');
-document.querySelector('.workspace-items').open = true; document.querySelector('.workspace-items').dispatchEvent(new window.Event('toggle'));
+assert.equal(document.querySelector('.workspace-items'), null, 'daily word practice hides the item list'); mountItems(true);
 await until(() => button('追加训练此词'), 'completed words from server'); await click('追加训练此词');
-await until(() => document.querySelector('.daily-training-card'), 'extra presentation'); await tab('dictation'); input('#daily-training-input', 'apple'); key('Enter', '#daily-training-input');
+await until(() => document.querySelector('.daily-training-card'), 'extra presentation'); unmountItems(); await tab('dictation'); input('#daily-training-input', 'apple'); key('Enter', '#daily-training-input');
 await until(() => document.querySelector('.daily-training-feedback')?.textContent.includes('追加训练 · 原词项辅助完成'), 'extra dictation preserves original completion reason');
 assert.match(document.querySelector('.workspace-progress').textContent, /1 \/ 1/); assert.equal(attempts[0].extraTraining, true);
 await tab('sentences'); await until(() => document.querySelector('a[href="/sentences/sessions/650"]'), 'sentence resume'); document.querySelector('a[href="/sentences/sessions/650"]').click();
@@ -156,7 +168,7 @@ await router.push('/today'); append = true; await router.push('/learn/50'); awai
 assert.equal(calls.filter(c => c.url.endsWith('/today/start')).length, 0);
 listCase = true; await router.push('/today'); await router.push('/learn/50');
 await until(() => document.querySelector('.daily-training-card'), 'list task');
-document.querySelector('.workspace-items').open = true; document.querySelector('.workspace-items').dispatchEvent(new window.Event('toggle'));
+assert.equal(document.querySelector('.workspace-items'), null); mountItems(true);
 await until(() => document.querySelectorAll('.training-item-row').length === 20, 'first item page');
 const itemList = document.querySelector('.training-items');
 for (const text of ['回忆完成', '跟拼完成', '辅助完成', '达到当天强化上限', '已完成', '当前队列词']) assert.ok(itemList.textContent.includes(text), text);
@@ -166,13 +178,13 @@ assert.equal(document.querySelector('[data-item-id="54"] button'), null, 'paused
 document.querySelector('.training-items button[aria-label="下一页"]').click();
 await until(() => document.querySelectorAll('.training-item-row').length === 3, 'second item page');
 assert.equal(document.querySelector('.training-item-order').textContent, '21');
-todayDate = '2026-10-26'; await router.push('/today'); const beforeHistory = calls.length; await router.push('/learn/50');
+unmountItems(); todayDate = '2026-10-26'; await router.push('/today'); const beforeHistory = calls.length; await router.push('/learn/50');
 await until(() => document.querySelector('.learning-empty')?.textContent.includes('历史任务仅供回顾'), 'historical task');
-document.querySelector('.workspace-items').open = true; document.querySelector('.workspace-items').dispatchEvent(new window.Event('toggle'));
+assert.equal(document.querySelector('.workspace-items'), null); mountItems(false);
 await until(() => document.querySelectorAll('.training-item-row').length > 0, 'historical items');
 assert.equal(document.querySelectorAll('.training-items button.muted-link').length, 0, 'historical rows have no extra buttons');
 assert.ok(!calls.slice(beforeHistory).some(call => call.url.endsWith('/training/next')), 'historical reads do not create a presentation');
-todayDate = '2026-10-25';
+unmountItems(); todayDate = '2026-10-25';
 await router.push('/statistics'); await until(() => document.querySelector('.training-mode-statistics'), 'training statistics'); assert.match(document.querySelector('.training-statistics').textContent, /输入正确率/);
 console.log('PASS mounted Vue: unified tabs and shared progress, hidden dictation target, native input/caret/IME, per-mode drafts, listening completion, hinted extra dictation counted once');
 console.log('PASS sentence input/self-review preserved, independent dictation entry retained, mode double clicks blocked, cached same-day GET restore, server training statistics');

@@ -23,6 +23,7 @@ export function useDailyTraining(userId: number, scope: TrainingScope = 'DAILY')
   const mode = ref<DailyStudyMode>('RECOGNITION');
   const busy = ref(false), error = ref(''), notice = ref(''), expired = ref(false), promptUnavailable = ref(false);
   const pending = ref<Pending>(), showingFeedback = ref(false), extraItemId = ref<number>();
+  const noWords = ref(false);
   const drafts = ref<Record<string, string>>({});
   let alive = true, generation = 0;
   if (getCurrentScope()) onScopeDispose(() => { alive = false; generation++; });
@@ -96,7 +97,12 @@ export function useDailyTraining(userId: number, scope: TrainingScope = 'DAILY')
     if (q === null) {
       question.value = undefined; extraItemId.value = undefined;
       const latest = await readTask(task.value.batchId);
-      if (alive && token === generation) update(requireTrainingTask(latest));
+      if (!alive || token !== generation) return;
+      update(requireTrainingTask(latest));
+      if (!practice) {
+        const overview = await dailyApi.today();
+        if (alive && token === generation) today.value = overview;
+      }
       return;
     }
     update(q.progress);
@@ -116,6 +122,16 @@ export function useDailyTraining(userId: number, scope: TrainingScope = 'DAILY')
     const code = e instanceof ApiError ? e.code : '';
     const unknown = !(e instanceof ApiError) || e.code === 'NETWORK_ERROR' || (e.status ?? 0) >= 500;
     if (wasWrite && !unknown) persist();
+    if (!practice && code === 'NO_DAILY_WORDS') {
+      noWords.value = true; question.value = undefined; error.value = '';
+      try {
+        const overview = await dailyApi.today();
+        if (!alive || token !== generation) return;
+        today.value = overview;
+        if (overview.task) update(requireTrainingTask(overview.task));
+      } catch (syncError) { await handleSyncError(syncError); }
+      return;
+    }
     if (code === 'FOLLOW_TYPING_PRACTICE_REQUIRED') {
       question.value = undefined; error.value = ''; notice.value = '跟拼已移至独立练习，请选择其他每日方式继续。';
       try { await resync(token); } catch (syncError) { await handleSyncError(syncError); }
@@ -152,6 +168,7 @@ export function useDailyTraining(userId: number, scope: TrainingScope = 'DAILY')
   async function open(id?: number) {
     if (busy.value || !alive) return;
     const token = ++generation; busy.value = true; error.value = ''; notice.value = ''; expired.value = false; promptUnavailable.value = false;
+    noWords.value = false;
     question.value = undefined; receipt.value = undefined; showingFeedback.value = false;
     try {
       const overview = practice ? undefined : await dailyApi.today();
@@ -257,6 +274,7 @@ export function useDailyTraining(userId: number, scope: TrainingScope = 'DAILY')
     if (practice || busy.value || pending.value || !alive) return;
     const token = ++generation; const selected = mode.value;
     busy.value = true; error.value = ''; notice.value = ''; extraItemId.value = undefined;
+    noWords.value = false;
     try {
       const started = requireTrainingTask(await dailyApi.start());
       if (!alive || token !== generation) return;
@@ -264,7 +282,7 @@ export function useDailyTraining(userId: number, scope: TrainingScope = 'DAILY')
       const overview = await dailyApi.today();
       if (!alive || token !== generation) return;
       today.value = overview;
-      if (selected !== started.studyMode) {
+      if (started.status === 'IN_PROGRESS' && selected !== started.studyMode) {
         const changed = await api.mode(started.batchId, selected, started.modeVersion);
         if (!alive || token !== generation) return;
         update(changed);
@@ -274,7 +292,7 @@ export function useDailyTraining(userId: number, scope: TrainingScope = 'DAILY')
     } catch (e) { await handle(e, token); }
     finally { if (alive && token === generation) busy.value = false; }
   }
-  return { task, today, question, mode, busy, error, notice, pending, expired, historical, promptUnavailable, blocked,
+  return { task, today, question, mode, busy, error, notice, pending, expired, historical, promptUnavailable, blocked, noWords,
     input, definition, receipt, showingFeedback, canRate, canCorrect, extraItemId,
     legacyFollow, open, changeMode, recoverPresentation: () => open(task.value?.batchId), action, retry, correct, continueTraining, extra, start };
 }

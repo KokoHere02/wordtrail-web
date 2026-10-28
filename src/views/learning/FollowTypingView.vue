@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, shallowRef, watch, watchEffect } from 'vue';
+import { computed, onMounted, ref, shallowRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { ArrowRight, ChartNoAxesCombined, Check, EyeOff, History, Keyboard, ListOrdered, Volume2, X } from 'lucide-vue-next';
+import { ArrowRight, ChartNoAxesCombined, History, Keyboard, ListOrdered, X } from 'lucide-vue-next';
 import { useAuthStore } from '../../stores/auth';
 import { useFollowTyping } from '../../composables/useFollowTyping';
 import { useAudioPlayer } from '../../composables/useAudioPlayer';
@@ -52,19 +52,7 @@ const panels = [
 ];
 const roundsOpen = computed(() => activePanel.value === 'rounds');
 const field = ref<InstanceType<typeof LetterInput>>();
-const meaning = ref<HTMLElement>(), meaningExpanded = ref(false), meaningOverflow = ref(false);
 const toolButtons = ref<HTMLButtonElement[]>([]);
-watch(() => lastQuestion.value?.itemId, () => { meaningExpanded.value = false; });
-watch(meaning, (node, _previous, cleanup) => {
-  meaningOverflow.value = false;
-  if (!node) return;
-  const measure = () => { meaningOverflow.value = (node.firstElementChild?.scrollHeight || 0) > Number.parseFloat(window.getComputedStyle(node).getPropertyValue('--follow-meaning-height')) + 1; };
-  const observer = new window.ResizeObserver(measure);
-  observer.observe(node);
-  if (node.firstElementChild) observer.observe(node.firstElementChild);
-  measure();
-  cleanup(() => observer.disconnect());
-}, { flush: 'post' });
 const pronunciation = usePronunciation();
 const audioSettings = computed(() => pronunciation.loaded ? pronunciation.value : question.value?.pronunciation || pronunciation.value);
 const audio = useAudioPlayer(() => { void session.recoverPresentation(); });
@@ -105,11 +93,6 @@ watch(roundStatus, () => { if (roundsOpen.value) void loadRounds(1); });
 async function confirmAbandon() { abandonDialog.value = false; await follow.abandon(); if (roundsOpen.value) await loadRounds(); }
 function requestAbandon() { abandonDialog.value = true; }
 function setCount(value: number) { if (!settingsBlocked.value && Number.isInteger(value) && value >= 10 && value <= 20) count.value = value; }
-watchEffect(() => {
-  if (surface) surface.state.source = task.value
-    ? `跟拼 · 本轮输入 ${task.value.trainingCount} 次 · 实际 ${task.value.totalCount} 词${task.value.totalCount !== task.value.followTypingTarget ? `（申请 ${task.value.followTypingTarget} 词）` : ''}`
-    : '跟拼 · 不计入每日学习进度';
-});
 let syncPending = false;
 async function sync() {
   if (!active.value || overallBusy.value) { syncPending = true; return; }
@@ -129,9 +112,9 @@ onMounted(() => {
 defineExpose({ toggleWord, toggleMeaning, play, canPronounce, speaking: audio.speaking, count, countOptions, task, settingsBlocked, setCount, requestAbandon });
 </script>
 <template>
-  <div class="follow-typing-page follow-typing-panel daily-training-main" @keydown.alt.p.prevent="playShortcut">
+  <div class="review-page learning-page unified-follow-page" @keydown.alt.p.prevent="playShortcut">
     <ReviewHeader :completed="task?.completedCount || 0" :total="task?.totalCount || 0" :skipped="task?.skippedCount || 0" back-to="/learn" label="单词练习" />
-    <div class="follow-stage" :aria-busy="overallBusy">
+    <div class="daily-training-main" :aria-busy="overallBusy">
 
       <StatePanel :loading="overallBusy && !displayedQuestion" />
       <p v-if="notice" class="learning-notice" role="status">{{ notice }}</p>
@@ -144,31 +127,28 @@ defineExpose({ toggleWord, toggleMeaning, play, canPronounce, speaking: audio.sp
         <RouterLink v-if="knownBatch && knownBatch !== id" :to="batchLink(knownBatch)" class="muted-link">进入已创建轮次</RouterLink>
       </div>
 
-      <section v-if="displayedQuestion" :class="['follow-exercise', { 'has-long-word': preferences.showFollowWord && Array.from(displayedQuestion.word || '').length > 16 }]" :data-item-id="displayedQuestion.itemId">
-        <p v-if="displayedQuestion.extraTraining" class="follow-extra-note">追加跟拼 <button class="muted-link" :disabled="blocked" @click="extra()">返回本轮</button></p>
-        <div class="follow-word-reference">
-          <h2 v-if="preferences.showFollowWord" lang="en" class="learning-word">{{ displayedQuestion.word }}</h2>
-          <button v-else class="follow-word-mask" @click="toggleWord"><EyeOff :size="23" /><span>点击显示英文</span></button>
-          <div class="follow-pronunciation"><span v-if="preferences.showFollowWord && preferences.showPhonetic && displayedQuestion.phonetic" lang="en">{{ displayedQuestion.phonetic }}</span><button class="follow-audio-button" aria-label="朗读当前单词" title="播放发音（Alt + P）" :disabled="!canPronounce" @click="play"><Volume2 :size="19" /></button></div>
-          <p v-if="audio.error.value" class="speech-error" role="status">{{ audio.error.value }} <button class="muted-link" :disabled="blocked || audio.loading.value" @click="play">重试播放</button></p>
-          <template v-if="preferences.showFollowChinese"><div id="follow-word-meaning" ref="meaning" :class="['follow-meaning', { 'is-expanded': meaningExpanded }]"><WordMeaning :translation="displayedQuestion.translation" :translation-groups="displayedQuestion.translationGroups" :word-key="displayedQuestion.itemId" /></div><button v-if="meaningOverflow" class="follow-meaning-toggle" :aria-expanded="meaningExpanded" aria-controls="follow-word-meaning" @click="meaningExpanded = !meaningExpanded">{{ meaningExpanded ? '收起释义' : '展开释义' }}</button></template>
-          <button v-else class="follow-meaning-mask" @click="toggleMeaning"><EyeOff :size="16" />点击显示中文</button>
-        </div>
-        <form @submit.prevent="submit">
-          <LetterInput id="follow-typing-input" ref="field" v-model="input" :length="preferences.showFollowWord ? Array.from(displayedQuestion.word || '').length : undefined" :disabled="blocked || !active" :label="preferences.showFollowWord ? '对照单词输入英文' : '输入英文拼写'" described-by="follow-input-feedback" @submit="submit" />
-          <div id="follow-input-feedback" :class="['follow-input-feedback', { 'is-error': receipt?.verdict === 'INCORRECT' }]" role="status" aria-live="polite"><template v-if="receipt"><Check v-if="receipt.verdict !== 'INCORRECT'" :size="16" aria-hidden="true" />{{ receipt.verdict === 'INCORRECT' ? '拼写有误，再试一次。' : '跟拼完成' }}</template></div>
-          <div class="follow-submit-row"><AppButton type="submit" :busy="session.busy.value" :disabled="!ready || !input.trim() || input.length > 255">完成跟拼 <ArrowRight :size="17" aria-hidden="true" /></AppButton><span class="follow-enter-hint"><kbd>Enter</kbd> 提交 · <kbd>Alt</kbd> + <kbd>P</kbd> 发音</span></div>
+      <section v-if="displayedQuestion" class="daily-training-card learning-card follow-exercise" data-mode="FOLLOW_TYPING" :data-item-id="displayedQuestion.itemId">
+        <p v-if="displayedQuestion.extraTraining" class="subtle-copy follow-extra-note">追加练习 <button class="muted-link" :disabled="blocked" @click="extra()">返回本轮</button></p>
+        <h1 v-if="preferences.showFollowWord" lang="en" class="learning-word">{{ displayedQuestion.word }}</h1>
+        <button v-else type="button" class="daily-recall-prompt" @click="toggleWord">显示英文</button>
+        <p v-if="preferences.showFollowWord && preferences.showPhonetic && displayedQuestion.phonetic" class="daily-word-phonetic follow-pronunciation" lang="en">{{ displayedQuestion.phonetic }}</p>
+        <button v-if="displayedQuestion.audioUrl" type="button" class="btn btn-secondary training-play" :disabled="!canPronounce" @click="play">播放发音</button>
+        <p v-if="audio.error.value" class="speech-error" role="status">{{ audio.error.value }} <button class="muted-link" :disabled="!canPronounce" @click="play">重试播放</button></p>
+        <form class="daily-typing-form" @submit.prevent="submit">
+          <WordMeaning v-if="preferences.showFollowChinese" :translation="displayedQuestion.translation" :translation-groups="displayedQuestion.translationGroups" layout="study" :word-key="displayedQuestion.itemId" />
+          <button v-else type="button" class="daily-recall-prompt" @click="toggleMeaning">显示释义</button>
+          <LetterInput id="follow-typing-input" ref="field" v-model="input" :length="Array.from(displayedQuestion.word || '').length" :disabled="blocked || !active" :described-by="receipt?.verdict === 'INCORRECT' ? 'follow-input-feedback' : undefined" @submit="submit" />
+          <p v-if="receipt?.verdict === 'INCORRECT'" id="follow-input-feedback" class="inline-error follow-input-feedback is-error" role="status">拼写错误</p>
+          <div class="workspace-answer-actions"><span aria-hidden="true" /><AppButton type="submit" :busy="session.busy.value" :disabled="!ready || !input.trim() || input.length > 255">提交 <kbd>Enter</kbd></AppButton></div>
         </form>
       </section>
 
-      <section v-else-if="!overallBusy && !pending && !pendingCreate && (!task || abandonPending !== task.batchId)" class="follow-completion">
-        <span class="follow-completion-icon"><Check v-if="task?.status === 'COMPLETED'" :size="30" /><Keyboard v-else :size="30" /></span>
+      <section v-else-if="!overallBusy && !pending && !pendingCreate && (!task || abandonPending !== task.batchId)" class="library-empty learning-empty follow-completion">
         <h2>{{ task?.status === 'COMPLETED' ? '本轮跟拼完成' : task?.status === 'ABANDONED' ? '本轮已放弃' : task ? '暂无可输入词项' : '准备开始跟拼' }}</h2>
         <p v-if="task">完成 {{ task.completedCount }} / {{ task.totalCount }} 词<span v-if="task.skippedCount"> · 跳过 {{ task.skippedCount }} 词</span> · 输入 {{ task.trainingCount }} 次</p>
         <div v-if="task?.status !== 'IN_PROGRESS'" class="follow-next-round"><AppSelect v-model="countValue" :options="countOptions" :label="task ? '下一轮词数' : '练习词数'" :disabled="overallBusy || !!pendingCreate" hide-label /><AppButton :disabled="overallBusy" @click="follow.open()">{{ task ? '开始新一轮' : '开始跟拼' }}<ArrowRight :size="17" aria-hidden="true" /></AppButton></div>
         <RouterLink to="/plan" class="muted-link">查看学习计划</RouterLink>
       </section>
-    </div>
 
     <div class="follow-tools" role="group" aria-label="跟拼练习详情">
       <button v-for="panel in panels" :key="panel.id" ref="toolButtons" :disabled="!task && (panel.id === 'items' || panel.id === 'attempts')" :aria-expanded="activePanel === panel.id" :aria-controls="activePanel === panel.id ? 'follow-detail-panel' : undefined" @click="activePanel = activePanel === panel.id ? undefined : panel.id"><component :is="panel.icon" :size="17" aria-hidden="true" /><span>{{ panel.label }}</span></button>
@@ -185,6 +165,7 @@ defineExpose({ toggleWord, toggleMeaning, play, canPronounce, speaking: audio.sp
       </div>
     </section>
 
+    </div>
     <AppDialog v-model="abandonDialog" title="放弃本轮跟拼？" description="保留词单和输入记录；放弃也计入词项的入选次数。"><AppButton :busy="overallBusy" @click="confirmAbandon">放弃本轮</AppButton></AppDialog>
   </div>
 </template>

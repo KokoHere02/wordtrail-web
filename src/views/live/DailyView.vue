@@ -20,6 +20,7 @@ import { trainingStatusLabel } from '../../utils/trainingStatus';
 import StatePanel from '../../components/ui/StatePanel.vue';
 import AppButton from '../../components/ui/AppButton.vue';
 import { useStudyWorkspace } from '../../stores/studyWorkspace';
+import { useDailyGoal } from '../../composables/useDailyGoal';
 
 const props = defineProps<{ requestedBatchId?: number; scope?: TrainingScope }>();
 const emit = defineEmits<{ mode: [mode: DailyStudyMode]; blocked: [value: boolean] }>();
@@ -29,6 +30,11 @@ const { task, today, question, mode, busy, error, notice, pending, expired, hist
   receipt, showingFeedback, canRate, canCorrect, extraItemId } = session;
 const preferences = useStudyPreferences();
 const viewActive = ref(true);
+const { goal, refresh: refreshGoal } = useDailyGoal(() => today.value?.learningDate, () => task.value?.batchId);
+const needsWords = computed(() => today.value?.needsMoreWords || session.noWords.value);
+watch([() => today.value?.learningDate, () => task.value?.batchId, () => task.value?.completedCount, () => task.value?.status, busy, viewActive, () => surface?.active.value], () => {
+  if ((!props.scope || props.scope === 'DAILY') && today.value && !busy.value && !historical.value && viewActive.value && surface?.active.value !== false) void refreshGoal();
+});
 onActivated(() => { viewActive.value = true; });
 onDeactivated(() => { viewActive.value = false; });
 const pronunciation = usePronunciation();
@@ -141,26 +147,24 @@ defineExpose({ changeMode: async (value: DailyStudyMode) => { await initializing
       </section>
       <section v-else-if="question && !historical && !expired" class="daily-training-card learning-card" :data-mode="question.mode" :data-item-id="question.itemId">
         <template v-if="!['DICTATION', 'LISTEN_DICTATION'].includes(question.mode) || question.answerRevealed"><h1 class="learning-word" lang="en">{{ question.word }}</h1><p v-if="preferences.showPhonetic && question.phonetic" class="daily-word-phonetic" lang="en">{{ question.phonetic }}</p></template>
-        <p v-else class="daily-mode-prompt">{{ question.mode === 'LISTEN_DICTATION' ? '听发音，输入你听到的单词' : '回想拼写，输入你记得的单词' }}</p>
-        <button v-if="question.audioUrl || canPronounce" type="button" class="btn btn-secondary training-play" :disabled="!canPronounce || audioLoading" @click="pronounce">{{ audioLoading ? '音频加载中…' : speaking ? '重新播放' : '播放发音（P）' }}</button>
-        <p v-if="question.extraTraining" class="subtle-copy">原词项：{{ trainingStatusLabel(question) }} · 本次追加训练不重复增加完成词数。</p>
+        <button v-if="question.audioUrl || canPronounce" type="button" class="btn btn-secondary training-play" :disabled="!canPronounce || audioLoading" @click="pronounce">{{ audioLoading ? '音频加载中…' : speaking ? '重新播放' : '播放发音' }}</button>
+        <p v-if="question.extraTraining" class="subtle-copy">追加练习 · {{ trainingStatusLabel(question) }}</p>
         <template v-if="question.mode === 'RECOGNITION'">
           <WordMeaning v-if="definition && meaningVisible" :translation="definition.translation" :translation-groups="definition.translationGroups" layout="study" :word-key="question.itemId" />
-          <button v-else class="daily-recall-prompt" :disabled="session.blocked.value" @click="reveal">回想中文含义，查看释义 <kbd>Space</kbd></button>
+          <button v-else class="daily-recall-prompt" :disabled="session.blocked.value" @click="reveal">查看释义 <kbd>Space</kbd></button>
           <div class="learning-rating daily-training-rating"><button v-for="entry in [{ result: 3 as const, label: '不认识', key: 1 }, { result: 2 as const, label: '模糊', key: 2 }, { result: 1 as const, label: '认识', key: 3 }]" :key="entry.result" class="rating-button" :disabled="!canRate" @click="session.action('ANSWER', entry.result)">{{ entry.label }}<kbd>{{ entry.key }}</kbd></button></div>
         </template>
         <form v-else class="daily-typing-form" @submit.prevent="session.action('ANSWER')">
           <WordMeaning v-if="meaningVisible" :translation="question.translation" :translation-groups="question.translationGroups" layout="study" :word-key="`${question.itemId}:${question.modeVersion}`" />
-          <button v-else-if="!listeningHidden" type="button" class="daily-recall-prompt" @click="preferences.showChinese = true">中文释义已隐藏，点击显示</button>
-          <LetterInput id="daily-training-input" ref="field" v-model="input" :length="question.word && !listeningHidden ? Array.from(question.word).length : undefined" :disabled="session.blocked.value" :label="question.mode === 'FOLLOW_TYPING' ? '照着输入英文' : question.mode === 'LISTEN_DICTATION' ? '听发音输入英文' : '根据释义输入英文'" @submit="session.action('ANSWER')" />
-          <p v-if="['DICTATION', 'LISTEN_DICTATION'].includes(question.mode) && question.answerRevealed" class="subtle-copy daily-assisted-note" role="status">已查看答案 · 辅助输入。可对照英文继续练习，本次不能作为无提示回忆。</p>
-          <p v-else-if="['DICTATION', 'LISTEN_DICTATION'].includes(question.mode) && question.hintUsed" class="subtle-copy">本任务已展示过拼写，本次默写带提示标记。</p>
+          <button v-else-if="!listeningHidden" type="button" class="daily-recall-prompt" @click="preferences.showChinese = true">显示释义</button>
+          <LetterInput id="daily-training-input" ref="field" v-model="input" :length="question.word && !listeningHidden ? Array.from(question.word).length : undefined" :disabled="session.blocked.value" @submit="session.action('ANSWER')" />
+          <p v-if="['DICTATION', 'LISTEN_DICTATION'].includes(question.mode) && question.answerRevealed" class="subtle-copy daily-assisted-note" role="status">已查看答案 · 辅助输入</p>
+          <p v-else-if="['DICTATION', 'LISTEN_DICTATION'].includes(question.mode) && question.hintUsed" class="subtle-copy">已使用提示</p>
           <div class="workspace-answer-actions"><button type="button" class="btn btn-secondary" :disabled="session.blocked.value || question.answerRevealed" aria-keyshortcuts="F2" title="不会／看答案（F2）" @click="reveal">{{ question.answerRevealed ? '已查看答案' : '不会／看答案' }}<kbd v-if="!question.answerRevealed" aria-hidden="true">F2</kbd></button><AppButton type="submit" :disabled="session.blocked.value || !input.trim()" :busy="busy">提交 <kbd>Enter</kbd></AppButton></div>
         </form>
-        <p class="learning-shortcuts">{{ question.mode === 'RECOGNITION' ? 'Space 查看释义 · 1 / 2 / 3 自评 · ' : 'Enter 提交 · ' }}{{ canPronounce ? 'P 发音 · ' : '' }}→ 继续</p>
       </section>
-      <div v-else-if="!busy && !error && !pending && !session.promptUnavailable.value && (!session.legacyFollow.value || historical)" class="library-empty learning-empty"><h1>{{ historical ? '历史任务仅供回顾' : task?.status === 'COMPLETED' ? '本组训练已结束' : task?.status === 'ABANDONED' ? '本轮已放弃' : !task ? '任选一种方式，开始今日单词' : '暂无可作答单词' }}</h1><p v-if="task">完成 {{ task.completedCount }} / {{ task.totalCount }} 词 · 跳过 {{ task.skippedCount }} 词</p><AppButton v-if="scope !== 'CONSOLIDATION' && !historical && !expired && (!task || today?.canAddMore)" :busy="busy" @click="session.start">{{ task ? '继续学习' : '开始今日学习' }}</AppButton><RouterLink v-if="task && scope !== 'CONSOLIDATION'" :to="`/records/${task.batchId}`" class="btn btn-secondary">查看本轮记录</RouterLink><RouterLink :to="scope === 'CONSOLIDATION' ? '/consolidation' : '/today'" class="muted-link">{{ scope === 'CONSOLIDATION' ? '返回错因清单' : '返回今日' }}</RouterLink></div>
-      <details v-if="task" class="workspace-notes workspace-items" :open="itemsOpen" @toggle="itemsOpen = ($event.target as HTMLDetailsElement).open"><summary>本组词项 · {{ task.completedCount }} / {{ task.totalCount }} 词完成</summary><TrainingItems v-if="itemsOpen" :batch-id="task.batchId" :scope="scope" :revision="itemsRevision" :allow-extra="!historical && !expired && !session.blocked.value" @extra="session.extra" /></details>
+      <div v-else-if="!busy && !error && !pending && !session.promptUnavailable.value && (!session.legacyFollow.value || historical)" class="library-empty learning-empty"><h1>{{ historical ? '历史任务仅供回顾' : task?.status === 'COMPLETED' ? '本组训练已结束' : task?.status === 'ABANDONED' ? '本轮已放弃' : !task ? '任选一种方式，开始今日单词' : '暂无可作答单词' }}</h1><p v-if="task">完成 {{ task.completedCount }} / {{ task.totalCount }} 词 · 跳过 {{ task.skippedCount }} 词</p><p v-if="(!scope || scope === 'DAILY') && !historical && goal" class="daily-goal-status">{{ goal.reached ? '每日目标已达成' : `距每日目标还差 ${goal.remainingCount} 词` }}</p><p v-if="(!scope || scope === 'DAILY') && !historical && needsWords" class="daily-needs-words">添加单词到学习计划后可继续，收进词本还需点击“加入学习计划”。</p><RouterLink v-if="(!scope || scope === 'DAILY') && !historical && !expired && needsWords" to="/books" class="btn btn-primary">添加单词到学习计划</RouterLink><AppButton v-else-if="scope !== 'CONSOLIDATION' && !historical && !expired && (!task || today?.canAddMore)" :busy="busy" @click="session.start">{{ task ? '继续学习' : '开始今日学习' }}</AppButton><RouterLink v-if="task && scope !== 'CONSOLIDATION'" :to="`/records/${task.batchId}`" class="btn btn-secondary">查看本轮记录</RouterLink><RouterLink :to="scope === 'CONSOLIDATION' ? '/consolidation' : '/today'" class="muted-link">{{ scope === 'CONSOLIDATION' ? '返回错因清单' : '返回今日' }}</RouterLink></div>
+      <details v-if="task && scope === 'CONSOLIDATION'" class="workspace-notes workspace-items" :open="itemsOpen" @toggle="itemsOpen = ($event.target as HTMLDetailsElement).open"><summary>本组词项 · {{ task.completedCount }} / {{ task.totalCount }} 词完成</summary><TrainingItems v-if="itemsOpen" :batch-id="task.batchId" :scope="scope" :revision="itemsRevision" :allow-extra="!historical && !expired && !session.blocked.value" @extra="session.extra" /></details>
     </div>
   </div>
 </template>

@@ -135,3 +135,6 @@
   .wordory-app .today-streak .muted-link { font-size: var(--text-sm); }
   .live-filter { font-size: var(--text-sm); }
 }
+
+.daily-goal-status { margin-block: var(--s3); color: var(--ink); font-size: var(--text-base); line-height: 1.7; }
+.daily-needs-words { margin-block: var(--s3); color: var(--muted); font-size: var(--text-base); line-height: 1.7; }

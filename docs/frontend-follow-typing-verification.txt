@@ -1,17 +1,19 @@
 独立跟拼接入与验证记录（第 36 节）
-日期：2026-10-27
+日期：2026-10-28
 
 本记录取代此前验证记录中“跟拼共用每日任务、抵扣每日目标”的描述。
 已完整阅读后端接口文档第 36 节，并参考第 33 节的发音协议。
 
 界面更新：跟拼归入同一个“单词练习”标签，通过共用“练习设置”选择拼读、默写、听音默写或跟拼；不再提供单独的跟拼标签。
-各方式共用工具栏、进度区和单词展示区域，移除跟拼独立卡片外框及重复的进度栏。
+跟拼直接复用默写的布局、字母横线和提交按钮，显示英文、中文释义及长度，移除跟拼专用练习样式和引导段落。
 跟拼使用 /learn?mode=follow&followBatchId=轮次ID，旧 /follow-typing 链接兼容跳转。
-右上角可分别遮蔽英文、中文与音标，偏好刷新后保留；遮蔽英文时也隐藏音标和目标长度。
+右上角可分别遮蔽英文、中文与音标，偏好刷新后保留；遮蔽英文时隐藏音标，单词长度仍保留。
+每日单词按最新第 5.2/32 节：进入和刷新先读取今日任务；开始或续学仅由用户点击触发，已有进行中任务直接恢复，历史任务和读取失败不触发创建。
+每日练习页移除底部“本组词项”和顶部“专项历史”；英美口音直接放在释义工具同一行，保存时保留速度、重复次数及自动播放设置。
 遮蔽仅影响本地显示，不发送 REVEAL 或修改练习统计。切换练习方式保留各自任务与草稿，并停止隐藏区域音频。
 
 实现
-1. 每日方式仅保留认识、默写、听音默写；学习页与今日页新增独立跟拼入口。
+1. 每日队列保留认识、默写、听音默写；跟拼位于同一练习方式选择器，使用独立接口及统计。
 2. 进入跟拼先查询进行中轮次，无轮次才创建。申请词数默认 20，可选 10～20；实际词数使用 totalCount，选词与限制由后端决定。
 3. URL 保留 batchId，刷新与跨日恢复服务器进度。创建、作答的未确认请求在发送前保存，重试保持原 requestId 和完整请求内容。
 4. 跟拼只提交 ANSWER 与原始输入。每次作答后 next 获取新展示；错误可继续输入，无本地失败上限；next=null 后读取进度并结束，不自动创建新轮次。
@@ -47,6 +49,7 @@ src/stores/studyWorkspace.ts
 src/stores/studyPreferences.ts
 package.json
 tests/training-entry.ts
+tests/sentences-entry.ts
 tests/follow-typing-check.mjs
 tests/daily-training-check.mjs
 tests/workspace-check.mjs
@@ -56,7 +59,7 @@ tests/daily-training-live.mjs
 验证结果
 PASS npm run build（包括 vue-tsc）
 PASS npm run test:follow-typing：创建与输入精确重试、重复点击、原始输入、新展示、连续错误无上限、刷新与跨日恢复、实际词数、独立统计、陈旧展示、计划跳过、冲突恢复、放弃、无词提示、全程 DAILY 隔离及旧任务迁移。
-PASS npm run test:follow-typing:browser：8 项 Edge 场景，包括实际刷新、丢失响应重试、Bearer Blob 音频、自动聚焦、结束与新轮次、1440/390/320 像素浅深色布局，以及单词练习内方式切换、答案遮蔽与偏好恢复、草稿保留和每日进度隔离。
+PASS npm run test:follow-typing:browser：13 项 Edge 场景，包括实际刷新、丢失响应重试、Bearer Blob 音频、自动聚焦、结束与新轮次、1440/390/320 像素浅深色布局、单词练习内方式切换、答案遮蔽与长度显示、草稿保留、每日进度隔离、今日任务显式开始、刷新恢复和累计 205 词后续学，以及英美口音保存、失败重试和其他播放设置保留。
 PASS npm run test:daily-training：28 项
 PASS npm run test:workspace
 PASS npm run test:workspace:browser：7 项 Edge 场景

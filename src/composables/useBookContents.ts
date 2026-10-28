@@ -6,11 +6,13 @@ import { useBooksStore } from '../stores/books';
 import { useResource } from './useResource';
 import { useSelection } from './useSelection';
 import type { Book, BookWord, LearningStatus, Page } from '../types/api';
+import type { TodayOverview } from '../types/daily';
 
 export function useBookContents(id: number) {
   const metadata = useResource<Book>();
   const words = useResource<Page<BookWord>>();
   const selection = useSelection();
+  const today = useResource<TodayOverview>();
   const keyword = ref('');
   const appliedKeyword = ref('');
   const filter = ref<LearningStatus>('ALL');
@@ -63,9 +65,9 @@ export function useBookContents(id: number) {
     try {
       const result = await dailyApi.join(id, [...selection.selected.value]);
       notice.value = `新增 ${result.addedCount} 词 · 恢复 ${result.reactivatedCount} 词 · 已有 ${result.unchangedCount} 词。`;
-      selection.clear(); await reload();
+      selection.clear(); await Promise.all([reload(), today.load(dailyApi.today)]);
     } catch (e) { handleError(e); }
     finally { busy.value = false; }
   }
-  return { book: metadata.data, bookLoading: metadata.loading, bookError: metadata.error, ...words, selection, keyword, filter, page, size, busy, blocked, available, editable, saveError, notice, pageIds, pageSelected, loadBook, refresh, reload, search, remove, join };
+  return { book: metadata.data, bookLoading: metadata.loading, bookError: metadata.error, ...words, selection, keyword, filter, page, size, busy, blocked, available, editable, saveError, notice, today: today.data, pageIds, pageSelected, loadBook, refresh, reload, search, remove, join };
 }

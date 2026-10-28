@@ -6,3 +6,5 @@ export { useSentenceManagementAccess } from '../src/stores/sentenceManagementAcc
 export { sentenceLinksApi } from '../src/api/sentenceLinks';
 export { tokens } from '../src/api/tokens';
 export { refreshIdentity } from '../src/api/http';
+export { default as TrainingItems } from '../src/components/learning/TrainingItems.vue';
+export { useStudyWorkspace } from '../src/stores/studyWorkspace';

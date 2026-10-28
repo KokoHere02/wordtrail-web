@@ -42,6 +42,9 @@ try {
   ]);
   for (const key of ['todayTrainingCount', 'todayAnswerCount', 'todayStudiedCount', 'todayCompletedCount', 'todayRecalledCount']) assert.equal(typeof summary[key], 'number', `new backend required: summary.${key}`);
   for (const key of ['reviewBacklogCount', 'overdueReviewCount']) assert.equal(typeof today[key], 'number', `012 today.${key} required`);
+  assert.equal(typeof today.needsMoreWords, 'boolean', 'sections 5.2/32 latest backend required: today.needsMoreWords; restart the new build first');
+  assert.equal(today.needsMoreWords && today.canAddMore, false);
+  if (today.task?.status === 'IN_PROGRESS') { assert.equal(today.needsMoreWords, false); assert.equal(today.canAddMore, false); }
   for (const key of ['trainingCount', 'answerCount', 'studiedCount', 'completedCount', 'recalledCount']) assert.equal(typeof daily[key], 'number', `new backend required: daily.${key}`);
   for (const key of ['totalTrainingCount', 'totalRecalledCount']) assert.equal(typeof trends[key], 'number', `new backend required: trends.${key}`);
   for (const day of [...calendar.days, ...trends.records]) {

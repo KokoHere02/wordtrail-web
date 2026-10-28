@@ -58,11 +58,11 @@ onMounted(refresh);
     <header class="library-heading"><div><h1>学习设置</h1></div><RouterLink to="/today" class="muted-link">返回今日</RouterLink></header>
     <StatePanel :loading="loading" :error="error" @retry="refresh" />
     <form v-if="data && !loading && !error" class="wordlist-sheet settings-form" novalidate @submit.prevent="save">
-      <h2>每日独立配额</h2>
+      <h2>每轮优先分配</h2>
       <p v-if="data.newWordTarget == null || data.reviewLimit == null" class="subtle-copy">当前使用旧版选词策略：优先复习，再补新词。填写并保存后启用独立配额。</p>
-      <label for="new-word-target">每日新词</label><input id="new-word-target" v-model="newTarget" type="number" min="0" max="200" step="1" :disabled="busy" />
-      <label for="review-limit">每日复习上限</label><input id="review-limit" v-model="reviewLimit" type="number" min="0" max="200" step="1" :disabled="busy" />
-      <p class="subtle-copy">合计目标：{{ Number.isFinite(total) ? total : '—' }} 词。两类配额独立，一类不足时不会用另一类补满。只影响之后新建的任务。</p>
+      <label for="new-word-target">优先新词</label><input id="new-word-target" v-model="newTarget" type="number" min="0" max="200" step="1" :disabled="busy" />
+      <label for="review-limit">优先复习</label><input id="review-limit" v-model="reviewLimit" type="number" min="0" max="200" step="1" :disabled="busy" />
+      <p class="subtle-copy">合计目标：{{ Number.isFinite(total) ? total : '—' }} 词。新词与到期复习可互相补位，设为 0 也可补位；新设置仅对新建任务生效。</p>
       <p class="inline-error" role="alert">{{ formError }}</p><AppButton type="submit" :busy="busy">保存每日配额</AppButton>
     </form>
     <p v-if="notice" class="live-notice" role="status">{{ notice }}</p>
