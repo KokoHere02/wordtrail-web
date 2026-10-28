@@ -25,11 +25,25 @@ async function load(value = page.value) {
 }
 watch(() => props.batchId, () => { void load(1); }, { immediate: true });
 watch(() => props.revision, () => { void load(); });
-const verdicts = { SELF_ASSESSED: '认识自评', CORRECT: '输入正确', INCORRECT: '输入未匹配', REVEALED: '查看答案' };
+const verdicts = { SELF_ASSESSED: '自评', CORRECT: '输入正确', INCORRECT: '输入错误', REVEALED: '查看答案' };
 </script>
 <template>
-  <section class="training-history" :aria-label="scope === 'FOLLOW_TYPING' ? '跟拼作答历史' : '统一每日训练历史'">
+  <section class="training-history" aria-label="练习记录">
     <StatePanel :loading="loading" :error="error" @retry="load()" />
-    <template v-if="data && !loading && !error"><p class="subtle-copy">下列词项状态为查询时的当前状态，动作、输入、自评和时间保留当次记录。追加练习请使用本组词项列表。</p><p v-if="!data.records.length" class="subtle-copy">暂无本轮训练记录。</p><article v-for="row in data.records" :key="row.trainingId" class="training-history-row"><header><strong>{{ row.word }}</strong><span>{{ dailyModeLabels[row.mode] }} · {{ verdicts[row.verdict] }}</span><time>{{ row.answeredAt.replace('T', ' ') }}</time></header><p v-if="row.input !== null" class="daily-submitted">输入：{{ row.input }}</p><p v-if="row.selfAssessment !== null">自评：{{ ({ 1: '认识', 2: '模糊', 3: '不认识' })[row.selfAssessment] }}</p><WordMeaning :translation="row.translation" :translation-groups="row.translationGroups" /><p class="subtle-copy">第 {{ row.attemptNo }} 次训练事件<span v-if="row.hintUsed && scope !== 'FOLLOW_TYPING'"> · 已使用提示／展示过拼写</span><span v-if="row.extraTraining"> · 追加训练，不重复增加本轮完成词数</span></p><p class="training-current-status">词项当前状态：{{ trainingStatusLabel(row) }}</p></article><AppPagination :page="data.page" :size="data.size" :total="data.total" :disabled="loading" @change="load" /></template>
+    <template v-if="data && !loading && !error">
+      <p v-if="!data.records.length" class="training-list-empty">暂无练习记录</p>
+      <article v-for="row in data.records" :key="row.trainingId" class="training-history-row">
+        <header><strong>{{ row.word }}</strong><span>{{ dailyModeLabels[row.mode] }} · {{ verdicts[row.verdict] }}</span><time>{{ row.answeredAt.replace('T', ' ') }}</time></header>
+        <p v-if="row.input !== null" class="daily-submitted">输入：{{ row.input }}</p>
+        <p v-if="row.selfAssessment !== null">自评：{{ ({ 1: '认识', 2: '模糊', 3: '不认识' })[row.selfAssessment] }}</p>
+        <WordMeaning :translation="row.translation" :translation-groups="row.translationGroups" />
+        <footer class="training-history-meta"><span>当前状态：{{ trainingStatusLabel(row) }}</span><span v-if="row.hintUsed && scope !== 'FOLLOW_TYPING'">使用提示</span><span v-if="row.extraTraining">追加练习</span></footer>
+      </article>
+      <AppPagination :page="data.page" :size="data.size" :total="data.total" :disabled="loading" @change="load" />
+    </template>
   </section>
 </template>
+<style scoped>
+.training-list-empty { padding: var(--s10) var(--s4); text-align: center; color: var(--muted); }
+.training-history-meta { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4); margin-top: var(--s3); color: var(--muted); font-size: var(--text-sm); }
+</style>

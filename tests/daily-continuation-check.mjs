@@ -16,6 +16,7 @@ const task = (changes = {}) => ({ batchId: 700, learningDate: day, dailyTarget: 
 const overview = (current, changes = {}) => ({ learningDate: day, dailyTarget: 20, activeCount: 30, dueCount: 0, newCount: 20, newWordTarget: 10, reviewLimit: 10, reviewBacklogCount: 0, overdueReviewCount: 0, unassignedCount: 20, canAddMore: false, needsMoreWords: false, task: current, ...changes });
 let current = overview(null), serverGoal = { dailyTarget: 20, completedCount: 0, remainingCount: 20, reached: false, targetSource: 'SETTING', batchId: null, taskStatus: null };
 let nextStart, startEmpty = false, afterJoin, answerSnapshots = [], heldStart, display = 0;
+let recordSnapshots;
 const setGoal = (completedCount, remainingCount, reached) => { serverGoal = { dailyTarget: 20, completedCount, remainingCount, reached, targetSource: 'TASK_SNAPSHOT', batchId: 700, taskStatus: current.task?.status ?? null }; };
 const starts = () => calls.filter(call => call.url === '/learning/today/start');
 http.defaults.adapter = async config => {
@@ -24,6 +25,10 @@ http.defaults.adapter = async config => {
   const ok = data => ({ config, status: 200, headers: {}, data: { code: 'OK', data: clone(data) } });
   if (config.url === '/learning/settings') return ok({ dailyTarget: 20, newWordTarget: 10, reviewLimit: 10, preferredStudyMode: 'RECOGNITION', pronunciation: { autoPlay: false, accent: 'US', playbackRate: 1, repeatCount: 1 } });
   if (config.url === '/learning/today') return ok(current);
+  if (config.url === '/learning/daily-tasks' && recordSnapshots) {
+    const records = recordSnapshots.filter(record => record.status === config.params.status);
+    return ok({ page: config.params.page, size: config.params.size, total: records.length, records });
+  }
   if (config.url === '/learning/statistics/summary') return ok({ learningDate: day, source: 'DAILY', goal: serverGoal });
   if (config.url === '/learning/today/start') {
     if (heldStart) await heldStart;
@@ -115,7 +120,7 @@ await click('继续学习'); await until(ready, '205 total'); assert.equal(start
 answerSnapshots = Array.from({ length: 5 }, (_, index) => overview(task({ status: index === 4 ? 'COMPLETED' : 'IN_PROGRESS', totalCount: 205, completedCount: 201 + index, newCount: 3, reviewCount: 202, trainingCount: 201 + index, nextItemId: index === 4 ? null : 902 + index }), { unassignedCount: index === 4 ? 1 : 0, canAddMore: index === 4 }));
 for (let n = 0; n < 5; n++) { await until(ready, '205 answer'); document.querySelector('.daily-training-rating button').click(); await until(() => document.querySelector('.daily-training-feedback'), '205 saved'); document.querySelector('.daily-training-feedback > .btn').click(); }
 await visit('/records/700', () => button('继续学习'));
-assert.match(document.querySelector('.session-stat-grid').textContent, /205 \/ 205/);
+assert.match(document.querySelector('.daily-record-progress').textContent, /205 \/ 205/);
 nextStart = overview(task({ status: 'IN_PROGRESS', totalCount: 206, completedCount: 205, newCount: 3, reviewCount: 203, nextItemId: 910 }), { unassignedCount: 0 });
 await click('继续学习'); await until(ready, 'repeat beyond 205'); assert.equal(current.task.totalCount, 206); assert.equal(current.task.batchId, 700);
 console.log('PASS reached goals and 200 completed words do not block 205/206 cumulative totals or repeated continuation from today and results');
@@ -130,4 +135,58 @@ input('#new-word-target', '200'); input('#review-limit', '1'); await click('保�
 await until(() => document.querySelector('#allocation-error')?.textContent.includes('合计为 1～200'), 'per-round configuration still bounded');
 assert.equal(calls.some(call => call.url.endsWith('/allocation')), false);
 console.log('PASS cumulative totals over 200 do not relax the independent 1–200 configuration validation');
+
+// Historical unfinished batches retain IN_PROGRESS on the server, but cannot be resumed.
+// Deliberately use a server date in the future to catch accidental use of the device date.
+const serverDay = '2099-10-28', pastDay = '2099-10-27';
+const writesBeforeRecords = calls.filter(call => call.method !== 'get').length;
+for (const [learningDate, status, label] of [
+  [pastDay, 'IN_PROGRESS', '已结束 · 未完成'],
+  [serverDay, 'IN_PROGRESS', '进行中'],
+  [pastDay, 'COMPLETED', '本轮已结束'],
+  [pastDay, 'ABANDONED', '已放弃'],
+]) {
+  current = overview(task({ learningDate, status, completedCount: 1, nextItemId: learningDate === serverDay ? 701 : null }), { learningDate: serverDay });
+  const snapshot = clone(current.task);
+  await visit('/records/700', () => document.querySelector('.daily-record-heading h1')?.textContent === `${learningDate} 学习记录`);
+  assert.equal(document.querySelector('.daily-record-heading .learning-badge').textContent, label);
+  assert.equal(document.querySelector('.daily-record-counts').textContent.includes('练习次数'), true);
+  for (const jargon of ['队列', '有效反馈', '本任务目标', '服务端测评统计', '跳过 0 词']) assert.equal(document.querySelector('.live-daily-result').textContent.includes(jargon), false, jargon);
+  assert.equal(document.querySelector('#record-words').style.display, '');
+  assert.equal(document.querySelector('#record-history').style.display, 'none');
+  await click('练习记录');
+  assert.equal(document.querySelector('#record-words').style.display, 'none');
+  assert.equal(document.querySelector('#record-history').style.display, '');
+  const resume = document.querySelector('.result-ctas a[href="/learn/700"]');
+  assert.equal(!!resume, learningDate === serverDay && status === 'IN_PROGRESS');
+  if (learningDate !== serverDay) {
+    assert.equal(document.querySelector('.daily-goal-status'), null);
+    assert.equal(document.querySelector('.result-ctas a[href="/books"]'), null);
+    assert.equal(button('继续学习'), undefined);
+  }
+  assert.deepEqual(current.task, snapshot, 'display does not complete or rewrite historical task progress');
+}
+recordSnapshots = [
+  task({ learningDate: pastDay, status: 'IN_PROGRESS', completedCount: 0 }),
+  task({ batchId: 701, learningDate: serverDay, status: 'IN_PROGRESS', completedCount: 1 }),
+  task({ batchId: 702, learningDate: pastDay, status: 'COMPLETED' }),
+  task({ batchId: 703, learningDate: pastDay, status: 'ABANDONED' }),
+];
+await visit('/records', () => document.querySelectorAll('.record-card').length === 2);
+assert.equal(button('进行中'), undefined);
+assert.ok(button('未完成'));
+assert.match(document.querySelector('.record-card[href="/records/700"]').textContent, /已结束 · 未完成/);
+assert.match(document.querySelector('.record-card[href="/records/701"]').textContent, /进行中/);
+for (const card of document.querySelectorAll('.record-card')) {
+  assert.equal(card.querySelector('.record-summary').textContent.includes('已完成'), false);
+  for (const jargon of ['队列', '有效反馈', '跳过 0 词']) assert.equal(card.textContent.includes(jargon), false, jargon);
+}
+await click('已完成');
+await until(() => document.querySelector('.record-card[href="/records/702"]'), 'completed records');
+assert.match(document.querySelector('.record-list').textContent, /本轮已结束/);
+await click('已放弃');
+await until(() => document.querySelector('.record-card[href="/records/703"]'), 'abandoned records');
+assert.match(document.querySelector('.record-list').textContent, /已放弃/);
+assert.equal(calls.filter(call => call.method !== 'get').length, writesBeforeRecords, 'record views issue no writes or automatic starts');
+console.log('PASS date titles and server-date statuses distinguish past unfinished, ongoing, completed and abandoned records without altering progress or resuming historical tasks');
 app.unmount(); await window.happyDOM.close();

@@ -1,5 +1,64 @@
 import { expect, test } from '@playwright/test';
 
+for (const width of [1280, 375]) test(`daily record detail stays concise and paginates at ${width}px`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 900 });
+  await page.goto('/login');
+  await page.locator('#username').fill('record_layout_reader');
+  await page.locator('#password').fill('example123');
+  await page.getByRole('button', { name: '登录', exact: true }).click();
+  await expect(page.locator('.daily-equation')).toBeVisible();
+  await page.evaluate(async () => {
+    const httpPath = '/src/api/http.ts', routerPath = '/src/router/index.ts';
+    const { http } = await import(/* @vite-ignore */ httpPath), { router } = await import(/* @vite-ignore */ routerPath);
+    const original = http.defaults.adapter;
+    const writes: string[] = [];
+    Reflect.set(window, '__recordWrites', writes);
+    const task = { batchId: 930, learningDate: '2099-10-27', dailyTarget: 20, taskType: 'DAILY', status: 'IN_PROGRESS', totalCount: 21, completedCount: 18, skippedCount: 0, answerCount: 123, unfamiliarCount: 2, newCount: 10, reviewCount: 11, nextItemId: null, studyMode: 'DICTATION', modeVersion: 0, trainingCount: 46 };
+    const items = Array.from({ length: 21 }, (_, index) => ({ itemId: 1000 + index, sortOrder: index + 1, itemStatus: index < 18 ? 'DONE' : 'PENDING', completionReason: index < 18 ? 'RECALLED' : null, current: false, canExtraTrain: false, word: index < 18 ? ['apple', 'banana', 'cherry'][index % 3] : null, translation: index < 18 ? '单词释义' : null, phonetic: null, trainingCount: 2, answerCount: 12 }));
+    const attempts = Array.from({ length: 21 }, (_, index) => ({ trainingId: index + 1, itemId: 1000, wordId: 1, mode: 'DICTATION', action: 'ANSWER', verdict: index % 2 ? 'INCORRECT' : 'CORRECT', input: index % 2 ? 'aple' : 'apple', selfAssessment: null, word: 'apple', translation: '苹果', hintUsed: false, extraTraining: false, attemptNo: index + 1, itemStatus: 'DONE', completionReason: 'RECALLED', answeredAt: '2099-10-27T12:00:00' }));
+    http.defaults.adapter = async (config: { url: string; method: string; params?: { page?: number; size?: number } }) => {
+      if (config.method !== 'get') writes.push(config.url);
+      const ok = (data: unknown) => ({ config, status: 200, headers: {}, data: { code: 'OK', data: structuredClone(data) } });
+      const paged = (rows: unknown[]) => { const page = config.params?.page ?? 1, size = config.params?.size ?? 20; return ok({ page, size, total: rows.length, records: rows.slice((page - 1) * size, page * size) }); };
+      if (config.url === '/learning/today') return ok({ learningDate: '2099-10-28', dailyTarget: 20, task: null, canAddMore: false, needsMoreWords: false });
+      if (config.url === '/learning/daily-tasks') return paged([task, { ...task, batchId: 931, skippedCount: 1 }]);
+      if (config.url === '/learning-batches/930/daily') return ok(task);
+      if (config.url.endsWith('/training/items')) return paged(items);
+      if (config.url.endsWith('/training/attempts')) return paged(attempts);
+      return original(config);
+    };
+    await router.push('/records');
+  });
+  await expect(page.locator('.record-card')).toHaveCount(2);
+  await expect(page.locator('.record-card').first().locator('.record-summary')).toHaveText('18 / 21词');
+  await expect(page.locator('.record-card').last().locator('.record-summary')).toContainText('跳过 1 词');
+  await page.locator('.record-card').first().click();
+  await expect(page.locator('.daily-record-heading h1')).toHaveText('2099-10-27 学习记录');
+  await expect(page.locator('.daily-record-heading .learning-badge')).toHaveText('已结束 · 未完成');
+  await expect(page.locator('.daily-record-progress')).toContainText('18 / 21');
+  await expect(page.locator('.daily-record-counts')).toContainText('46次');
+  await expect(page.locator('#record-words .training-item-row')).toHaveCount(20);
+  await expect(page.locator('.live-daily-result')).not.toContainText(/队列|有效反馈|本任务目标|服务端测评统计|跳过 0 词/);
+  await expect(page.getByRole('link', { name: '继续学习', exact: true })).toHaveCount(0);
+  await expect(page.locator('.training-item-footer button')).toHaveCount(0);
+  await expect(page.locator('[data-item-id="1018"] [lang="en"]')).toHaveCount(0);
+  await page.screenshot({ path: testInfo.outputPath('record-words.png'), fullPage: true, animations: 'disabled' });
+  await page.locator('#record-words button[aria-label="下一页"]').click();
+  await expect(page.locator('#record-words .training-item-order')).toHaveText('21');
+  await page.getByRole('button', { name: '练习记录', exact: true }).click();
+  await expect(page.locator('#record-words')).toBeHidden();
+  await expect(page.locator('#record-history')).toBeVisible();
+  await expect(page.locator('.training-history-row')).toHaveCount(20);
+  await expect(page.locator('.training-history-row').first()).toContainText('当前状态：回忆完成');
+  await page.locator('#record-history button[aria-label="下一页"]').click();
+  await expect(page.locator('.training-history-row')).toHaveCount(1);
+  await page.screenshot({ path: testInfo.outputPath('record-history.png'), fullPage: true, animations: 'disabled' });
+  await page.getByRole('button', { name: '单词列表', exact: true }).click();
+  await expect(page.locator('#record-words .training-item-order')).toHaveText('21');
+  expect(await page.locator('html').evaluate(node => node.scrollWidth <= window.innerWidth)).toBe(true);
+  expect(await page.evaluate(() => Reflect.get(window, '__recordWrites'))).toEqual([]);
+});
+
 test('recognition advances without locked ratings or transient error alerts; failed writes remain retryable', async ({ page }) => {
   await page.goto('/login');
   await page.locator('#username').fill('recognition_regression');

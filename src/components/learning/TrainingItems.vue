@@ -29,15 +29,16 @@ watch(() => [props.revision, props.allowExtra], () => { void load(); });
   <section class="training-items" aria-label="本组词项">
     <StatePanel :loading="loading" :error="error" @retry="load()" />
     <template v-if="data && !loading && !error">
-      <p v-if="scope === 'FOLLOW_TYPING'" class="subtle-copy">本轮词单，已暂停或移出的词会跳过，不补抽。</p><p v-else class="subtle-copy">按本组顺序展示；完成原因表示本轮状态，回忆完成不等于永久掌握。</p>
-      <p v-if="!data.records.length" class="subtle-copy">本组暂无词项。</p>
+      <p v-if="!data.records.length" class="training-list-empty">暂无单词</p>
       <article v-for="row in data.records" :key="row.itemId" :class="['training-item-row', { 'is-current': row.current }]" :data-item-id="row.itemId">
-        <header><span class="training-item-order">{{ row.sortOrder }}</span><strong v-if="(scope === 'FOLLOW_TYPING' || row.itemStatus === 'DONE') && row.word" lang="en">{{ row.word }}</strong><strong v-else>第 {{ row.sortOrder }} 词</strong><span v-if="row.current" class="training-item-current">当前队列词</span><span>{{ trainingStatusLabel(row) }}</span></header>
+        <header><span class="training-item-order">{{ row.sortOrder }}</span><strong v-if="(scope === 'FOLLOW_TYPING' || row.itemStatus === 'DONE') && row.word" lang="en">{{ row.word }}</strong><strong v-else>第 {{ row.sortOrder }} 词</strong><span v-if="row.current" class="training-item-current">正在学习</span><span>{{ trainingStatusLabel(row) }}</span></header>
         <template v-if="scope === 'FOLLOW_TYPING' || row.itemStatus === 'DONE'"><p v-if="row.phonetic" class="subtle-copy">{{ row.phonetic }}</p><WordMeaning :translation="row.translation" :translation-groups="row.translationGroups" /></template>
-        <p v-else class="subtle-copy">{{ row.itemStatus === 'SKIPPED' ? '已跳过，答案保持隐藏。' : '答案保持隐藏，请在当前练习中作答。' }}</p>
-        <div class="training-item-footer"><span class="subtle-copy">训练 {{ row.trainingCount }} 次<template v-if="scope !== 'FOLLOW_TYPING'"> · 有效反馈 {{ row.answerCount }} 次</template></span><button v-if="row.canExtraTrain && row.itemStatus === 'DONE'" class="muted-link" :disabled="!allowExtra" @click="$emit('extra', row.itemId)">追加训练此词</button></div>
+        <div class="training-item-footer"><span class="subtle-copy">练习 {{ row.trainingCount }} 次</span><button v-if="row.canExtraTrain && row.itemStatus === 'DONE'" class="muted-link" :disabled="!allowExtra" @click="$emit('extra', row.itemId)">追加练习</button></div>
       </article>
       <AppPagination :page="data.page" :size="data.size" :total="data.total" :disabled="loading" @change="load" />
     </template>
   </section>
 </template>
+<style scoped>
+.training-list-empty { padding: var(--s10) var(--s4); text-align: center; color: var(--muted); }
+</style>

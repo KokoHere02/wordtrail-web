@@ -149,7 +149,7 @@ assert.match(document.querySelector('.workspace-progress').textContent, /1 \/ 1/
 await until(() => document.querySelector('.learning-empty')?.textContent.includes('本组训练已结束'), 'shared completion');
 assert.ok(button('继续学习'), 'fresh server canAddMore is available without another start POST');
 assert.equal(document.querySelector('.workspace-items'), null, 'daily word practice hides the item list'); mountItems(true);
-await until(() => button('追加训练此词'), 'completed words from server'); await click('追加训练此词');
+await until(() => button('追加练习'), 'completed words from server'); await click('追加练习');
 await until(() => document.querySelector('.daily-training-card'), 'extra presentation'); unmountItems(); await tab('dictation'); input('#daily-training-input', 'apple'); key('Enter', '#daily-training-input');
 await until(() => document.querySelector('.daily-training-feedback')?.textContent.includes('追加训练 · 原词项辅助完成'), 'extra dictation preserves original completion reason');
 assert.match(document.querySelector('.workspace-progress').textContent, /1 \/ 1/); assert.equal(attempts[0].extraTraining, true);
@@ -171,7 +171,7 @@ await until(() => document.querySelector('.daily-training-card'), 'list task');
 assert.equal(document.querySelector('.workspace-items'), null); mountItems(true);
 await until(() => document.querySelectorAll('.training-item-row').length === 20, 'first item page');
 const itemList = document.querySelector('.training-items');
-for (const text of ['回忆完成', '跟拼完成', '辅助完成', '达到当天强化上限', '已完成', '当前队列词']) assert.ok(itemList.textContent.includes(text), text);
+for (const text of ['回忆完成', '跟拼完成', '辅助完成', '达到当天强化上限', '已完成', '正在学习']) assert.ok(itemList.textContent.includes(text), text);
 assert.equal(document.querySelector('[data-item-id="52"] [lang="en"]'), null, 'pending answer hidden');
 assert.equal(document.querySelector('[data-item-id="53"] .word-meaning'), null, 'skipped answer hidden');
 assert.equal(document.querySelector('[data-item-id="54"] button'), null, 'paused/completed item cannot be extra trained');
