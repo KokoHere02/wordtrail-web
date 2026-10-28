@@ -11,7 +11,6 @@
 .sentence-collect-form fieldset { display: grid; gap: var(--s3); min-width: 0; }
 .sentence-join-choice { border-top: 1px solid var(--line); padding-top: var(--s3); }
 .sentence-collect-form .btn { justify-self: start; }
-.weak-sentence-section { margin-block: var(--s5); }
 .account-security .library-heading { flex-wrap: wrap; gap: var(--s4); }
 .account-section { margin-block: var(--s6); padding-block: var(--s5); border-top: 1px solid var(--line); }
 .account-section h2 { font-size: var(--text-lg); margin-bottom: var(--s3); }

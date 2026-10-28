@@ -1,5 +1,63 @@
 import { expect, test } from '@playwright/test';
 
+for (const width of [1280, 375]) test(`weak words select across pages for independent dictation at ${width}px`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 900 });
+  await page.goto('/login');
+  await page.locator('#username').fill('weak_words_reader');
+  await page.locator('#password').fill('example123');
+  await page.getByRole('button', { name: '登录', exact: true }).click();
+  await expect(page.locator('.daily-equation')).toBeVisible();
+  await page.evaluate(async () => {
+    const httpPath = '/src/api/http.ts', routerPath = '/src/router/index.ts';
+    const { http } = await import(/* @vite-ignore */ httpPath), { router } = await import(/* @vite-ignore */ routerPath);
+    const original = http.defaults.adapter;
+    const sentenceCalls: string[] = []; Reflect.set(window, '__weakSentenceCalls', sentenceCalls);
+    const creates: unknown[] = []; Reflect.set(window, '__weakDictationCreates', creates);
+    const records = Array.from({ length: 12 }, (_, index) => ({ wordId: 1001 + index, word: `word${index + 1}`, translation: '单词释义', phonetic: null, lastResult: 2, answerCount: 2, lastAnsweredAt: '2026-10-28T15:42:57', statisticsComplete: true }));
+    http.defaults.adapter = async (config: { url: string; method?: string; data?: string; params?: { page: number; size: number } }) => {
+      if (config.url.startsWith('/sentence-translation')) sentenceCalls.push(config.url);
+      if (config.url === '/learning/weak-words') {
+        const { page = 1, size = 10 } = config.params ?? {};
+        return { config, status: 200, headers: {}, data: { code: 'OK', data: { source: 'DAILY', page, size, total: 12, statisticsComplete: true, incompleteWordCount: 0, firstRecordedAt: '2026-10-21T16:34:03', lastRecordedAt: '2026-10-28T15:42:57', records: records.slice((page - 1) * size, page * size) } } };
+      }
+      if (config.url === '/dictation/batches' && config.method === 'post') { creates.push(JSON.parse(config.data ?? '{}')); throw new Error('test response unavailable'); }
+      return original(config);
+    };
+    await router.push('/weak-words');
+  });
+  await expect(page.locator('.weak-word-row')).toHaveCount(10);
+  await expect(page.locator('.weak-words-page')).not.toContainText(/记录范围|本轮句数|句子数量|难度|关联句子/);
+  await expect(page.locator('.weak-words-page input:not([type="checkbox"]), .weak-words-page select')).toHaveCount(0);
+  await expect(page.locator('.weak-word-row').first()).toContainText('单词释义');
+  await expect(page.locator('.weak-word-row').first().getByRole('link')).toHaveAttribute('href', '/words/1001');
+  await expect(page.locator('.weak-word-row').first().getByRole('button', { name: '学习历史' })).toBeEnabled();
+  const start = page.getByRole('button', { name: '默写所选', exact: true });
+  await expect(start).toBeDisabled();
+  await page.locator('.weak-word-row').first().getByRole('checkbox').check();
+  await page.locator('.weak-word-row').last().getByRole('checkbox').check();
+  await expect(page.locator('.weak-selected-count')).toHaveText('已选 2 词');
+  await expect(start).toBeEnabled();
+  await expect(start).toBeInViewport();
+  const refresh = page.getByRole('button', { name: '刷新', exact: true });
+  await expect(refresh).toBeInViewport();
+  await page.screenshot({ path: testInfo.outputPath('weak-word-list.png'), animations: 'disabled' });
+  await page.locator('.weak-words-sheet button[aria-label="下一页"]').click();
+  await expect(page.locator('.weak-word-row')).toHaveCount(2);
+  await expect(page.locator('.weak-word-row').first().getByRole('link')).toHaveText('word11');
+  await page.locator('.weak-word-row').first().getByRole('checkbox').check();
+  await expect(page.locator('.weak-selected-count')).toHaveText('已选 3 词');
+  await refresh.click();
+  await expect(page.locator('.weak-word-row')).toHaveCount(2);
+  await expect(page.locator('.weak-selected-count')).toHaveText('已选 3 词');
+  await start.click();
+  await expect(page.locator('.dictation-launch-error')).toContainText('创建结果尚未确认');
+  await expect(start).toBeDisabled();
+  await expect(page.locator('.weak-word-row').first().getByRole('checkbox')).toBeDisabled();
+  expect(await page.evaluate(() => Reflect.get(window, '__weakDictationCreates'))).toEqual([{ source: 'PLAN', wordIds: [1001, 1010, 1011] }]);
+  expect(await page.evaluate(() => Reflect.get(window, '__weakSentenceCalls'))).toEqual([]);
+  expect(await page.locator('html').evaluate(node => node.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
 for (const [width, theme] of [[1280, 'light'], [375, 'dark'], [320, 'light']] as const) test(`content library navigation remains visible and highlights the current page at ${width}px`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 900 });
   await page.goto('/login');
@@ -23,6 +81,10 @@ for (const [width, theme] of [[1280, 'light'], [375, 'dark'], [320, 'light']] as
     await nav.getByRole('link', { name: label, exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`${path}$`));
     await expectActive(label);
+    if (path === '/weak-words') {
+      await expect(page.getByRole('group', { name: '薄弱词来源' })).toHaveCount(0);
+      await expect(page.locator('.weak-words-page')).not.toContainText('历史认读专项');
+    }
   }
   await nav.getByRole('link', { name: '句子', exact: true }).click();
   await expectActive('句子');
