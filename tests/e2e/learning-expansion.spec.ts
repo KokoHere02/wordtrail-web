@@ -84,6 +84,7 @@ test('real browser audio applies UK/rate/repeats, stops on mode switch and downl
   await expect.poll(() => page.evaluate(() => Reflect.get(window, '__expansion').plays.at(-1))).toBe(1.25);
   expect(await page.evaluate(() => Reflect.get(window, '__expansion').requests.at(-1).url)).toContain('accent=US');
   await page.evaluate(async () => { const path = '/src/router/index.ts'; const { router } = await import(/* @vite-ignore */ path); await router.push('/settings'); });
+  await page.getByRole('tab', { name: '数据管理', exact: true }).click();
   const downloadPromise = page.waitForEvent('download'); await page.getByRole('button', { name: '下载个人学习数据 ZIP', exact: true }).click(); const download = await downloadPromise;
   expect(download.suggestedFilename()).toBe('学习.zip'); await expect(page.getByText('导出文件已下载。')).toBeVisible();
 });
@@ -107,7 +108,29 @@ for (const width of [1440, 390, 320]) for (const theme of ['light', 'dark']) {
     await page.screenshot({ path: `test-results/consolidation-${theme}-${width}.png`, fullPage: true });
     await expect(page.locator('.consolidation-issue')).toContainText('incomprehensibility'); await expect(page.locator('.consolidation-page [role=tab]')).toHaveCount(0); await expect(page.getByText('待独立验证', { exact: true })).toHaveCount(0); await expect(page.locator('.consolidation-summary > div')).toHaveCount(4);
     expect(await page.locator('html').evaluate(node => node.scrollWidth <= window.innerWidth)).toBe(true);
-    await page.evaluate(async () => { const path = '/src/router/index.ts'; const { router } = await import(/* @vite-ignore */ path); await router.push('/settings'); }); await expect(page.locator('#new-word-target')).toBeVisible();
+    await page.getByRole('link', { name: '学习设置', exact: true }).click(); await expect(page.locator('#new-word-target')).toBeVisible();
+    await expect(page.locator('.header-actions .settings-link')).toHaveAttribute('aria-current', 'page');
+    await expect(page.locator('.main-nav a[aria-current="page"]')).toHaveCount(0);
+    await expect(page.getByRole('tab', { selected: true })).toHaveText('每日配额');
+    await page.getByRole('button', { name: '增加每日新词', exact: true }).click();
+    await expect(page.locator('#new-word-target')).toHaveValue('11');
+    await expect(page.locator('.settings-total')).toContainText('31');
+    const nav = await page.locator('.settings-nav').boundingBox(), card = await page.locator('.settings-allocation-form').boundingBox();
+    if (width === 1440) expect(nav!.x + nav!.width).toBeLessThan(card!.x);
+    else expect(nav!.y + nav!.height).toBeLessThan(card!.y);
+    await page.screenshot({ path: `test-results/settings-allocation-${theme}-${width}.png`, fullPage: true });
+    await page.getByRole('tab', { name: '每日配额', exact: true }).focus(); await page.keyboard.press('ArrowRight');
+    await expect(page.getByRole('tab', { name: '发音与播放', exact: true })).toBeFocused();
+    await expect(page.getByLabel('播放速度')).toBeVisible();
+    expect(await page.locator('html').evaluate(node => node.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.screenshot({ path: `test-results/settings-pronunciation-${theme}-${width}.png`, fullPage: true });
+    await page.getByRole('tab', { name: '数据管理', exact: true }).click();
+    await expect(page.getByRole('button', { name: '下载个人学习数据 ZIP', exact: true })).toBeVisible();
+    await expect(page.getByRole('link', { name: '管理', exact: true })).toHaveAttribute('href', '/settings/security');
+    expect(await page.locator('html').evaluate(node => node.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.screenshot({ path: `test-results/settings-data-${theme}-${width}.png`, fullPage: true });
+    await page.getByRole('tab', { name: '每日配额', exact: true }).click();
+    await expect(page.locator('#new-word-target')).toHaveValue('11');
     expect(await page.locator('html').evaluate(node => node.scrollWidth <= window.innerWidth)).toBe(true);
   });
 }

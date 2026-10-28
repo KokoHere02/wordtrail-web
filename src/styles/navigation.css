@@ -3,6 +3,7 @@
 .app-main-nav > a { min-width: 0; min-height: var(--control); white-space: nowrap; }
 .app-main-nav .nav-indicator { width: calc((100% - 10px) / var(--nav-count)); top: 5px; bottom: 5px; }
 .app-main-nav .app-nav-short { display: none; }
+.header-actions .settings-link[aria-current=page] { color: var(--accent); background: var(--sage); }
 @media (max-width: 800px) {
   .app-site-header { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: 52px calc(var(--control) + var(--s3)); gap: var(--s3); padding-top: var(--s1); padding-bottom: var(--s3); min-height: 136px; }
   .app-site-header .header-actions { grid-column: 2; grid-row: 1; }

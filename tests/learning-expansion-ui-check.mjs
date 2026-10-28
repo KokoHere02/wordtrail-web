@@ -18,7 +18,7 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function until(test, label) { const deadline = Date.now() + 6000; while (!test()) { if (Date.now() > deadline) throw new Error(`Timeout ${label}: ${document.body.textContent}`); await delay(10); } }
 function input(selector, value) { const element = document.querySelector(selector); assert.ok(element, selector); element.value = value; element.dispatchEvent(new window.Event('input', { bubbles: true })); }
 function change(selector, value) { const element = document.querySelector(selector); assert.ok(element, selector); element.value = value; element.dispatchEvent(new window.Event('change', { bubbles: true })); }
-function button(text) { return [...document.querySelectorAll('button')].find(b => b.textContent.trim() === text && !b.closest('[style*="display: none"]')); }
+function button(text) { return [...document.querySelectorAll('button')].find(b => (b.textContent.trim() === text || b.getAttribute('aria-label') === text) && !b.closest('[style*="display: none"]')); }
 async function click(text) { await until(() => button(text) && !button(text).disabled, text); button(text).click(); }
 let pronunciation = { autoPlay: false, accent: 'US', playbackRate: 1, repeatCount: 1 };
 let allocation = { newWordTarget: 10, reviewLimit: 20 }, dailyCalls = 0, createLoss = true, revealed = false, eventNo = 1;
@@ -102,16 +102,24 @@ const writes = calls.filter(c => c.url.endsWith('/900/answer')).length;
 await router.push('/consolidation'); await router.push('/consolidation/batches/90'); await until(() => document.querySelector('.daily-assisted-note'), 'reentered reveal');
 assert.equal(calls.filter(c => c.url.endsWith('/900/answer')).length, writes); assert.equal(dailyCalls, before, 'practice never reads DAILY');
 await router.push('/settings'); await until(() => document.querySelector('#new-word-target'), 'allocation settings');
+assert.equal(document.querySelectorAll('.settings-nav [role=tab]').length, 3);
+await click('增加每日新词'); assert.equal(document.querySelector('#new-word-target').value, '11');
+await click('减少每日新词'); assert.equal(document.querySelector('#new-word-target').value, '10');
+input('#new-word-target', '200'); await delay(0); assert.equal(button('增加每日新词').disabled, true);
+input('#new-word-target', '0'); await delay(0); assert.equal(button('减少每日新词').disabled, true);
 input('#new-word-target', '0'); input('#review-limit', '0'); await click('保存每日配额'); await until(() => document.querySelector('.settings-page').textContent.includes('合计为 1～200'), 'invalid sum'); assert.equal(calls.filter(c => c.url.endsWith('/allocation')).length, 0);
 input('#new-word-target', '12'); input('#review-limit', '18'); await click('保存每日配额'); await until(() => document.querySelector('.live-notice')?.textContent.includes('30 词'), 'saved allocation');
 assert.ok(!calls.some(c => c.method === 'put' && c.url === '/learning/settings'));
+await click('发音与播放');
 const audioForm = document.querySelector('.pronunciation-form'); audioForm.querySelector('input[type=checkbox]').click(); change('.pronunciation-form select', 'UK'); input('.pronunciation-form input[min="0.5"]', '.75'); input('.pronunciation-form input[min="1"]', '2'); await click('保存发音设置'); await until(() => audioForm.textContent.includes('已保存'), 'saved audio');
 assert.deepEqual(calls.filter(c => c.url.endsWith('/pronunciation')).at(-1).body, { autoPlay: true, accent: 'UK', playbackRate: .75, repeatCount: 2 });
-await click('下载个人学习数据 ZIP'); await until(() => document.querySelector('.settings-page').textContent.includes('导出未授权'), 'export error'); assert.equal(downloads, 0); assert.ok(!document.body.textContent.includes('导出文件已下载'));
-zipFailure = false; await click('下载个人学习数据 ZIP'); await until(() => document.body.textContent.includes('导出文件已下载'), 'ZIP download'); assert.equal(downloads, 1);
+await click('每日配额'); assert.equal(document.querySelector('#new-word-target').value, '12'); assert.equal(document.querySelector('#review-limit').value, '18');
+await click('数据管理');
+await click('导出 ZIP'); await until(() => document.querySelector('.settings-page').textContent.includes('导出未授权'), 'export error'); assert.equal(downloads, 0); assert.ok(!document.body.textContent.includes('导出文件已下载'));
+zipFailure = false; await click('导出 ZIP'); await until(() => document.body.textContent.includes('导出文件已下载'), 'ZIP download'); assert.equal(downloads, 1);
 let releaseExport; heldExport = new Promise(resolve => { releaseExport = resolve; });
 const exportCount = calls.filter(c => c.url === '/me/learning-data/export').length;
-await click('下载个人学习数据 ZIP');
+await click('导出 ZIP');
 await until(() => calls.filter(c => c.url === '/me/learning-data/export').length === exportCount + 1, 'export request');
 await router.push('/today'); await until(() => document.querySelector('.daily-equation'), 'snapshot home');
 releaseExport(); await delay(20); assert.equal(downloads, 1, 'leaving settings cancels late downloads');

@@ -305,7 +305,6 @@
 .consolidation-batches .pagination { flex-wrap: wrap; gap: var(--s2); margin: var(--s4) 0 0; padding-top: var(--s3); font-size: var(--text-sm); }
 .consolidation-empty { display: grid; justify-items: center; gap: var(--s3); padding: var(--s12) var(--s5); color: var(--muted); font-size: var(--text-base); }
 .consolidation-batches-empty { padding-block: var(--s3); color: var(--muted); font-size: var(--text-sm); }
-.settings-page > .settings-form { margin-bottom: var(--s5); }
 @media (max-width: 950px) {
   .consolidation-layout { display: flex; flex-direction: column; gap: var(--s5); }
   .consolidation-list { order: 1; width: 100%; }
