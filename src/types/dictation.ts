@@ -10,20 +10,21 @@ export type CreateDictation = { source: DictationSource; bookId?: number } & (
 );
 export interface DictationTask {
   batchId: number; bookId: number | null; taskType: 'PRACTICE'; practiceMode: 'DICTATION'; status: Status;
-  totalCount: number; completedCount: number; passedCount: number; needsPracticeCount: number; attemptCount: number;
+  totalCount: number; completedCount: number; passedCount: number | null; needsPracticeCount: number | null; attemptCount: number;
+  singleAttempt: boolean; canContinue: boolean; accuracy: number | null;
   nextItemId: number | null; attemptLimit: number; createdAt: string; completedAt: string | null;
 }
 export interface DictationQuestion {
   itemId: number; prompt: string; promptGroups: TranslationGroup[];
   presentationId: string; nextAttemptNo: number; correctStreak: number; requiredCorrectStreak: number; attemptLimit: number;
 }
-export type DictationAnswerBody = { attemptNo: number; presentationId: string; requestId: string } & (
+export type DictationAnswerBody = { attemptNo: 1; presentationId: string; requestId: string } & (
   { action: 'ANSWER'; input: string } | { action: 'REVEAL'; input?: never }
 );
 export interface DictationAnswer extends TranslationFields {
-  logId: number; itemId: number; action: 'ANSWER' | 'REVEAL'; submittedAnswer: string | null; expectedWord: string;
-  verdict: DictationVerdict; attemptNo: number; correctStreak: number; itemStatus: DictationItemStatus;
-  completionReason: DictationCompletion; answeredAt: string; affectsSchedule: false; progress: DictationTask;
+  logId: number; itemId: number; action: 'ANSWER' | 'REVEAL'; submittedAnswer: string | null; expectedWord?: string;
+  verdict?: DictationVerdict; attemptNo: number; correctStreak?: number; itemStatus: DictationItemStatus;
+  completionReason?: DictationCompletion; answeredAt: string; affectsSchedule: false; progress: DictationTask;
 }
 export interface DictationWord extends TranslationFields {
   itemId: number; wordId: number; word: string; lastVerdict: DictationVerdict; lastInput: string | null;

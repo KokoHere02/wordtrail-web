@@ -1,108 +1,101 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+import { createDictationExamFixture } from '../helpers/dictation-exam-fixture.mjs';
 
+async function setup(page: Page) {
+  const server = createDictationExamFixture();
+  const user = { id: 7, username: 'dictation_exam_browser', nickname: '测验' };
+  await page.addInitScript(() => sessionStorage.setItem('wordtrail.refresh', 'exam-refresh'));
+  await page.route('**/api/**', async route => {
+    const request = route.request(), url = new URL(request.url());
+    if (!url.pathname.startsWith('/api/')) return route.continue();
+    const path = url.pathname.slice(4);
+    const json = (data: unknown, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify({ code: 'OK', data }) });
+    if (path === '/auth/refresh' || path === '/auth/login') return json({ accessToken: 'exam-access', refreshToken: 'exam-refresh', user });
+    expect(request.headers()['authorization']).toBe('Bearer exam-access');
+    if (path === '/auth/me') return json(user);
+    if (path === '/auth/logout') return json(null);
+    const response = await server.handle(path, request.method().toLowerCase(), request.postDataJSON(), Object.fromEntries(url.searchParams));
+    if (!response) throw new Error(`Unexpected API in independent exam: ${request.method()} ${path}`);
+    if (response.networkError) return route.abort('failed');
+    if (response.error) return route.fulfill({ status: response.status, contentType: 'application/json', body: JSON.stringify({ ...response.error, data: null }) });
+    return json(response.data, response.status);
+  });
+  return server;
+}
 for (const width of [1440, 390, 320]) for (const theme of ['light', 'dark']) {
-  test(`dictation ${theme} ${width}px`, async ({ page }) => {
+  test(`single-attempt dictation ${theme} ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 960 });
     await page.addInitScript(value => localStorage.setItem('wordtrail.theme', value), theme);
-    await page.goto('/login');
-    await page.locator('#username').fill('dictation_visual');
-    await page.locator('#password').fill('example123');
-    await page.getByRole('button', { name: '登录', exact: true }).click();
-    await expect(page.locator('.daily-equation')).toBeVisible();
-    await page.evaluate(async () => {
-      const httpPath = '/src/api/http.ts', routerPath = '/src/router/index.ts';
-      const { http } = await import(/* @vite-ignore */ httpPath);
-      const { router } = await import(/* @vite-ignore */ routerPath);
-      const original = http.defaults.adapter;
-      const task = { batchId: 90001, bookId: null, taskType: 'PRACTICE', practiceMode: 'DICTATION', status: 'IN_PROGRESS', totalCount: 1, completedCount: 0, passedCount: 0, needsPracticeCount: 0, attemptCount: 0, nextItemId: 11 as number | null, attemptLimit: 6, createdAt: '2026-10-24T09:00:00', completedAt: null as string | null };
-      const promptGroups = [{ partOfSpeech: 'v.', meaning: '放弃；舍弃；中止某事；停止做某事；不再保留或继续。较长的释义在窄屏自然换行，完整保留后端提示。' }];
-      const planQueries: unknown[] = [];
-      Reflect.set(window, '__dictationPlanQueries', planQueries);
-      let step = 0;
-      // Canned server outcomes, not a client judge. Only this browser test installs these fixtures.
-      http.defaults.adapter = async (config: { url: string; method: string; data?: string; params?: { page: number; size: number } }) => {
-        const body = config.data ? JSON.parse(config.data) : undefined;
-        const ok = (data: unknown, status = 200) => ({ config, status, headers: {}, data: { code: 'OK', message: '成功', data: structuredClone(data) } });
-        if (config.url === '/learning-plan/words' && config.method === 'get') { planQueries.push(structuredClone(config.params)); return ok({ page: 1, size: 10, total: 1, records: [{ wordId: 1001, word: 'abandon', translation: 'v. 放弃', translationGroups: promptGroups, planStatus: 'ACTIVE', firstLearnedAt: '2026-01-01T00:00:00', lastLearnedAt: '2026-10-23T00:00:00' }] }); }
-        if (!config.url.startsWith('/dictation/')) return original(config);
-        if (config.url === '/dictation/batches' && config.method === 'post') return ok(task, 201);
-        if (config.url === '/dictation/batches') return ok({ page: 1, size: 8, total: 2, records: [{ ...task, batchId: 89999, totalCount: 12, completedCount: 3, attemptCount: 5 }, { ...task, batchId: 89998, status: 'COMPLETED', totalCount: 8, completedCount: 8, nextItemId: null }] });
-        if (config.url === '/dictation/mistakes') return ok({ page: 1, size: 10, total: 0, records: [] });
-        if (config.url === '/dictation/batches/90001') return ok(task);
-        if (config.url.endsWith('/next')) {
-          if (document.querySelector('.dictation-expected') || (document.querySelector('#dictation-input') as HTMLInputElement | null)?.value) throw new Error('Previous answer/input visible when next was requested');
-          return ok({ itemId: 11, prompt: 'v. 放弃', promptGroups, presentationId: `server-presentation-${step}`, nextAttemptNo: step + 1, correctStreak: step === 2 ? 1 : 0, requiredCorrectStreak: step ? 2 : 1, attemptLimit: 6 });
-        }
-        if (config.url.endsWith('/answer')) {
-          if (body.presentationId !== `server-presentation-${step}` || body.attemptNo !== step + 1) throw new Error('Wrong server issuance fields');
-          const current = ++step;
-          const done = current === 3;
-          Object.assign(task, { completedCount: done ? 1 : 0, passedCount: done ? 1 : 0, attemptCount: current, nextItemId: done ? null : 11, status: done ? 'COMPLETED' : 'IN_PROGRESS', completedAt: done ? '2026-10-24T10:00:00' : null });
-          return ok({ logId: current, itemId: 11, action: body.action, submittedAnswer: body.input ?? null, expectedWord: 'abandon', translation: 'v. 放弃', translationGroups: promptGroups, verdict: current === 1 ? 'REVEALED' : 'CORRECT', attemptNo: current, correctStreak: current - 1, itemStatus: done ? 'DONE' : 'RELEARNING', completionReason: done ? 'RECALLED' : null, answeredAt: '2026-10-24T10:00:00', affectsSchedule: false, progress: task });
-        }
-        if (config.url.endsWith('/result/words')) return ok({ page: 1, size: 10, total: 1, records: [{ itemId: 11, wordId: 1001, word: 'abandon', translation: 'v. 放弃', translationGroups: promptGroups, lastVerdict: 'CORRECT', lastInput: 'abandon', attemptCount: 3, correctStreak: 2, learningStatus: 'DONE', completionReason: 'RECALLED', learningDate: '2026-10-24', answeredAt: '2026-10-24T10:00:00' }] });
-        throw new Error(`Unexpected fixture endpoint ${config.url}`);
-      };
-      await router.push('/dictation');
-    });
+    const server = await setup(page);
+    const resumable = server.addTask([1001], { totalCount: 12, completedCount: 3 });
+    const legacy = server.addTask([1001], { singleAttempt: false, canContinue: false });
+    server.addTask([1001], { status: 'COMPLETED', canContinue: false });
+    await page.goto('/dictation');
     await expect(page.getByRole('group', { name: '内容范围', exact: true })).toBeVisible();
-    await expect(page.locator('.dictation-picker select')).toHaveCount(0);
-    await expect(page.getByText('根据释义，写出英文', { exact: true })).toHaveCount(0);
-    await expect(page.getByRole('link', { name: '继续默写', exact: true })).toBeVisible();
-    await expect(page.locator('.dictation-task-row h3')).toContainText('单词默写 · 12 词');
-    await expect(page.locator('.dictation-task-number')).toHaveText('#89999');
     await expect(page.locator('.dictation-resume .dictation-task-row')).toHaveCount(1);
-    await expect(page.locator('.dictation-resume a[href="/dictation/89998/result"]')).toHaveCount(0);
-    await expect(page.getByText('跨词本默写', { exact: true })).toHaveCount(0);
-    await page.getByRole('searchbox', { name: '搜索默写计划词' }).fill('aban');
+    await expect(page.locator('.dictation-resume .dictation-task-number')).toHaveText(`#${resumable.task.batchId}`);
+    await expect(page.locator(`.dictation-resume a[href="/dictation/${legacy.task.batchId}"]`)).toHaveCount(0);
+    await page.getByRole('searchbox', { name: '搜索默写计划词' }).fill('app');
     await page.locator('.dictation-search').getByRole('button', { name: '搜索', exact: true }).click();
-    await expect.poll(() => page.evaluate(() => Reflect.get(window, '__dictationPlanQueries').at(-1)?.keyword)).toBe('aban');
-    expect(await page.locator('html').evaluate(element => element.scrollWidth <= window.innerWidth)).toBe(true);
-    await page.screenshot({ path: `docs/screenshots/dictation-picker-${theme}-${width}.png`, fullPage: true, animations: 'disabled' });
-    await page.getByRole('button', { name: '待巩固词', exact: true }).click();
-    await expect(page.locator('.dictation-picker .dictation-mistakes')).toBeVisible();
-    await expect(page.locator('.dictation-picker .dictation-home')).not.toBeVisible();
-    await page.getByRole('button', { name: '计划单词', exact: true }).click();
-    await page.getByRole('checkbox', { name: '默写选词 abandon', exact: true }).check();
-    await page.getByRole('button', { name: '默写所选 1 词', exact: true }).click();
+    await expect(page.locator('.dictation-plan-row')).toHaveCount(1);
+    await page.getByRole('searchbox', { name: '搜索默写计划词' }).fill('');
+    await page.locator('.dictation-search').getByRole('button', { name: '搜索', exact: true }).click();
+    await expect(page.locator('.dictation-plan-row')).toHaveCount(10);
+    await page.locator('#dictation-count').fill('3'); await page.getByRole('button', { name: '从计划开始测验', exact: true }).click();
     await expect(page.locator('#dictation-input')).toBeEnabled();
+    const main = [...server.tasks.values()].at(-1)!;
     await page.locator('#dictation-input').fill('draft');
     await page.getByRole('button', { name: '重新选词', exact: true }).click();
-    await expect(page.getByRole('searchbox', { name: '搜索默写计划词' })).toBeVisible();
     await expect(page.locator('#dictation-input')).not.toBeVisible();
-    await page.getByRole('searchbox', { name: '搜索默写计划词' }).press('F2');
-    await expect(page.locator('.dictation-expected')).toHaveCount(0);
-    await page.getByRole('button', { name: '返回当前练习', exact: true }).click();
-    await expect(page.locator('#dictation-input')).toBeFocused();
-    await expect(page.locator('#dictation-input')).toHaveValue('draft');
-    await page.locator('#dictation-input').fill('');
-    await expect(page.locator('.dictation-prompt')).toContainText('放弃');
-    await expect(page.locator('.dictation-expected')).toHaveCount(0);
+    await page.getByRole('button', { name: '返回当前测验', exact: true }).click();
+    await expect(page.locator('#dictation-input')).toBeFocused(); await expect(page.locator('#dictation-input')).toHaveValue('draft');
+    await page.locator('#dictation-input').fill('aple'); await page.locator('#dictation-input').press('Enter');
+    await expect(page.locator('.dictation-submit-notice')).toHaveText('已提交');
+    await expect(page.locator('#dictation-input')).toBeEnabled(); await expect(page.locator('#dictation-input')).toHaveValue('');
+    await expect(page.locator('.dictation-feedback, .dictation-expected')).toHaveCount(0);
+    expect(main.task.passedCount).toBeNull(); expect(main.task.accuracy).toBeNull(); expect(server.events).toHaveLength(1);
+    expect(server.calls.filter((call: { method: string }) => call.method === 'put')[0].body.attemptNo).toBe(1);
+    expect(await page.locator('.dictation-card').textContent()).not.toContain('连续命中');
     expect(await page.locator('html').evaluate(element => element.scrollWidth <= window.innerWidth)).toBe(true);
-    await page.screenshot({ path: `docs/screenshots/dictation-question-${theme}-${width}.png`, fullPage: true, animations: 'disabled' });
-    await expect(page.getByRole('button', { name: '不会／看答案', exact: true })).toHaveAttribute('aria-keyshortcuts', 'F2');
-    await page.locator('#dictation-input').dispatchEvent('compositionstart');
+    await page.screenshot({ path: `test-results/dictation-exam-question-${theme}-${width}.png`, fullPage: true });
     await page.locator('#dictation-input').press('F2');
-    await expect(page.locator('.dictation-expected')).toHaveCount(0);
-    await page.locator('#dictation-input').dispatchEvent('compositionend');
-    await page.locator('#dictation-input').press('F2');
-    await expect(page.locator('.dictation-verdict')).toHaveText('已查看答案');
-    await expect(page.locator('.dictation-expected')).toHaveText('abandon');
-    await page.screenshot({ path: `docs/screenshots/dictation-feedback-${theme}-${width}.png`, fullPage: true, animations: 'disabled' });
-    for (let index = 0; index < 2; index++) {
-      await page.getByRole('button', { name: '隐藏答案，下一题', exact: true }).click();
-      await expect(page.locator('#dictation-input')).toBeEnabled();
-      await expect(page.locator('#dictation-input')).toHaveValue('');
-      await expect(page.locator('.dictation-expected')).toHaveCount(0);
-      await page.locator('#dictation-input').fill(' AbAnDoN ');
-      await page.locator('#dictation-input').press('Enter');
-      await expect(page.locator('.dictation-verdict')).toHaveText('拼写命中');
-      expect(await page.locator('html').evaluate(element => element.scrollWidth <= window.innerWidth)).toBe(true);
-    }
-    await page.getByRole('button', { name: '查看默写结果', exact: true }).click();
-    await expect(page.locator('.dictation-stats dd')).toHaveText(['1', '1', '1', '0', '3']);
-    await page.screenshot({ path: `docs/screenshots/dictation-result-${theme}-${width}.png`, fullPage: true, animations: 'disabled' });
-    await page.locator('.dictation-result-actions a[href="/dictation"]').click();
-    await expect(page.locator('.dictation-resume')).toHaveCount(0);
+    await expect(page.locator('.dictation-expected')).toHaveText('absorb'); await expect(page.locator('.dictation-verdict')).toContainText('未答');
+    await expect(page.locator('#dictation-input')).toHaveCount(0); expect(main.task.passedCount).toBeNull(); expect(server.mistakes()).toHaveLength(0);
+    const reveal = server.calls.filter((call: { method: string }) => call.method === 'put').at(-1); expect(reveal.body.action).toBe('REVEAL'); expect(reveal.body).not.toHaveProperty('input');
+    await page.getByRole('button', { name: '下一题', exact: true }).click(); await expect(page.locator('#dictation-input')).toBeFocused();
+    await page.locator('#dictation-input').fill('abstract'); await page.locator('#dictation-input').press('Enter');
+    await expect(page.locator('.dictation-result .dictation-stats')).toBeVisible();
+    await expect(page.locator('.dictation-stats dd')).toHaveText(['3', '3', '1', '2', '3', '33.3%']);
+    await expect(page.locator('.dictation-result .dictation-word-row')).toHaveCount(3);
+    expect(await page.locator('.dictation-result').textContent()).not.toContain('已掌握');
+    expect(await page.locator('html').evaluate(element => element.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.screenshot({ path: `test-results/dictation-exam-result-${theme}-${width}.png`, fullPage: true });
   });
 }
+
+test('exact retry survives real reload/cross-day; completed and legacy rounds never reopen; already answered restores next', async ({ page }) => {
+  const server = await setup(page), state = server.addTask([1001, 1002, 1003]);
+  await page.goto(`/dictation/${state.task.batchId}`); await expect(page.locator('#dictation-input')).toBeEnabled();
+  server.loseAction = 'ANSWER'; await page.locator('#dictation-input').fill('  aple  '); await page.locator('#dictation-input').press('Enter');
+  await expect(page.getByRole('button', { name: '重试原请求', exact: true })).toBeVisible();
+  const original = structuredClone(server.calls.filter((call: { method: string }) => call.method === 'put')[0].body);
+  server.day = '2026-10-29'; await page.reload(); await expect(page.getByRole('button', { name: '重试原请求', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '重试原请求', exact: true }).click(); await expect(page.locator('#dictation-input')).toBeFocused();
+  expect(server.events).toHaveLength(1); expect(server.calls.filter((call: { method: string }) => call.method === 'put')[1].body).toEqual(original);
+  await expect(page.locator('.dictation-expected')).toHaveCount(0);
+  await page.locator('#dictation-input').press('F2'); await expect(page.locator('.dictation-expected')).toHaveText('absorb');
+  await page.getByRole('button', { name: '下一题', exact: true }).click(); await expect(page.locator('#dictation-input')).toBeEnabled();
+  await page.reload(); await expect(page.locator('#dictation-input')).toBeEnabled(); expect(server.events).toHaveLength(2);
+  await page.locator('#dictation-input').fill('abstract'); await page.locator('#dictation-input').press('Enter'); await expect(page.locator('.dictation-result')).toBeVisible();
+  const nextCount = server.calls.filter((call: { url: string }) => call.url.endsWith('/next')).length;
+  await page.goto(`/dictation/${state.task.batchId}`); await expect(page.locator('.dictation-result')).toBeVisible();
+  expect(server.calls.filter((call: { url: string }) => call.url.endsWith('/next'))).toHaveLength(nextCount);
+  const legacy = server.addTask([1001], { singleAttempt: false, canContinue: false, attemptCount: 6, passedCount: 0, needsPracticeCount: 1 });
+  legacy.words.push({ itemId: legacy.entries[0].itemId, wordId: 1001, word: 'apple', translation: '苹果', translationGroups: [], lastVerdict: 'INCORRECT', lastInput: 'legacy', attemptCount: 6, correctStreak: 0, learningStatus: 'RELEARNING', completionReason: null, learningDate: '2026-10-24', answeredAt: '2026-10-24T10:00:00' });
+  await page.goto(`/dictation/${legacy.task.batchId}`); await expect(page.locator('.dictation-readonly')).toBeVisible(); await expect(page.locator('#dictation-input')).toHaveCount(0);
+  await page.getByRole('link', { name: '查看历史记录', exact: true }).click(); await expect(page.locator('.dictation-result .dictation-word-row')).toHaveCount(1); await expect(page.locator('.dictation-stats dd').last()).toHaveText('—'); expect(legacy.task.attemptCount).toBe(6);
+  const raced = server.addTask([1001, 1002]); server.alreadyOnce = true;
+  await page.goto(`/dictation/${raced.task.batchId}`); await expect(page.locator('#dictation-input')).toBeEnabled(); await page.locator('#dictation-input').fill('racing'); await page.locator('#dictation-input').press('Enter');
+  await expect(page.locator('#dictation-input')).toBeEnabled(); await expect(page.locator('.dictation-submit-notice')).toContainText('已提交'); expect(raced.index).toBe(1);
+  expect(server.calls.filter((call: { method: string; url: string }) => call.method === 'put' && call.url.includes(`/batches/${raced.task.batchId}/`))).toHaveLength(1);
+});

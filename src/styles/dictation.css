@@ -68,7 +68,7 @@
 .dictation-feedback-note { margin: var(--s5) 0 var(--s2); color: var(--control-text); }
 .dictation-next { margin-top: var(--s5); }
 .dictation-scope-note { text-align: center; margin-top: var(--s5); }
-.dictation-stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--s4); margin: var(--s6) 0; }
+.dictation-stats { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--s4); margin: var(--s6) 0; }
 .dictation-stats > div { display: flex; flex-direction: column-reverse; gap: var(--s2); padding: var(--s5) var(--s3); border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); text-align: center; }
 .dictation-stats dt { font-size: var(--text-base); color: var(--muted); }
 .dictation-stats dd { font: 400 var(--text-xl)/1.3 var(--font-serif); }
@@ -109,3 +109,5 @@
   .dictation-word-feedback { grid-column: 1 / -1; }
   .dictation-word-row.selectable .dictation-word-feedback { grid-column: 2 / -1; }
 }
+
+.dictation-submit-notice { margin: var(--s4) auto; text-align: center; color: var(--muted); }

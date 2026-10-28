@@ -1,0 +1,80 @@
+独立默写单次作答测验对接（2026-10-28）
+
+依据与范围
+完整阅读本地与后端最新《接口文档.md》第 20 节（含 20.1～20.8）。
+生产行为仅调整 /api/dictation 对应的独立默写，不修改每日默写、听音默写、集中巩固或跟拼的提交协议。
+后端原运行服务尚未重启；没有把当前旧服务当作新版联调结果，没有执行 SQL、重跑 007 或重启服务。
+
+修改文件
+src/types/dictation.ts
+  增加 singleAttempt、canContinue、accuracy；passedCount、needsPracticeCount 可为 null。
+  普通未公布作答的 expectedWord、verdict、correctStreak、completionReason 为可选字段。
+  作答请求 attemptNo 固定为字面量 1；兼容历史字段保留在类型中，不再控制重排和反复作答。
+src/composables/useDictationSession.ts
+  单次提交后锁定、清空输入；普通 ANSWER 只提示“已提交”，自动读取下一题。
+  REVEAL 省略 input，只展示服务端返回的本题答案；本题不能重新输入。
+  presentationId 采用原服务器值，同次网络重试保留 requestId 与完整原始请求体。
+  已确认提交后的 GET/next 失败仅重取题目，不重发答案。
+  最后一题响应不明时，即使任务已完成且 canContinue=false，仍可重试原请求，不多计事件。
+  singleAttempt=false 不请求 next/answer；DICTATION_LEGACY_READ_ONLY 引导新建测验。
+  DICTATION_ALREADY_ANSWERED 锁定旧题并 GET/next 恢复当前进度，不生成新键重答。
+  缺少新测验标识的旧后端会显示部署提示，不回退到多次练习。
+src/views/dictation/DictationStudyView.vue
+  删除连续命中、次数上限、强化提示与普通作答的即时判定/答案面板。
+  显示“已提交”，保留主动看答案、F2、下一题与完成后查看测验结果。
+  重新进入活动视图时读取服务器进度；当前未提交展示标识相同时保留本地草稿。
+src/views/dictation/DictationResultView.vue
+src/components/learning/DictationStats.vue
+  新测验只有 COMPLETED 才读取统一回顾并展示成绩。
+  正确题数、错误/未答题数直接使用服务端；正确率将 0～1 转为百分比。
+  null 显示“未公布”，有效 0 显示为 0%，旧版正确率显示“—”。
+  允许旧进行中练习读取 result/words，保持历史次数与数据。
+src/components/learning/DictationTasks.vue
+  继续入口由 singleAttempt、canContinue、status 共同约束；旧练习仅链接历史结果。
+  续测区过滤不可续测记录，同时保留跨页查找继续测验的能力。
+src/components/learning/DictationWordRows.vue
+src/components/learning/DictationHistoryList.vue
+  展示正确、错误、未答及原输入；删除连续正确与继续强化文案。
+  只使用独立默写的已公布结果/历史接口，保留旧实际次数。
+src/views/dictation/DictationHomeView.vue
+src/views/dictation/DictationMistakesView.vue
+src/views/learning/modes/DictationModeView.vue
+  选词与错词入口使用测验/重测文案；错词重测仍通过 source=MISTAKES 创建新轮次。
+  缓存的错词页重新激活时查询服务端列表，整轮未结束时不在前端清除旧错词。
+src/styles/dictation.css
+  仅调整独立默写的六项成绩布局与“已提交”提示。
+
+测试文件
+更新 tests/dictation-check.mjs、tests/dictation-entry.ts、tests/e2e/dictation.spec.ts。
+新增 tests/helpers/dictation-exam-fixture.mjs，提供明确的新版协议夹具；应用代码不导入该文件。
+playwright.dictation.config.ts 使用 API 模式与测试内 HTTP 拦截，不设置生产模拟回退。
+
+验证结果
+PASS npm run typecheck
+PASS npm run build（vue-tsc + Vite）
+PASS npm run test:dictation
+  每题仅一次；重复点击不多发；原始输入不被前端归一化。
+  普通提交自动下一题且不泄露答案/判定；未公布指标 null 不是 0 分。
+  REVEAL 不传 input、结束题目并按未答处理；展示仅限该题服务器答案。
+  ANSWER/REVEAL 原样重试、重新登录与跨日续测；最后一题已完成后的原样重试。
+  统一成绩、50%/100%/0% 换算、结果分页、进行中结果查询门禁。
+  进行中测验事件不进入已公布错词/历史；未结束重测不提前清除旧错词。
+  MISTAKES 另开批次，首次正确即可通过，原轮成绩/原输入保持不变。
+  旧进行中练习只读但 result/words 可读，accuracy=null 不伪造首次正确率。
+  legacy/already-answered/stale/request-key 错误恢复；确认提交后的 next 失败不重答。
+  创建响应不明先查记录，不自动重复创建；独立测验不写 DAILY 等接口。
+PASS npm run test:dictation:browser（7 个 Edge 场景）
+  明暗主题各 1440/390/320 像素；选词、搜索、草稿与聚焦、F2、普通答案隐藏和统一成绩。
+  真实刷新、跨日原样重试、完成后不重新发题、旧练习只读与已提交题恢复。
+PASS npm run test:daily-training（28 个场景）
+PASS npm run test:learning-expansion（12 个协议场景及 Vue 页面检查）
+PASS npm run test:workspace
+PASS npm run test:workspace:browser（7 个 Edge 场景）
+  每日默写、听音、认识及提示/更正/精确重试保持原交互。
+PASS git diff --check
+本轮合计 14 个浏览器场景通过。
+
+验证边界与待联调事项
+上述是前端协议夹具、Vue 和真实浏览器检查，不替代新版后端联调。
+需后端先加载最新构建，再验证真实单次提交事务、整轮延迟公布、并发锁定、数据库持久化以及真实账号的刷新/重新登录/跨日续测。
+本次没有修改长期学习数据，没有重置或转换旧默写记录，保留已有未提交改动，提交情况以 Git 历史为准。

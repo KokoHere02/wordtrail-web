@@ -24,12 +24,12 @@ watch(() => workspace.dictationId, value => { if (value) surface.state.settings 
       <div class="dictation-picker-heading">
         <div class="dictation-source-switch" role="group" aria-label="内容范围">
           <button type="button" :aria-pressed="source === 'PLAN'" @click="source = 'PLAN'"><BookOpen :size="17" aria-hidden="true" />计划单词</button>
-          <button type="button" :aria-pressed="source === 'MISTAKES'" @click="source = 'MISTAKES'"><RotateCcw :size="17" aria-hidden="true" />待巩固词</button>
+          <button type="button" :aria-pressed="source === 'MISTAKES'" @click="source = 'MISTAKES'"><RotateCcw :size="17" aria-hidden="true" />错词重测</button>
         </div>
-        <button v-if="workspace.dictationId" type="button" class="dictation-quiet-button" @click="surface.state.settings = false"><ArrowLeft :size="16" aria-hidden="true" />返回当前练习</button>
+        <button v-if="workspace.dictationId" type="button" class="dictation-quiet-button" @click="surface.state.settings = false"><ArrowLeft :size="16" aria-hidden="true" />返回当前测验</button>
       </div>
       <DictationHomeView v-show="source === 'PLAN'" embedded />
-      <DictationMistakesView v-if="mistakesVisited" v-show="source === 'MISTAKES'" embedded />
+      <DictationMistakesView v-if="mistakesVisited" v-show="source === 'MISTAKES'" :active="choosing && source === 'MISTAKES' && surface.active.value" embedded />
       <DictationTasks resume-only :active="choosing && surface.active.value" />
     </section>
     <div v-if="!choosing" class="dictation-active-actions"><button type="button" class="dictation-quiet-button" @click="surface.state.settings = true"><ListRestart :size="17" aria-hidden="true" />重新选词</button></div>
