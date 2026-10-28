@@ -1,5 +1,5 @@
 // Explicit fixture adapter. All counts below use recorded fixture events, never fabricate old logs.
-import type { BatchCreated, BookWord, Result } from '../types/api';
+import type { BookWord, Result } from '../types/api';
 import type { WordHistoryEvent } from '../types/daily';
 import type { LearningSource, WeakWord, WeakWordsPage, WordDetail } from '../types/words';
 import { mockDailyEvidence, mockLearned } from './mockDaily';
@@ -37,11 +37,10 @@ export function weakEvidence(source: LearningSource, dictionary: BookWord[], ite
 interface Context {
   account: string; url: string; method: string; body: Record<string, unknown>; query: URLSearchParams;
   dictionary: BookWord[]; practiceEvents: StudyLog[]; practiceItems: EvidenceItem[];
-  createPractice: (words: BookWord[]) => BatchCreated;
 }
 function fail(status: number, code: string, message: string): never { throw { status, code, message }; }
 export function mockWordStudy(context: Context): { data: unknown; status: number } | undefined {
-  const { account, url, method, body, query, dictionary } = context;
+  const { account, url, method, query, dictionary } = context;
   const detail = url.match(/^\/words\/(\d+)$/);
   if (detail && method === 'get') {
     const word = dictionary.find(entry => entry.id === Number(detail[1]));
@@ -51,19 +50,11 @@ export function mockWordStudy(context: Context): { data: unknown; status: number
     const data: WordDetail = { id: word.id, word: word.word, phonetic: word.phonetic, translation: word.translation, translationGroups: word.translationGroups, personalBooks: personalBooksForWord(account, word.id), plan: plan ? { planStatus: plan.planStatus, joinedAt: plan.joinedAt, firstLearnedAt: plan.firstLearnedAt, lastLearnedAt: plan.lastLearnedAt, lastResult: plan.lastResult, nextReviewAt: plan.nextReviewAt, reviewLevel: plan.reviewLevel, started: !!plan.firstLearnedAt, due: plan.planStatus === 'ACTIVE' && !!plan.firstLearnedAt && !!plan.nextReviewAt && plan.nextReviewAt <= now } : null };
     return { data, status: 200 };
   }
-  if (url !== '/learning/weak-words' && url !== '/learning/weak-words/practice') return;
-  const source = method === 'post' ? body.source : query.get('source') || 'DAILY';
+  if (url !== '/learning/weak-words' || method !== 'get') return;
+  const source = query.get('source') || 'DAILY';
   if (source !== 'DAILY' && source !== 'PRACTICE') fail(400, 'INVALID_PARAMETER', '薄弱词来源不合法');
   const daily = mockDailyEvidence(account);
   const result = weakEvidence(source, dictionary, source === 'DAILY' ? daily.items : context.practiceItems, [...daily.events, ...context.practiceEvents]);
-  if (url.endsWith('/practice') && method === 'post') {
-    if (Object.keys(body).some(key => !['source', 'wordIds'].includes(key))) fail(400, 'INVALID_PARAMETER', '请求字段不合法');
-    const ids = Array.isArray(body.wordIds) ? [...new Set(body.wordIds)] : [];
-    if (!ids.length || ids.length > 100 || ids.some(id => !Number.isInteger(id) || Number(id) < 1)) fail(400, 'INVALID_PARAMETER', '请选择 1～100 个不同单词');
-    if (ids.some(id => !dictionary.some(word => word.id === id))) fail(404, 'WORD_NOT_FOUND', '部分单词不存在');
-    if (ids.some(id => !result.records.some(word => word.wordId === id))) fail(409, 'WEAK_WORD_SELECTION_CHANGED', '所选词不再全部属于本来源薄弱词，请刷新后重新选择');
-    return { data: context.createPractice((ids as number[]).map(id => dictionary.find(word => word.id === id)!)), status: 201 };
-  }
   const page = Number(query.get('page') || 1), size = Number(query.get('size') || 20);
   if (!Number.isInteger(page) || page < 1 || !Number.isInteger(size) || size < 1 || size > 100) fail(400, 'INVALID_PARAMETER', '分页参数不合法');
   const data: WeakWordsPage = { ...result, page, size, total: result.records.length, records: result.records.slice((page - 1) * size, page * size) };

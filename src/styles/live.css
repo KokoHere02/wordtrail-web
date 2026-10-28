@@ -44,9 +44,6 @@
 .live-error { border-color: var(--error-border); color: var(--error); background: var(--error-bg); }
 .live-error .live-actions { margin-top: var(--s2); }
 .live-actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s4); }
-.live-practice-options { margin: var(--s6) 0; padding: var(--s5); border-top: 1px solid var(--line); }
-.live-practice-options summary { cursor: pointer; font-weight: 600; }
-.live-practice-options .subtle-copy { margin: var(--s3) 0; }
 .live-actions input[type=number] { width: 80px; padding: var(--s2); border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); }
 .live-filter { display: flex; gap: var(--s3); align-items: center; color: var(--muted); }
 .live-filter select { background: var(--surface); color: var(--ink); border: 1px solid var(--line); padding: var(--s2) var(--s3); border-radius: var(--radius-sm); }
@@ -137,5 +134,4 @@
   .wordory-app .record-icon { flex-shrink: 0; }
   .wordory-app .today-streak .muted-link { font-size: var(--text-sm); }
   .live-filter { font-size: var(--text-sm); }
-  .live-practice-options { padding: var(--s4) 0; }
 }

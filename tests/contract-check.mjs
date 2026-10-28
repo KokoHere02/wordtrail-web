@@ -103,112 +103,12 @@ await check(
     assert.equal(selection.count.value, 0);
   },
 );
-let batchId;
-await check(
-  "BOOK selection uses ordered unlearned words; unanswered item has no translation",
-  async () => {
-    const batch = await api.create({
-      bookId: 1,
-      selectionType: "BOOK",
-      count: 2,
-    });
-    batchId = batch.batchId;
-    const progress = await api.progress(batchId);
-    assert.equal(progress.answeredCount, 0);
-    const item = await api.item(batchId, progress.nextItemId);
-    assert.equal(item.word, "abandon");
-    assert.equal(item.sortOrder, 1);
-    assert.equal("translation" in item, false);
-    await assert.rejects(api.answer(batchId, item.nextItemId, 1), /按顺序/);
-  },
-);
-await check(
-  "answer saves definition, remains idempotent, and known can be corrected",
-  async () => {
-    const progress = await api.progress(batchId);
-    const item = await api.item(batchId, progress.nextItemId);
-    const saved = await api.answer(batchId, item.itemId, 1);
-    assert.match(saved.translation, /放弃/);
-    assert.equal(saved.answeredCount, 1);
-    const retried = await api.answer(batchId, item.itemId, 1);
-    assert.equal(retried.answeredCount, 1);
-    assert.equal(retried.answeredAt, saved.answeredAt);
-    const corrected = await api.answer(batchId, item.itemId, 3);
-    assert.equal(corrected.result, 3);
-    assert.equal(corrected.answeredCount, 1);
-  },
-);
-await check(
-  "refresh resumes first unanswered; final answer completes the batch",
-  async () => {
-    const progress = await api.progress(batchId);
-    assert.equal(progress.answeredCount, 1);
-    const item = await api.item(batchId, progress.nextItemId);
-    assert.equal(item.word, "absorb");
-    assert.equal(item.answered, false);
-    const saved = await api.answer(batchId, item.itemId, 2);
-    assert.equal(saved.status, "COMPLETED");
-    assert.equal(saved.nextItemId, null);
-    assert.equal(
-      (await api.batches({ page: 1, size: 10, status: "COMPLETED" })).total,
-      1,
-    );
-    assert.equal(
-      (await api.words(1, { page: 1, size: 10, learningStatus: "LEARNED" }))
-        .total,
-      0,
-    );
-  },
-);
-await check(
-  "result counts are user self reports and filters match saved answers",
-  async () => {
-    const result = await api.result(batchId);
-    assert.equal(result.totalCount, 2);
-    assert.equal(result.knownCount, 0);
-    assert.equal(result.uncertainCount, 1);
-    assert.equal(result.unknownCount, 1);
-    const words = await api.resultWords(batchId, {
-      page: 1,
-      size: 10,
-      result: 3,
-    });
-    assert.equal(words.total, 1);
-    assert.equal(words.records[0].word, "abandon");
-  },
-);
-await check(
-  "relearn creates a distinct batch and leaves source unchanged",
-  async () => {
-    const before = await api.result(batchId);
-    const relearn = await api.relearn(batchId);
-    assert.notEqual(relearn.batchId, batchId);
-    assert.equal(relearn.wordCount, 2);
-    assert.deepEqual(await api.result(batchId), before);
-  },
-);
-await check(
-  "manual selection preserves word-book order and handles long words",
-  async () => {
-    const batch = await api.create({
-      bookId: 1,
-      selectionType: "MANUAL",
-      wordIds: [1032, 1001, 1031],
-    });
-    const progress = await api.progress(batch.batchId);
-    assert.equal(
-      (await api.item(batch.batchId, progress.nextItemId)).word,
-      "abandon",
-    );
-    const words = await api.words(1, {
-      page: 1,
-      size: 10,
-      learningStatus: "ALL",
-      keyword: "character",
-    });
-    assert.equal(words.records[0].word, "characteristically");
-  },
-);
+await check('retired practice methods are absent and old endpoints return 404', async () => {
+  for (const method of ['create', 'batches', 'progress', 'item', 'answer', 'result', 'resultWords', 'relearn']) assert.equal(method in api, false);
+  for (const [method, url] of [['get', '/learning-batches'], ['post', '/learning-batches'], ['get', '/learning-batches/900'], ['get', '/learning-batches/900/items/900001'], ['put', '/learning-batches/900/items/900001/answer'], ['get', '/learning-batches/900/result'], ['get', '/learning-batches/900/result/words'], ['post', '/learning-batches/900/relearn'], ['post', '/learning/weak-words/practice']]) {
+    await assert.rejects(http.request({ method, url, data: {} }), error => error.status === 404);
+  }
+});
 await check(
   "async resources discard stale responses and preserve readable errors",
   async () => {
@@ -342,7 +242,7 @@ await check(
   },
 );
 await check(
-  "non-auth failures do not refresh or retry batch creation",
+  "non-auth failures do not refresh or retry book creation",
   async () => {
     tokens.set(pair("failure"));
     let calls = 0;
@@ -351,7 +251,7 @@ await check(
       throw new AxiosError("Network Error", "ERR_NETWORK");
     };
     await assert.rejects(
-      api.create({ bookId: 1, selectionType: "BOOK", count: 20 }),
+      api.createBook({ name: "network test", description: null }),
       /无法连接/,
     );
     assert.equal(calls, 1);

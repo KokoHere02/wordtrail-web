@@ -1,0 +1,102 @@
+独立认读专项下线对接记录（2026-10-28）
+
+依据
+已完整阅读本地 docs/接口文档.md 与后端 D:/java/code/WordTrail/接口文档.md 第 7 节。
+独立认读的创建、列表、续答、结果、重练和薄弱词创建入口已移除。
+旧未完成批次不转换、不续答；历史事件与共享每日训练接口保留。
+
+本次新增文件
+src/views/learning/RetiredPracticeView.vue
+  旧 /learning、/study 及其子链接显示下线提示；提供每日学习、历史统计、薄弱词链接。
+  页面不查询旧批次，不自动创建任何训练任务。
+tests/helpers/legacy-practice.mjs
+  显式归档历史数据夹具，替换测试中通过已删除接口创建历史数据的做法。
+docs/frontend-recognition-retirement-verification.txt
+  本文件。
+
+本次修改文件
+src/api/index.ts
+src/api/words.ts
+src/types/api.ts
+  删除旧认读批次/明细/作答/结果/重练/薄弱词创建 API 及其专用类型。
+  Result、Status 等共享类型和单词查询保留。
+src/api/mock.ts
+src/api/mockWordStudy.ts
+  删除离线夹具适配器中的旧写入与续答接口；保留历史批次和事件的只读查询。
+  此离线适配器仅用于显式 mock 模式，正式 API 模式不启用。
+src/router/index.ts
+src/layouts/AppLayout.vue
+src/stores/studyWorkspace.ts
+src/views/learning/StudyWorkspaceView.vue
+  删除旧认读工作区通道、批次状态与组件宿主；旧地址映射到下线页。
+  每日、独立默写、独立跟拼、集中巩固和句子路由保留。
+src/composables/useBookContents.ts
+src/composables/useWeakWords.ts
+src/views/live/WordListView.vue
+src/views/live/WeakWordsView.vue
+src/views/dictation/DictationHomeView.vue
+src/components/layout/RecordNav.vue
+  删除词书、薄弱词、默写页及记录菜单中的旧认读入口和创建状态。
+  保留入计划、CSV 导入导出、薄弱词查询、历史与关联句子功能。
+src/composables/useLearningInsights.ts
+src/views/live/StatisticsView.vue
+src/components/learning/LearningSummaryCards.vue
+src/components/learning/WordHistoryDialog.vue
+  历史 PRACTICE 标注为“历史认读专项”；下线页可直接进入历史统计。
+  历史数据不删除，不合并到每日任务，不推断缺失历史。
+src/styles/live.css
+src/styles/words.css
+  清理已删除入口、通知和认读结果页的专用样式。
+
+本次删除文件（删除前已核对引用）
+src/views/learning/LearningView.vue
+src/views/learning/StudyView.vue
+src/views/learning/ResultView.vue
+src/composables/usePracticeSession.ts
+src/composables/usePracticeLaunch.ts
+src/components/learning/PracticeLaunchNotice.vue
+src/components/learning/LearningCard.vue
+src/components/learning/LearningControls.vue
+src/views/books/BookDetailView.vue
+src/layouts/ApiLayout.vue
+  最后两个文件为无路由、无消费者的旧页面/布局副本，仍引用被删除的创建流程。
+  共享 StudyToolbar、SessionStats、单词历史与每日学习辅助组件继续保留。
+
+本次测试调整
+修改 tests/contract-check.mjs、api-ui-check.mjs、books-check.mjs、daily-check.mjs、
+words-check.mjs、insights-check.mjs、sentences-check.mjs、translation-check.mjs、
+e2e/review.spec.ts。
+删除旧认读创建/作答/结果/重练断言，改为下线、精确 404 和历史只读回归。
+原 DAILY 旧版页面流程由现有 daily-training、workspace 等专项套件覆盖。
+
+已通过的检查
+npm run build（vue-tsc 与 Vite 生产构建）
+npm run test:contracts（10 个场景，含 9 个已删除接口方法/路径的夹具 404 断言）
+npm run test:api-ui（旧地址提示、无自动转换、菜单清理、历史查询）
+npm run test:books（词本编辑、词单、入计划、删除后历史保留）
+npm run test:words（来源隔离、历史分页、历史查询、不完整历史提示）
+npm run test:insights（每日与历史 PRACTICE、统计范围、迟到响应、学习活动）
+npm run test:daily（23 个场景，含重试、续学、共享队列、历史隔离）
+npm run test:daily-training（28 个场景，含认读/默写/听音模式、提示恢复、重试与更正）
+npm run test:follow-typing（刷新与跨日续练、错误重试、不改每日进度）
+npm run test:workspace（共享学习页面、模式切换、输入和完成状态）
+npm run test:learning-expansion（12 个协议场景及页面检查，含集中巩固、发音、ZIP 导出）
+npm run test:dictation（创建、作答、重试、续学、结果、历史与错词查询）
+npm run test:translation（共享释义显示、每日提示恢复和鉴权音频）
+npm run test:sentences（句子练习、重试、恢复、历史，不影响每日与归档认读数据）
+npm run test:review（6 个浏览器场景：明暗主题，各 1440/390/320 像素）
+npm run test:follow-typing:browser（12 个浏览器场景）
+npm run test:workspace:browser（7 个浏览器场景）
+npm run test:learning-expansion:browser（8 个浏览器场景，含鉴权音频、切换停止和 ZIP 下载）
+git diff --check
+合计 33 个浏览器场景通过；本次最终生产构建通过。
+
+验证范围与未完成联调
+以上为前端本地协议夹具、Vue 页面和浏览器自动化回归，不是新版后端联调结论。
+后端服务尚未重启：未把当前旧服务的响应当作新版行为，也没有用模拟数据替代真实联调。
+需后端加载新版构建后，使用测试账号核对已删除接口返回 404，及各保留接口的真实作答、续学、历史查询和导出。
+未执行 SQL、未清除历史数据、未重启后端、提交情况以 Git 历史为准。
+
+既有工作区修改
+本次保留了此前学习页布局、跟拼、发音按钮和相关测试的未提交修改。
+原有 .md 与 .png 文件未作提交或清理。

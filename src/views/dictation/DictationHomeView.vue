@@ -52,7 +52,7 @@ onMounted(refresh);
 </script>
 <template>
   <div class="wordlist-page dictation-home">
-    <header class="library-heading"><div><h1>单词默写</h1><p class="subtle-copy">独立拼写训练 · 不抵扣每日目标，不改变长期复习安排</p></div><div class="live-actions"><RouterLink to="/dictation/mistakes" class="btn btn-secondary">默写错词重练</RouterLink><RouterLink to="/learning" class="muted-link">认识专项</RouterLink></div></header>
+    <header class="library-heading"><div><h1>单词默写</h1><p class="subtle-copy">独立拼写训练 · 不抵扣每日目标，不改变长期复习安排</p></div><div class="live-actions"><RouterLink to="/dictation/mistakes" class="btn btn-secondary">默写错词重练</RouterLink></div></header>
     <section class="wordlist-sheet" aria-labelledby="dictation-plan-heading">
       <h2 id="dictation-plan-heading" class="sr-only">计划选词</h2>
       <div class="dictation-picker-toolbar">

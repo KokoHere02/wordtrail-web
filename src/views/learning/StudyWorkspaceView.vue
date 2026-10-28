@@ -9,7 +9,6 @@ import type { DailyStudyMode } from '../../types/dailyTraining';
 import StudyModeHost from '../../components/learning/StudyModeHost.vue';
 import WordPracticeToolbar from '../../components/learning/WordPracticeToolbar.vue';
 import UnifiedDailyView from '../live/DailyView.vue';
-import StudyView from './StudyView.vue';
 import DictationModeView from './modes/DictationModeView.vue';
 import SentenceModeView from './modes/SentenceModeView.vue';
 import FollowTypingView from './FollowTypingView.vue';
@@ -30,7 +29,6 @@ const backendMode: Record<Exclude<StudyMode, 'sentences'>, DailyStudyMode> = { r
 const visited = reactive(new Set<string>());
 const states = reactive<Record<string, StudySurfaceState>>({
   daily: { source: '每日单词', completed: 0, total: 0, remaining: 0, noun: '词', settings: false },
-  practice: { source: '认识专项', completed: 0, total: 0, remaining: 0, noun: '词', settings: false },
   follow: { source: '跟拼练习', completed: 0, total: 0, remaining: 0, noun: '词', settings: false },
   independent: { source: '独立默写专项', completed: 0, total: 0, remaining: 0, noun: '词', settings: false },
   sentences: { source: '句子翻译', completed: 0, total: 0, remaining: 0, noun: '句', settings: false },
@@ -45,8 +43,7 @@ function confirmedMode(value: DailyStudyMode) {
 function routeState() {
   if (!auth.user || !route.meta.workspace) return;
   const id = Number(route.params.batchId), sentenceId = Number(route.params.sessionId);
-  if (route.path.startsWith('/study/') && id > 0) { workspace.lane = 'practice'; workspace.mode = 'recognition'; workspace.practiceId = id; }
-  else if (route.path.startsWith('/dictation')) { workspace.lane = 'independent'; workspace.mode = 'dictation'; if (id > 0) { workspace.dictationId = id; states.independent!.settings = false; } else states.independent!.settings = true; }
+  if (route.path.startsWith('/dictation')) { workspace.lane = 'independent'; workspace.mode = 'dictation'; if (id > 0) { workspace.dictationId = id; states.independent!.settings = false; } else states.independent!.settings = true; }
   else if (route.query.mode === 'follow') { workspace.lane = 'follow'; workspace.mode = 'spelling'; lastWordMode.value = 'spelling'; const followId = Number(route.query.followBatchId); workspace.followId = Number.isSafeInteger(followId) && followId > 0 ? followId : undefined; }
   else if (sentenceId > 0 || route.query.mode === 'sentences') { workspace.lane = 'sentences'; workspace.mode = 'sentences'; if (sentenceId > 0) workspace.sentenceId = sentenceId; }
   else {
@@ -109,7 +106,6 @@ function selectTab(id: 'words' | 'sentences') {
     <section id="mode-panel-words" v-show="activeTab === 'words' && workspace.lane !== 'independent'" role="tabpanel" tabindex="-1" aria-labelledby="mode-tab-words" class="workspace-panel">
       <div id="mode-panel-daily" v-show="workspace.lane === 'daily'"><StudyModeHost v-if="visited.has('daily')" :active="workspace.lane === 'daily'" :state="states.daily!"><UnifiedDailyView ref="dailyView" :requested-batch-id="workspace.dailyId" @mode="confirmedMode" @blocked="dailyBlocked = $event" /></StudyModeHost></div>
       <div id="mode-panel-follow" v-show="following"><StudyModeHost v-if="visited.has('follow')" :active="following" :state="states.follow!"><FollowTypingView ref="followView" :requested-batch-id="workspace.followId" @batch="workspace.followId = $event" /></StudyModeHost></div>
-      <div id="mode-panel-practice" v-show="workspace.lane === 'practice'"><StudyModeHost v-if="visited.has('practice')" :active="workspace.lane === 'practice'" :state="states.practice!"><StudyView v-if="workspace.practiceId" :key="workspace.practiceId" :requested-batch-id="workspace.practiceId" /></StudyModeHost></div>
     </section>
     <section id="mode-panel-independent" v-show="workspace.lane === 'independent'" role="region" aria-label="独立默写专项" class="workspace-panel"><StudyModeHost v-if="visited.has('independent')" :active="workspace.lane === 'independent'" :state="states.independent!"><DictationModeView /></StudyModeHost></section>
     <section id="mode-panel-sentences" v-show="workspace.lane === 'sentences'" role="tabpanel" tabindex="-1" aria-labelledby="mode-tab-sentences" class="workspace-panel"><StudyModeHost v-if="visited.has('sentences')" :active="workspace.lane === 'sentences'" :state="states.sentences!"><SentenceModeView /></StudyModeHost></section>

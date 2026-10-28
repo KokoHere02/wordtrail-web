@@ -1,5 +1,4 @@
 import { computed, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
 import { api } from '../api';
 import { dailyApi } from '../api/daily';
 import { ApiError, errorMessage } from '../api/http';
@@ -9,7 +8,6 @@ import { useSelection } from './useSelection';
 import type { Book, BookWord, LearningStatus, Page } from '../types/api';
 
 export function useBookContents(id: number) {
-  const router = useRouter();
   const metadata = useResource<Book>();
   const words = useResource<Page<BookWord>>();
   const selection = useSelection();
@@ -22,7 +20,6 @@ export function useBookContents(id: number) {
   const blocked = ref(false);
   const saveError = ref('');
   const notice = ref('');
-  const practiceCount = ref(20);
   const available = computed(() => !!metadata.data.value && !metadata.error.value && !blocked.value && !metadata.loading.value);
   const editable = computed(() => available.value && metadata.data.value?.editable === true);
   const pageIds = computed(() => words.data.value?.records.map(word => word.id) || []);
@@ -70,15 +67,5 @@ export function useBookContents(id: number) {
     } catch (e) { handleError(e); }
     finally { busy.value = false; }
   }
-  async function practice(manual: boolean) {
-    if (busy.value || !available.value || manual && (!selection.count.value || selection.count.value > 100)) return;
-    if (!manual && (!Number.isInteger(practiceCount.value) || practiceCount.value < 1 || practiceCount.value > 100)) { saveError.value = '本轮数量须为 1～100 的整数。'; return; }
-    busy.value = true; saveError.value = '';
-    try {
-      const created = await api.create(manual ? { bookId: id, selectionType: 'MANUAL', wordIds: [...selection.selected.value] } : { bookId: id, selectionType: 'BOOK', count: practiceCount.value });
-      await router.push(`/study/${created.batchId}`);
-    } catch (e) { handleError(e); }
-    finally { busy.value = false; }
-  }
-  return { book: metadata.data, bookLoading: metadata.loading, bookError: metadata.error, ...words, selection, keyword, filter, page, size, busy, blocked, available, editable, saveError, notice, practiceCount, pageIds, pageSelected, loadBook, refresh, reload, search, remove, join, practice };
+  return { book: metadata.data, bookLoading: metadata.loading, bookError: metadata.error, ...words, selection, keyword, filter, page, size, busy, blocked, available, editable, saveError, notice, pageIds, pageSelected, loadBook, refresh, reload, search, remove, join };
 }

@@ -17,7 +17,7 @@ const size = 10;
 const labels = { 1: '认识', 2: '模糊', 3: '不认识' };
 const groups = computed(() => [
   { label: '本页每日学习事件', events: data.value?.records.filter(event => event.taskType === 'DAILY') || [] },
-  { label: '本页认识专项事件', events: data.value?.records.filter(event => event.taskType === 'PRACTICE') || [] },
+  { label: '本页历史认读专项事件', events: data.value?.records.filter(event => event.taskType === 'PRACTICE') || [] },
 ]);
 function refresh() {
   const id = props.wordId;

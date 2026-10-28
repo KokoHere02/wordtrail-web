@@ -1,3 +1,4 @@
+import { seedHistoricalPractice } from './helpers/legacy-practice.mjs';
 import assert from 'node:assert/strict';
 import { build } from 'vite';
 import { AxiosError } from 'axios';
@@ -321,9 +322,7 @@ await check('calendar returns full leap month without creating daily tasks and P
   assert.equal(calendar.days[28].learningDate, '2024-02-29');
   assert.ok(calendar.days.every(day => !day.hasLearningActivity));
   const snapshot = await dailyApi.statistics(enhancedTask.learningDate);
-  const practice = await api.create({ bookId: 1, selectionType: 'MANUAL', wordIds: [1003] });
-  const progress = await api.progress(practice.batchId);
-  await api.answer(practice.batchId, progress.nextItemId, 1);
+  seedHistoricalPractice(localStorage, 'enhanced_daily', [{ id: 1003, word: 'abstract', phonetic: null, translation: 'adj. 抽象的' }], 1);
   assert.deepEqual(await dailyApi.statistics(enhancedTask.learningDate), snapshot);
   assert.deepEqual(await dailyApi.tasks({ page: 1, size: 100, status: 'COMPLETED' }), before);
 });

@@ -8,6 +8,10 @@ import { useAuthStore } from "../stores/auth";
 import AppLayout from "../layouts/AppLayout.vue";
 import PreviewLayout from "../layouts/PreviewLayout.vue";
 
+const retiredPracticeRoutes: RouteRecordRaw[] = [
+  { path: 'learning/:legacyPath(.*)*', component: () => import('../views/learning/RetiredPracticeView.vue') },
+  { path: 'study/:legacyPath(.*)*', component: () => import('../views/learning/RetiredPracticeView.vue') },
+];
 const visualRoutes: RouteRecordRaw[] = [
   {
     path: "/",
@@ -42,8 +46,7 @@ const visualRoutes: RouteRecordRaw[] = [
         path: "records/:recordId(\\d+)",
         component: () => import("../views/preview/PreviewResultView.vue"),
       },
-      { path: "learning", redirect: "/records" },
-      { path: "study/:batchId(\\d+)", redirect: "/learn" },
+      ...retiredPracticeRoutes,
       { path: "login", redirect: "/today" },
       { path: "register", redirect: "/today" },
     ],
@@ -68,7 +71,7 @@ const apiRoutes: RouteRecordRaw[] = [
       { path: "today", component: () => import("../views/live/TodayView.vue") },
       { path: "learn", component: () => import("../views/learning/StudyWorkspaceView.vue"), meta: { workspace: true } },
       { path: "learn/:batchId(\\d+)", component: () => import("../views/learning/StudyWorkspaceView.vue"), meta: { workspace: true } },
-      { path: "study/:batchId(\\d+)", component: () => import("../views/learning/StudyWorkspaceView.vue"), meta: { workspace: true } },
+      ...retiredPracticeRoutes,
       { path: "follow-typing", redirect: { path: '/learn', query: { mode: 'follow' } } },
       { path: "follow-typing/:batchId(\\d+)", redirect: to => ({ path: '/learn', query: { mode: 'follow', followBatchId: String(to.params.batchId) } }) },
       { path: "consolidation", component: () => import("../views/learning/ConsolidationView.vue") },
@@ -108,16 +111,6 @@ const apiRoutes: RouteRecordRaw[] = [
         path: "books/:bookId(\\d+)",
         component: () => import("../views/live/WordListView.vue"),
         meta: { title: "词书" },
-      },
-      {
-        path: "learning",
-        component: () => import("../views/learning/LearningView.vue"),
-        meta: { title: "我的学习" },
-      },
-      {
-        path: "learning/:batchId(\\d+)/result",
-        component: () => import("../views/learning/ResultView.vue"),
-        meta: { title: "我的学习" },
       },
     ],
   },

@@ -24,23 +24,12 @@
 .weak-word-row { display: grid; grid-template-columns: var(--s5) minmax(0, 1fr) minmax(0, 1fr) auto; gap: var(--s6); align-items: center; padding: var(--s5) 0; border-top: 1px solid var(--line); }
 .weak-word-copy, .weak-word-feedback { min-width: 0; overflow-wrap: anywhere; }
 .weak-word-name { display: inline; font-family: var(--font-serif); font-size: var(--text-round); line-height: 1.3; color: var(--ink); overflow-wrap: anywhere; }
-.weak-word-name:hover, .result-row .word-name:hover { color: var(--accent); }
+.weak-word-name:hover { color: var(--accent); }
 .weak-word-phonetic { display: block; color: var(--phonetic); font-size: var(--text-sm); }
 .weak-word-copy p { color: var(--translation); margin-top: var(--s2); font-size: var(--text-base); }
 .weak-word-feedback p { color: var(--muted); font-size: var(--text-sm); line-height: 1.7; }
-.weak-word-feedback p.statistics-word-warning, .result-word-feedback p.statistics-word-warning { color: var(--amber); }
+.weak-word-feedback p.statistics-word-warning { color: var(--amber); }
 .weak-word-row > button { min-height: var(--control); }
-.weak-selection-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--s4); margin-top: var(--s5); }
-.weak-selection-footer p, .weak-practice-note { color: var(--muted); font-size: var(--text-sm); }
-.weak-selection-footer p.inline-error { color: var(--error); }
-.weak-practice-note { margin-top: var(--s3); }
-.practice-launch-notice p + p { margin-top: var(--s2); }
-.result-self-reports { display: flex; align-items: center; justify-content: center; gap: var(--s5); flex-wrap: wrap; color: var(--control-text); margin-top: var(--s5); font-size: var(--text-base); }
-.result-word-feedback { text-align: right; }
-.result-word-feedback p { color: var(--muted); font-size: var(--text-sm); margin-top: var(--s2); }
-.practice-result-page .result-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.practice-result-page .result-row > .word-name { min-width: 0; overflow-wrap: anywhere; font-family: var(--font-serif); }
-.practice-result-page .result-row > .word-translation { min-width: 0; overflow-wrap: anywhere; }
 @media (max-width: 700px) {
   .word-detail-heading { align-items: flex-start; flex-direction: column; gap: var(--s5); }
   .word-detail-heading h1 { font-size: var(--study-long-word-size); }
@@ -53,13 +42,4 @@
   .weak-word-name { font-size: var(--text-xl); }
   .weak-word-feedback { grid-column: 2 / 4; grid-row: 2; }
   .weak-word-row > button { grid-column: 3; grid-row: 1; font-size: var(--text-sm); }
-  .weak-selection-footer { align-items: stretch; }
-  .weak-selection-footer > .btn { width: 100%; }
-  .weak-practice-note { padding-bottom: max(var(--s4), env(safe-area-inset-bottom)); }
-  .practice-result-page .result-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s4); }
-  .practice-result-page .result-row { grid-template-columns: minmax(0, 1fr) auto; gap: var(--s3); }
-  .practice-result-page .result-row > .word-translation { grid-column: 1; grid-row: 2; }
-  .practice-result-page .result-row > .result-word-feedback { grid-column: 2; grid-row: 1 / 3; }
-  .practice-result-page .relearn-panel { flex-direction: column; align-items: stretch; gap: var(--s4); }
-  .practice-result-page .relearn-panel > .btn { white-space: normal; }
 }

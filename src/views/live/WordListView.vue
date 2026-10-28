@@ -19,7 +19,7 @@ import WordHistoryDialog from '../../components/learning/WordHistoryDialog.vue';
 import WordMeaning from '../../components/word/WordMeaning.vue';
 const id = Number(useRoute().params.bookId);
 const contents = useBookContents(id);
-const { book, bookLoading, bookError, data, loading, error, selection, keyword, filter, page, size, busy, available, editable, saveError, notice, practiceCount, pageIds, pageSelected } = contents;
+const { book, bookLoading, bookError, data, loading, error, selection, keyword, filter, page, size, busy, available, editable, saveError, notice, pageIds, pageSelected } = contents;
 const filters: { value: LearningStatus; label: string }[] = [{ value: 'ALL', label: '全部' }, { value: 'UNLEARNED', label: '未学' }, { value: 'LEARNED', label: '已开始' }];
 const historyWord = ref<BookWord>();
 const historyOpen = ref(false);
@@ -58,7 +58,6 @@ onMounted(contents.reload);
     </section>
     <p v-if="notice" class="live-notice" role="status">{{ notice }}</p><p v-if="saveError" class="inline-error" role="alert">{{ saveError }}</p>
     <div class="wordlist-bottom"><span>{{ selection.count.value > 100 ? '每批最多 100 词，请减少选择。' : '跨页保留 · 每批最多 100 词' }}</span><button class="btn btn-primary" :disabled="busy || loading || !available || !selection.count.value || selection.count.value > 100" @click="contents.join">{{ busy ? '正在提交…' : '加入学习计划' }}<ArrowRight :size="18" /></button></div>
-    <details class="live-practice-options"><summary>认识专项</summary><p class="subtle-copy">不影响每日学习进度。</p><div class="live-actions"><button class="btn btn-secondary" :disabled="busy || !available || !selection.count.value || selection.count.value > 100" @click="contents.practice(true)">练习已选 {{ selection.count.value }} 词</button><label for="practice-count">本轮数量</label><input id="practice-count" v-model.number="practiceCount" type="number" min="1" max="100" :disabled="busy" /><button class="btn btn-secondary" :disabled="busy || !available" @click="contents.practice(false)">按词书开始练习</button></div></details>
     <BookEditorDialog v-if="book" v-model="editorOpen" :book="book" @saved="contents.loadBook" @unavailable="contents.loadBook" />
     <DictionaryCollector v-if="collectorOpen && book" v-model="collectorOpen" :book-id="id" @changed="collected" @unavailable="contents.loadBook" />
     <BookImportDialog v-if="importOpen && book" v-model="importOpen" :book-id="id" @imported="imported" @unavailable="contents.loadBook" />

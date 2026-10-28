@@ -1,3 +1,4 @@
+import { seedHistoricalPractice } from './helpers/legacy-practice.mjs';
 // Actual Vue components in a simulated DOM, with an explicitly enabled API fixture.
 import assert from 'node:assert/strict';
 import { Window } from 'happy-dom';
@@ -140,8 +141,8 @@ await readyClick('加入学习计划');
 await until(() => document.querySelector('.live-notice')?.textContent.includes('新增 3'), 'join selection through original endpoint');
 assert.deepEqual(calls.filter(call => call.url === '/learning-plan/words' && call.method === 'post').at(-1).data, { bookId: book.id, wordIds: [1001, 2001, thirdId] });
 assert.deepEqual([(await api.book(book.id)).unlearnedCount, (await api.book(book.id)).startedCount], [3, 0]);
-const practice = await api.create({ bookId: book.id, selectionType: 'MANUAL', wordIds: [1001, 2001] });
-const practiceBefore = await api.progress(practice.batchId);
+seedHistoricalPractice(localStorage, 'books_reader', (await api.words(book.id, { page: 1, size: 100, learningStatus: 'ALL' })).records);
+const practiceBefore = localStorage.getItem('wordtrail.mock.books_reader');
 const task = await dailyApi.start();
 const dailyWord = await dailyApi.item(task.batchId, task.nextItemId);
 await dailyApi.answer(task.batchId, dailyWord.itemId, { result: 1, attemptNo: dailyWord.nextAttemptNo, requestId: crypto.randomUUID() });
@@ -169,22 +170,16 @@ assert.equal(deletion.params, undefined, 'DELETE IDs belong in JSON, not query')
 assert.deepEqual(await dailyApi.plan({ page: 1, size: 100, status: 'ACTIVE', learningStatus: 'ALL' }), plansBefore);
 assert.deepEqual(await dailyApi.task(task.batchId), dailyBefore);
 assert.deepEqual(await dailyApi.history(1001, { page: 1, size: 20 }), historyBefore);
-assert.deepEqual(await api.progress(practice.batchId), practiceBefore);
-const firstPracticeAnswer = await api.answer(practice.batchId, practiceBefore.nextItemId, 1);
-await api.answer(practice.batchId, firstPracticeAnswer.nextItemId, 3);
+assert.equal(localStorage.getItem('wordtrail.mock.books_reader'), practiceBefore, 'removing book membership preserves archived practice evidence');
 const nextDaily = await dailyApi.item(task.batchId, dailyBefore.nextItemId);
 await dailyApi.answer(task.batchId, nextDaily.itemId, { result: 1, attemptNo: nextDaily.nextAttemptNo, requestId: crypto.randomUUID() });
-assert.equal((await api.result(practice.batchId)).knownCount, 1);
-const relearn = await api.relearn(practice.batchId);
-assert.notEqual(relearn.batchId, practice.batchId);
-assert.equal((await api.progress(relearn.batchId)).wordCount, 1, 'relearning uses original snapshots after book membership removal');
 assert.equal((await dailyApi.task(task.batchId)).completedCount, 2);
 await assert.rejects(dailyApi.join(book.id, [1001]), error => error.code === 'INVALID_PARAMETER');
 await assert.rejects(api.collectWords(book.id, [1001, 999999]), error => error.code === 'WORD_NOT_FOUND');
 assert.equal((await api.book(book.id)).wordCount, 0);
 await api.collectWords(book.id, [1001]);
 assert.equal((await api.book(book.id)).startedCount, 1, 'shared state survives removal and recollection');
-console.log('PASS original plan joining, server progress, DELETE JSON and failure retention; removal preserves plan, daily/special queues and history');
+console.log('PASS original plan joining, server progress, DELETE JSON and failure retention; removal preserves plan, daily queue and historical practice evidence');
 
 const paginationBook = await api.createBook({ name: '分页词本', description: null });
 await api.collectWords(paginationBook.id, Array.from({ length: 11 }, (_, index) => 1001 + index));

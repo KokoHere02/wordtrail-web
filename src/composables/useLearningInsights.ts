@@ -4,8 +4,8 @@ import { useResource } from './useResource';
 import type { LearningSource } from '../types/words';
 import type { LearningSummary, LearningTrend, TrendDays } from '../types/insights';
 
-export function useLearningInsights() {
-  const source = ref<LearningSource>('DAILY');
+export function useLearningInsights(initialSource: LearningSource = 'DAILY') {
+  const source = ref<LearningSource>(initialSource);
   const days = ref<TrendDays>(7);
   const summary = useResource<LearningSummary>();
   const trends = useResource<LearningTrend>();

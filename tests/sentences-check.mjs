@@ -135,7 +135,7 @@ async function readyReview() { await until(() => button('部分理解')?.disable
 async function login(name) { input('#username', name); input('#password', 'example123'); await click('登录'); await until(() => document.querySelector('.daily-equation'), 'logged in'); }
 async function logout() { document.querySelector('[aria-label="打开账户菜单"]').click(); await until(() => button('退出登录'), 'profile'); await click('退出登录'); await until(() => document.querySelector('#username'), 'logged out'); }
 await until(() => document.querySelector('#username'), 'login view'); await login('sentence_reader');
-const originalDaily = await dailyApi.today(); const originalPractice = await api.batches({ page: 1, size: 10, status: 'IN_PROGRESS' });
+const originalDaily = await dailyApi.today(); const originalPractice = localStorage.getItem('wordtrail.mock.sentence_reader');
 await go('/sentences/review', '.sentence-catalog'); await until(() => document.querySelector('.state-panel')?.textContent.includes('暂无已自评'), 'empty review queue');
 await go('/sentences/favorites', '.sentence-catalog'); await until(() => document.querySelector('.state-panel')?.textContent.includes('暂无符合条件的收藏'), 'empty favorites');
 await go('/sentences', '.sentence-catalog'); await until(() => document.querySelectorAll('.sentence-question-row').length === 10, 'bank first page');
@@ -203,7 +203,7 @@ await until(() => document.querySelector('.sentence-result-stats'), 'finished vi
 assert.deepEqual([...document.querySelectorAll('.sentence-result-stats dd')].map(node => Number(node.textContent)), [3, 3, 2, 1, 3, 3]);
 assert.match(document.querySelector('.sentence-assessment-counts').textContent, /意思基本一致 1.*部分理解 1.*未理解 1/);
 assert.equal(document.body.textContent.includes('%'), false);
-assert.deepEqual(await dailyApi.today(), originalDaily); assert.deepEqual(await api.batches({ page: 1, size: 10, status: 'IN_PROGRESS' }), originalPractice);
+assert.deepEqual(await dailyApi.today(), originalDaily); assert.equal(localStorage.getItem('wordtrail.mock.sentence_reader'), originalPractice);
 assert.equal(calls.some(call => /^(?:\/learning|\/dictation)/.test(call.url) && call.method !== 'get'), false, 'sentence writes never affect word/daily/dictation flows');
 console.log('PASS catalog filters, explicit word IDs, favorites, ordered selection, immutable input, two independent request IDs, replay/refresh/relogin and authoritative Current transitions');
 

@@ -120,7 +120,6 @@ console.log('PASS grouped/legacy meanings, four-item previews, professional/all 
 const fixture = http.defaults.adapter;
 const marker = [{ partOfSpeech: 'n. & v.', meaning: '服务端分组释义' }, { partOfSpeech: null, meaning: '服务端第二组' }];
 let answerMode = 'groups';
-let loseAnswer = false;
 const writes = [];
 function enrich(value) {
   if (!value || typeof value !== 'object') return;
@@ -138,7 +137,6 @@ http.defaults.adapter = async config => {
     if (answerMode === 'groups') saved.translationGroups = marker;
     if (answerMode === 'legacy') saved.translation = '最新旧版释义';
     if (answerMode === 'empty') { saved.translationGroups = []; saved.translation = '禁止回退'; }
-    if (loseAnswer) { loseAnswer = false; throw new AxiosError('lost response', 'ECONNABORTED', config); }
   }
   return response;
 };
@@ -213,30 +211,4 @@ for (const variant of ['groups', 'legacy', 'missing', 'empty']) {
 assert.equal(dictionaryReads.length, 0, 'unified training only uses backend presentation snapshots');
 console.log('PASS unified DAILY snapshot reveal/restore, grouped/legacy/missing/empty feedback and no stale definition reuse');
 
-// Existing recognition practice still reads meanings and automatically advances in the workspace.
-answerMode = 'groups';
-const batch = await api.create({ bookId: 1, selectionType: 'MANUAL', wordIds: [1001, 1002, 1003] });
-await router.push(`/study/${batch.batchId}`);
-await until(() => document.querySelector('.study-word')?.textContent === 'abandon' && document.querySelector('.answer-button')?.disabled === false, 'practice ready');
-assert.equal(document.querySelector('.study-meaning'), null);
-document.querySelector('.reveal-button').click(); await expectGroups('.study-meaning');
-loseAnswer = true; await click('认识');
-await until(() => document.querySelector('.form-error')?.textContent.includes('请求超时'), 'unknown practice save');
-assert.equal(document.querySelector('.study-word').textContent, 'abandon');
-await click('重试原请求');
-await until(() => document.querySelector('.study-word')?.textContent === 'absorb', 'confirmed retry advances');
-assert.equal(writes.at(-1).body, writes.at(-2).body); assert.equal(document.querySelector('.study-meaning'), null);
-await click('上一词'); await expectGroups('.study-meaning');
-answerMode = 'legacy'; await click('记错了'); await click('改为不认识');
-await until(() => document.querySelector('.study-meaning .translation-legacy')?.textContent === '最新旧版释义', 'practice correction replaces groups');
-assert.equal(document.querySelector('.study-meaning .translation-group'), null);
-await click('下一词'); await until(() => document.querySelector('.study-word')?.textContent === 'absorb' && document.querySelector('.answer-button')?.disabled === false, 'live practice restored');
-assert.equal(document.querySelector('.study-meaning'), null);
-answerMode = 'groups'; await click('认识'); await until(() => document.querySelector('.study-word')?.textContent === 'abstract', 'practice advances');
-await click('上一词'); await expectGroups('.study-meaning');
-answerMode = 'empty'; await click('记错了'); await click('改为不认识');
-await until(() => document.querySelector('.study-meaning .translation-empty')?.textContent === '暂无释义', 'explicit empty correction');
-assert.equal(document.querySelector('.study-meaning .translation-legacy'), null);
-assert.equal((await api.progress(batch.batchId)).answeredCount, 2);
-console.log('PASS recognition practice group reveal, raw retry identity, automatic next, readonly history and replacement/empty correction');
 app.unmount(); await window.happyDOM.close();

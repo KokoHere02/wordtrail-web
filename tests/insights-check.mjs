@@ -150,8 +150,8 @@ point.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'ArrowRight', bub
 await until(() => document.querySelector('.trend-readout time').textContent === offset(serverDay, -28), 'keyboard chart selection');
 console.log('PASS Vue server dates, independent streaks, task-ended versus goal-reached, coverage range, 7/30 window and accessible chart readout');
 
-click('认识专项', document.querySelector('.insights-controls'));
-await until(() => document.querySelector('.insights-summary-heading')?.textContent.includes('认识专项') && !document.querySelector('.insights-summary-panel .state-panel'), 'practice summary');
+click('历史认读专项', document.querySelector('.insights-controls'));
+await until(() => document.querySelector('.insights-summary-heading')?.textContent.includes('历史认读专项') && !document.querySelector('.insights-summary-panel .state-panel'), 'practice summary');
 await until(() => document.querySelectorAll('[data-trend-index]').length === 30, 'practice 30-day chart');
 assert.deepEqual(streaks(), ['2', '9', '12']);
 assert.equal(document.querySelector('.insights-goal'), null);
@@ -185,8 +185,8 @@ assert.equal(document.querySelectorAll('[data-trend-index]').length, 30, 'late o
 pending.length = 0;
 hold = config => config.params.source === 'DAILY';
 click('每日学习', document.querySelector('.insights-controls')); await until(() => pending.length === 2, 'held daily summary and trend');
-click('认识专项', document.querySelector('.insights-controls'));
-await until(() => document.querySelector('.insights-summary-heading')?.textContent.includes('认识专项'), 'new practice summary');
+click('历史认读专项', document.querySelector('.insights-controls'));
+await until(() => document.querySelector('.insights-summary-heading')?.textContent.includes('历史认读专项'), 'new practice summary');
 const afterSourceSwitch = calls.length;
 for (const entry of pending) entry.resolve(makeResponse(entry.config));
 await new Promise(resolve => setTimeout(resolve, 250));
