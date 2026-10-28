@@ -26,7 +26,7 @@ function search() {
 function select(word: DictionaryWord) { emit('select', { id: word.id, word: word.word }); emit('update:modelValue', false); }
 </script>
 <template>
-  <AppDialog :model-value="props.modelValue" title="选择关联单词" description="只筛选题库已明确关联的单词，不自动分析句子。" @update:model-value="emit('update:modelValue', $event)">
+  <AppDialog :model-value="props.modelValue" title="选择关联单词" panel-class="sentence-dialog sentence-word-dialog" @update:model-value="emit('update:modelValue', $event)">
     <form class="live-actions sentence-word-search" role="search" @submit.prevent="search"><SearchField v-model="keyword" label="查找关联单词" placeholder="搜索词库单词" :maxlength="255" /><AppButton type="submit" variant="secondary" :disabled="loading">查找</AppButton></form><p v-if="validation" class="inline-error" role="alert">{{ validation }}</p><StatePanel :loading="loading" :error="error" :empty="data?.total === 0" message="没有找到该单词，试试其他拼写。" @retry="refresh" /><article v-for="word in !loading && !error ? data?.records : []" :key="word.id" class="sentence-word-option"><div><strong lang="en">{{ word.word }}</strong><small v-if="word.phonetic">{{ word.phonetic }}</small><WordMeaning :translation="word.translation" :translation-groups="word.translationGroups" /></div><AppButton variant="secondary" @click="select(word)">选用 {{ word.word }}</AppButton></article><AppPagination v-if="data" :page="page" :size="size" :total="data.total" :disabled="loading" @change="page = $event; refresh()" />
   </AppDialog>
 </template>

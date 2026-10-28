@@ -5,13 +5,15 @@ import { useSentenceEditor } from '../../composables/useSentenceEditor';
 import SentenceNav from '../../components/learning/SentenceNav.vue';
 import SentenceManagementGate from '../../components/learning/SentenceManagementGate.vue';
 import SentenceWordPicker from '../../components/learning/SentenceWordPicker.vue';
+import AppSelect from '../../components/ui/AppSelect.vue';
+import { sentenceLevelOptions, sentenceStatusOptions } from '../../utils/sentenceOptions';
 const route = useRoute();
 const id = route.params.sentenceId ? Number(route.params.sentenceId) : undefined;
 const { form, linkedWords, loading, saving, error, validation, notice, uncertain, conflict, conflictLoaded, submittedDraft, busy, locked, reload, save, addWord, removeWord } = useSentenceEditor(id);
 const picker = ref(false);
 </script>
 <template>
-  <div class="wordlist-page sentence-management"><header class="library-heading"><h1>{{ id ? '编辑句子' : '新建句子' }}</h1><RouterLink class="muted-link" to="/sentences/manage">返回题库维护</RouterLink></header><SentenceNav active="MANAGEMENT" />
+  <div class="sentence-library-page sentence-management sentence-editor-page"><header class="library-heading"><h1>{{ id ? '编辑句子' : '新建句子' }}</h1><RouterLink class="muted-link" to="/sentences/manage">返回题库维护</RouterLink></header><SentenceNav active="MANAGEMENT" />
     <SentenceManagementGate @authorized="reload">
       <p v-if="loading" role="status">正在读取题目…</p><p v-if="error" class="inline-error" role="alert">{{ error }}</p><p v-if="notice" class="sentence-notice" role="status">{{ notice }}</p>
       <section v-if="conflict && submittedDraft" class="sentence-conflict"><h2>未保存的修改</h2><p>下方表单已读取服务端最新版本，请先核对。</p><details><summary>查看本次提交内容</summary><dl class="sentence-draft"><dt>英文</dt><dd>{{ submittedDraft.englishText }}</dd><dt>参考译文</dt><dd>{{ submittedDraft.referenceTranslation }}</dd><dt>解析</dt><dd>{{ submittedDraft.explanation }}</dd><dt>来源</dt><dd>{{ submittedDraft.source }} · {{ submittedDraft.sourceReference || '无补充' }}</dd><dt>难度 / 状态 / 原版本</dt><dd>{{ submittedDraft.difficulty }} / {{ submittedDraft.status }} / {{ submittedDraft.version }}</dd><dt>关联词 ID</dt><dd>{{ submittedDraft.wordIds.join('、') || '无' }}</dd></dl></details><button class="btn btn-secondary" :disabled="busy || !conflictLoaded" @click="conflict = false; error = ''">已核对最新版本，继续编辑</button></section>
@@ -21,7 +23,7 @@ const picker = ref(false);
         <label for="sentence-english">英文原文</label><textarea id="sentence-english" v-model="form.englishText" lang="en" required maxlength="2000" rows="3" />
         <label for="sentence-reference">参考译文</label><textarea id="sentence-reference" v-model="form.referenceTranslation" required maxlength="2000" rows="3" />
         <label for="sentence-explanation">解析</label><textarea id="sentence-explanation" v-model="form.explanation" required maxlength="4000" rows="5" />
-        <div class="sentence-editor-pair"><label>难度<select v-model="form.difficulty"><option :value="1">基础</option><option :value="2">进阶</option><option :value="3">挑战</option></select></label><label>状态<select v-model="form.status"><option value="ACTIVE">启用</option><option value="INACTIVE">停用</option></select></label></div>
+        <div class="sentence-editor-pair"><AppSelect v-model="form.difficulty" :options="sentenceLevelOptions" label="难度" :disabled="locked" /><AppSelect v-model="form.status" :options="sentenceStatusOptions" label="状态" :disabled="locked" /></div>
         <p class="subtle-copy">停用后保留原练习、作答历史和复习安排。</p>
         <label for="sentence-source">来源说明</label><input id="sentence-source" v-model="form.source" required maxlength="255" />
         <label for="sentence-source-reference">来源补充（可留空）</label><input id="sentence-source-reference" v-model="form.sourceReference" maxlength="512" />

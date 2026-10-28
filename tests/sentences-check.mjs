@@ -1,3 +1,4 @@
+import { chooseSelect } from './helpers/choose-select.mjs';
 // Actual Vue frontend with explicit Section 21 fixtures. No translation judging is simulated.
 import assert from 'node:assert/strict';
 import { Window } from 'happy-dom';
@@ -141,23 +142,23 @@ await go('/sentences/favorites', '.sentence-catalog'); await until(() => documen
 await go('/sentences', '.sentence-catalog'); await until(() => document.querySelectorAll('.sentence-question-row').length === 10, 'bank first page');
 assert.equal(document.querySelector('img[src=x]'), null, 'question text is never HTML');
 assert.equal(creates().length, 0);
-input('#sentence-difficulty', '2'); await click('应用筛选'); await until(() => document.querySelectorAll('.sentence-question-row').length === 4, 'difficulty filter');
+await chooseSelect(document, '难度', '进阶'); await click('应用筛选'); await until(() => document.querySelectorAll('.sentence-question-row').length === 4, 'difficulty filter');
 await click('选择关联单词'); await until(() => document.querySelector('[role=dialog]'), 'word picker');
 input('input[aria-label="查找关联单词"]', 'abandon'); await click('查找'); await click('选用 abandon');
 await until(() => !document.querySelector('[role=dialog]'), 'picker closes'); await click('应用筛选');
 await until(() => document.querySelectorAll('.sentence-question-row').length === 2, 'explicit word association filter');
 assert.deepEqual(calls.filter(call => call.url === `${base}/questions`).at(-1).params, { page: 1, size: 10, difficulty: 2, wordId: 1001 });
-await click('清除关联单词'); input('#sentence-difficulty', ''); await click('应用筛选'); await until(() => document.querySelectorAll('.sentence-question-row').length === 10, 'reset filters');
+await click('清除关联单词'); await chooseSelect(document, '难度', '全部难度'); await click('应用筛选'); await until(() => document.querySelectorAll('.sentence-question-row').length === 10, 'reset filters');
 const favoriteButton = document.querySelector('[aria-label="收藏句子 1"]'); favoriteButton.click(); favoriteButton.click();
 await until(() => document.querySelector('[aria-label="取消收藏句子 1"]'), 'favorite saved'); assert.equal(writes('/favorite').length, 1);
 document.querySelector('[aria-label="收藏句子 3"]').click(); await until(() => document.querySelector('[aria-label="取消收藏句子 3"]'), 'second favorite');
 await go('/sentences/favorites', '.sentence-catalog'); await until(() => document.querySelectorAll('.sentence-question-row').length === 2, 'favorites list');
 document.querySelector('input[aria-label="选择句子 1"]').click(); document.querySelector('[aria-label="取消收藏句子 1"]').click();
-await until(() => document.querySelectorAll('.sentence-question-row').length === 1 && document.querySelector('.live-notice')?.textContent.includes('移出所选'), 'unfavorite removes source selection');
+await until(() => document.querySelectorAll('.sentence-question-row').length === 1 && document.querySelector('.sentence-library-note[role=status]')?.textContent.includes('移出所选'), 'unfavorite removes source selection');
 await click('从收藏开始'); await readyPending(); const favoriteSessionId = Number(router.currentRoute.value.params.sessionId);
 assert.deepEqual(creates().at(-1).body, { source: 'FAVORITES', count: 10 }); assert.equal(sessions.get(favoriteSessionId).items.length, 1, 'actual candidate count is authoritative');
 await go('/sentences', '.sentence-catalog'); await until(() => document.querySelectorAll('.sentence-question-row').length === 10, 'bank for selection');
-await click('作答历史'); await until(() => document.querySelector('[role=dialog] .state-panel')?.textContent.includes('暂无这句'), 'empty history');
+await click('作答历史'); await until(() => document.querySelector('[role=dialog] .state-panel')?.textContent.includes('暂无作答记录'), 'empty history');
 document.querySelector('[aria-label="关闭弹窗"]').click(); await until(() => !document.querySelector('[role=dialog]'), 'history closed');
 input('#sentence-count', '0'); await click('从题库开始'); await until(() => document.querySelector('.inline-error')?.textContent.includes('1～50'), 'count validation');
 for (const id of [1, 2]) document.querySelector(`input[aria-label="选择句子 ${id}"]`).click();

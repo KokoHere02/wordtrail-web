@@ -81,6 +81,7 @@ for (const [width, theme] of [[1280, 'light'], [375, 'dark'], [320, 'light']] as
     await nav.getByRole('link', { name: label, exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`${path}$`));
     await expectActive(label);
+    await expect(page.locator('#main h1')).toHaveCount(0);
     if (path === '/weak-words') {
       await expect(page.getByRole('group', { name: '薄弱词来源' })).toHaveCount(0);
       await expect(page.locator('.weak-words-page')).not.toContainText('历史认读专项');

@@ -17,5 +17,5 @@ function refresh() { if (props.modelValue && props.sentenceId !== null) void loa
 watch(() => [props.modelValue, props.sentenceId], () => { page.value = 1; refresh(); }, { immediate: true });
 </script>
 <template>
-  <AppDialog :model-value="modelValue" title="单句作答历史" description="参考译文与用户自评 · 北京时间" @update:model-value="emit('update:modelValue', $event)"><StatePanel :loading="loading" :error="error" :empty="data?.total === 0" message="暂无这句的已记录作答，不补造历史。" @retry="refresh" /><SentenceHistoryRows v-if="data && !loading && !error" :records="data.records" /><AppPagination v-if="data" :page="page" :size="size" :total="data.total" :disabled="loading" @change="page = $event; refresh()" /></AppDialog>
+  <AppDialog :model-value="modelValue" title="单句作答历史" panel-class="sentence-dialog sentence-history-dialog" @update:model-value="emit('update:modelValue', $event)"><StatePanel :loading="loading" :error="error" :empty="data?.total === 0" message="暂无作答记录。" @retry="refresh" /><SentenceHistoryRows v-if="data && !loading && !error" :records="data.records" /><AppPagination v-if="data" :page="page" :size="size" :total="data.total" :disabled="loading" @change="page = $event; refresh()" /></AppDialog>
 </template>

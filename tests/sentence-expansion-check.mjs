@@ -1,3 +1,4 @@
+import { chooseSelect } from './helpers/choose-select.mjs';
 // Explicit HTTP fixtures exercise the actual Vue pages; no production data is written.
 import assert from 'node:assert/strict';
 import { Window } from 'happy-dom';
@@ -112,9 +113,9 @@ input('.sentence-management-filters input', 'Original'); failList = true; await 
 await go('/sentences/manage/1/edit', '.sentence-editor'); await until(() => document.querySelector('#sentence-english').value === 'Original sentence 1.', 'editor loaded');
 input('#sentence-source-reference', ''); await click('清空关联');
 // Select status by label to avoid relying on visual order.
-input('.sentence-editor-pair label:nth-child(2) select', 'INACTIVE'); await click('保存题目'); await until(() => document.body.textContent.includes('已保存并停用'), 'disabled saved');
+await chooseSelect(document, '状态', '停用'); await click('保存题目'); await until(() => document.body.textContent.includes('已保存并停用'), 'disabled saved');
 assert.equal(writes('/questions/1').at(-1).body.sourceReference, null); assert.deepEqual(writes('/questions/1').at(-1).body.wordIds, []); assert.equal(bank.get(1).status, 'INACTIVE');
-input('.sentence-editor-pair label:nth-child(2) select', 'ACTIVE'); await click('保存题目'); await until(() => bank.get(1).status === 'ACTIVE', 'restored');
+await chooseSelect(document, '状态', '启用'); await click('保存题目'); await until(() => bank.get(1).status === 'ACTIVE', 'restored');
 await until(() => !document.querySelector('.sentence-editor fieldset').disabled, 'saved unlocked');
 input('#sentence-english', 'My unsaved sentence.'); conflict = true; const beforeConflict = writes('/questions/1').length;
 await click('保存题目'); await until(() => document.querySelector('.sentence-conflict'), 'conflict'); await until(() => button('已核对最新版本，继续编辑')?.disabled === false, 'latest loaded');

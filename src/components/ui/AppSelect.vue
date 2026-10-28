@@ -1,12 +1,12 @@
-<script setup lang="ts">
+<script setup lang="ts" generic="T extends string | number | null">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue';
 import { Check, ChevronDown } from 'lucide-vue-next';
 
 const props = defineProps<{
-  modelValue: string; options: { value: string; label: string }[]; label: string;
+  modelValue: T; options: { value: T; label: string }[]; label: string;
   disabled?: boolean; hideLabel?: boolean;
 }>();
-const emit = defineEmits<{ 'update:modelValue': [value: string] }>();
+const emit = defineEmits<{ 'update:modelValue': [value: T] }>();
 const id = useId(), root = ref<HTMLElement>(), trigger = ref<HTMLButtonElement>();
 const open = ref(false), active = ref(0);
 const selected = computed(() => props.options.findIndex(option => option.value === props.modelValue));
@@ -55,7 +55,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outside));
       <span :id="`${id}-value`">{{ current }}</span><ChevronDown :size="16" aria-hidden="true" />
     </button>
     <ul v-if="open" :id="`${id}-options`" role="listbox" :aria-labelledby="`${id}-label`" class="app-select-options">
-      <li v-for="(option, index) in options" :id="`${id}-option-${index}`" :key="option.value" role="option" :aria-selected="modelValue === option.value" :data-active="index === active" @pointermove="active = index" @pointerdown.prevent @click="choose(index)"><span>{{ option.label }}</span><Check v-if="modelValue === option.value" :size="16" aria-hidden="true" /></li>
+      <li v-for="(option, index) in options" :id="`${id}-option-${index}`" :key="option.value ?? ''" role="option" :aria-selected="modelValue === option.value" :data-active="index === active" @pointermove="active = index" @pointerdown.prevent @click="choose(index)"><span>{{ option.label }}</span><Check v-if="modelValue === option.value" :size="16" aria-hidden="true" /></li>
     </ul>
   </div>
 </template>

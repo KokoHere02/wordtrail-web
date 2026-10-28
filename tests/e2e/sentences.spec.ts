@@ -1,5 +1,91 @@
 import { expect, test } from '@playwright/test';
 
+for (const [width, theme] of [[1440, 'light'], [390, 'dark'], [320, 'light']] as const) {
+  test(`sentence library tabs and controls ${theme} ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 960 });
+    await page.addInitScript(theme => localStorage.setItem('wordtrail.theme', theme), theme);
+    await page.goto('/login'); await page.locator('#username').fill('sentence_library_reader'); await page.locator('#password').fill('example123'); await page.getByRole('button', { name: '登录', exact: true }).click();
+    await expect(page.locator('.daily-equation')).toBeVisible();
+    await page.evaluate(async () => {
+      const httpPath = '/src/api/http.ts', routerPath = '/src/router/index.ts';
+      const { http } = await import(/* @vite-ignore */ httpPath), { router } = await import(/* @vite-ignore */ routerPath);
+      const fallback = http.defaults.adapter, base = '/sentence-translation';
+      const calls: unknown[] = []; Reflect.set(window, '__sentenceLibraryCalls', calls);
+      const favorite = new Set([1]);
+      let note = { content: '核对否定范围，再看句子时态。', errorTags: ['NEGATION'], attemptId: 77, version: 1, updatedAt: '2026-10-28T12:00:00' };
+      const questions = [1, 2, 3].map(id => ({ sentenceId: id, englishText: id === 1 ? 'Although the journey was longer than expected, she continued to read every day.' : `I read an interesting book in the library today, sentence ${id}.`, referenceTranslation: '尽管旅途比预期更长，她仍然每天阅读。', explanation: '核对让步关系、句子结构和时态。', difficulty: id === 1 ? 2 : 1, source: '阅读笔记', sourceReference: '章节示例', status: 'ACTIVE', version: 3, wordIds: id === 1 ? [1001] : [], linkedWords: id === 1 ? [{ wordId: 1001, word: 'abandon' }] : [] }));
+      const history = { attemptId: 77, sessionId: 650, itemId: 850, sentenceId: 1, englishText: questions[0]!.englishText, action: 'ANSWER', translation: '虽然路程更长，她还是每天阅读。', referenceTranslation: questions[0]!.referenceTranslation, explanation: questions[0]!.explanation, selfAssessment: 'PARTIAL', learningDate: '2026-10-28', submittedAt: '2026-10-28T12:00:00', reviewDate: '2026-10-28', reviewedAt: '2026-10-28T12:01:00' };
+      http.defaults.adapter = async (config: { url: string; method: string; params?: Record<string, string | number>; data?: string }) => {
+        const body = config.data ? JSON.parse(config.data) : undefined;
+        calls.push({ url: config.url, method: config.method, params: config.params, body });
+        const ok = (data: unknown) => ({ config, status: 200, headers: {}, data: { code: 'OK', data: structuredClone(data) } });
+        const paged = (rows: unknown[]) => ok({ page: 1, size: 10, total: rows.length, records: rows });
+        if (config.url === '/words') return paged([{ id: 1001, word: 'abandon', phonetic: '/əˈbændən/', translation: '放弃；遗弃' }]);
+        if (config.url === `${base}/management/access`) return ok({ canManage: true });
+        if (config.url === `${base}/questions` || config.url === `${base}/favorites`) return paged(questions.filter(row => (!config.params?.difficulty || row.difficulty === config.params.difficulty) && (!config.params?.wordId || row.wordIds.includes(Number(config.params.wordId))) && (config.url.endsWith('/questions') || favorite.has(row.sentenceId))).map(row => ({ ...row, favorite: favorite.has(row.sentenceId) })));
+        if (config.url.endsWith('/favorite')) { const id = Number(config.url.split('/')[3]); if (body.favorite) favorite.add(id); else favorite.delete(id); return ok({ sentenceId: id, favorite: body.favorite }); }
+        if (config.url === `${base}/review-queue`) return paged([{ sentenceId: 1, englishText: questions[0]!.englishText, difficulty: 2, available: true, attemptId: 77, selfAssessment: 'PARTIAL', reviewedAt: '2026-10-28T12:01:00' }]);
+        if (config.url === `${base}/reviews/due`) return paged([{ ...questions[0], reviewLevel: 2, lastAssessment: 'PARTIAL', nextReviewDate: '2026-10-28' }]);
+        if (config.url === `${base}/notes`) return paged([{ sentenceId: 1, englishText: questions[0]!.englishText, available: true, note }]);
+        if (config.url.endsWith('/questions/1/note')) { if (config.method === 'put') note = { ...body, version: note.version + 1, updatedAt: '2026-10-28T12:05:00' }; return ok(note); }
+        if (config.url.endsWith('/questions/1/history')) return paged([history]);
+        if (config.url.endsWith('/questions/1/schedule')) return ok({ sentenceId: 1, lastAttemptId: 77, reviewLevel: 2, lastAssessment: 'PARTIAL', reviewedAt: '2026-10-28T12:01:00', nextReviewDate: '2026-10-29' });
+        if (config.url === `${base}/management/questions`) return paged(questions);
+        if (config.url === `${base}/management/questions/1`) return ok(questions[0]);
+        return fallback(config);
+      };
+      await router.push('/sentences');
+    });
+    const nav = page.getByRole('navigation', { name: '句子练习导航' });
+    const noOverflow = async () => expect(await page.locator('html').evaluate(node => node.scrollWidth <= window.innerWidth)).toBe(true);
+    await expect(page.locator('.sentence-question-row')).toHaveCount(3);
+    const difficulty = page.getByRole('combobox', { name: /^难度/ });
+    await difficulty.focus(); await page.keyboard.press('Enter'); await page.keyboard.press('ArrowDown'); await page.keyboard.press('ArrowDown'); await page.keyboard.press('Enter');
+    await expect(difficulty).toContainText('进阶'); await page.getByRole('button', { name: '应用筛选', exact: true }).click();
+    await expect(page.locator('.sentence-question-row')).toHaveCount(1);
+    expect(await page.evaluate(() => (Reflect.get(window, '__sentenceLibraryCalls') as { url: string; params?: { difficulty?: number } }[]).filter(call => call.url === '/sentence-translation/questions').at(-1)?.params?.difficulty)).toBe(2);
+    await difficulty.click(); await page.keyboard.press('Escape'); await expect(page.getByRole('listbox')).toHaveCount(0);
+    await page.getByRole('button', { name: '选择关联单词', exact: true }).click();
+    const picker = page.getByRole('dialog', { name: '选择关联单词', exact: true });
+    await expect(picker.getByRole('searchbox')).toBeFocused(); await picker.getByRole('searchbox').fill('aban'); await picker.getByRole('button', { name: '查找', exact: true }).click();
+    await expect(picker.locator('.sentence-word-option')).toHaveCount(1); await noOverflow();
+    await page.screenshot({ path: testInfo.outputPath('word-picker.png'), animations: 'disabled' });
+    await picker.getByRole('button', { name: '选用 abandon', exact: true }).click(); await expect(picker).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'abandon', exact: true })).toBeFocused();
+    await page.locator('.sentence-question-row').first().getByRole('button', { name: '作答历史', exact: true }).click();
+    const history = page.getByRole('dialog', { name: '单句作答历史', exact: true });
+    await expect(history.locator('.sentence-history-row')).toHaveCount(1); await history.getByRole('button', { name: '当前复习安排', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: '个人复习安排', exact: true })).toBeVisible();
+    await expect(page.getByRole('dialog')).toHaveCount(2); await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toHaveCount(1); expect(await page.evaluate(() => document.body.style.overflow)).toBe('hidden');
+    await expect(history.getByRole('button', { name: '当前复习安排', exact: true })).toBeFocused();
+    await page.screenshot({ path: testInfo.outputPath('sentence-history.png'), animations: 'disabled' });
+    await page.keyboard.press('Escape'); await expect(page.getByRole('dialog')).toHaveCount(0); expect(await page.evaluate(() => document.body.style.overflow)).not.toBe('hidden');
+    for (const [label, selector] of [['收藏', '.sentence-question-row'], ['待巩固', '.sentence-question-row'], ['到期复习', '.sentence-due-date'], ['个人笔记', '.sentence-note-row']] as const) {
+      await nav.getByRole('link', { name: label, exact: true }).click(); await expect(page.locator(selector).first()).toBeVisible();
+      await expect(nav.locator('[aria-current="page"]')).toHaveText(label); await noOverflow();
+      await page.screenshot({ path: testInfo.outputPath(`${label}.png`), animations: 'disabled' });
+    }
+    await page.getByRole('button', { name: '编辑笔记', exact: true }).click();
+    await expect(page.locator('#sentence-note-1')).toBeEnabled(); await page.locator('#sentence-note-1').fill('<b>纯文本笔记</b>\n核对否定范围。');
+    await page.getByRole('checkbox', { name: '时态', exact: true }).check();
+    const attempt = page.getByRole('combobox', { name: /^关联作答/ }); await attempt.click(); await page.getByRole('option', { name: '不关联作答', exact: true }).click();
+    await attempt.focus(); await page.keyboard.press('Enter'); await page.keyboard.press('End'); await page.keyboard.press('Enter');
+    await expect(attempt).toContainText('原关联作答 #77'); await page.getByRole('button', { name: '保存笔记', exact: true }).click();
+    await expect(page.locator('.sentence-note-content')).toContainText('<b>纯文本笔记</b>'); await expect(page.locator('.sentence-note-content b')).toHaveCount(0);
+    expect(await page.evaluate(() => (Reflect.get(window, '__sentenceLibraryCalls') as { method: string; url: string; body?: { attemptId: unknown } }[]).filter(call => call.method === 'put' && call.url.endsWith('/note')).at(-1)?.body?.attemptId)).toBe(77);
+    await nav.getByRole('link', { name: '题库维护', exact: true }).click(); await expect(page.locator('.sentence-managed-row')).toHaveCount(3); await noOverflow();
+    await page.screenshot({ path: testInfo.outputPath('management.png'), animations: 'disabled' });
+    await page.locator('.sentence-managed-row').first().getByRole('link').click(); await expect(page.locator('#sentence-english')).toHaveValue(/Although/); await noOverflow();
+    await expect(page.getByRole('combobox', { name: /^难度/ })).toContainText('进阶');
+    await page.screenshot({ path: testInfo.outputPath('editor.png'), animations: 'disabled' });
+    await page.getByRole('link', { name: '返回题库维护', exact: true }).click(); await page.getByRole('link', { name: 'CSV 导入', exact: true }).click();
+    await page.locator('#sentence-csv-text').fill('englishText,referenceTranslation,explanation,difficulty,source\nA sample sentence.,示例,解析,1,阅读笔记');
+    await page.getByRole('button', { name: '上传 CSV', exact: true }).click(); await expect(page.locator('#sentence-csv-file')).toBeVisible(); await noOverflow();
+    await page.screenshot({ path: testInfo.outputPath('csv-import.png'), animations: 'disabled' });
+  });
+}
+
 for (const width of [1440, 390, 320]) for (const theme of ['light', 'dark']) {
   test(`sentence translation ${theme} ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 960 });
