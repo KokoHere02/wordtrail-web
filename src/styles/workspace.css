@@ -117,12 +117,10 @@
 .letter-input-control > input:focus, .letter-input-control > input:focus-visible { outline: none; box-shadow: none; }
 .letter-input.is-invalid .letter-slot { color: var(--spelling-error); border-bottom-color: var(--spelling-error); }
 .letter-input.is-disabled { opacity: .65; }
-.content-kind-nav { display: flex; flex-wrap: wrap; gap: var(--s5); border-bottom: 1px solid var(--line); margin-bottom: var(--s6); }
-.content-kind-nav > a { display: inline-flex; align-items: center; min-height: var(--control); padding-block: var(--s3); color: var(--muted); border-bottom: 2px solid transparent; }
-.content-kind-nav > a.active { color: var(--ink); border-color: var(--accent); }
 .section-hub-nav { display: flex; flex-wrap: wrap; gap: var(--s5); width: min(calc(100% - var(--s5) * 2), 1120px); margin: var(--s5) auto 0; border-bottom: 1px solid var(--line); }
 .section-hub-nav > a { display: inline-flex; align-items: center; min-height: var(--control); padding-block: var(--s3); color: var(--muted); border-bottom: 2px solid transparent; }
 .section-hub-nav > a.active { color: var(--ink); border-color: var(--accent); }
+.content-page-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: var(--s3); margin-bottom: var(--s4); }
 .daily-training-main { max-width: 680px; min-width: 0; margin-inline: auto; padding-bottom: max(var(--s8), env(safe-area-inset-bottom)); }
 .daily-training-main .learning-word { margin: var(--s5) 0 var(--s3); font: 400 clamp(42px, 6vw, 80px)/1.2 var(--font-serif); text-align: center; overflow-wrap: anywhere; }
 .daily-word-phonetic { color: var(--muted); text-align: center; font-size: var(--text-lg); margin-bottom: var(--s2); }

@@ -36,7 +36,7 @@ onMounted(refresh);
 </script>
 <template>
   <div class="library-page">
-    <header class="library-heading"><div><h1 class="reveal" style="--delay: 50ms">词库</h1></div>
+    <header class="library-heading library-toolbar" aria-label="词书搜索与管理">
       <div class="library-heading-actions"><form class="library-search" role="search" @submit.prevent="search"><Search :size="22" /><input v-model="keyword" type="search" maxlength="128" aria-label="搜索词书" placeholder="搜索词书 / 词本" /><button class="violet-link" type="submit">搜索</button></form><AppButton @click="edit()"><Plus :size="18" />创建词本</AppButton></div>
     </header>
     <div class="category-tabs" role="group" aria-label="词书范围"><button v-for="entry in scopes" :key="entry.value" :class="{ active: scope === entry.value }" :aria-pressed="scope === entry.value" @click="scope = entry.value">{{ entry.label }}</button><span v-if="data" class="subtle-copy">{{ data.total }} 本</span></div>
@@ -52,3 +52,6 @@ onMounted(refresh);
     <BookEditorDialog v-model="editorOpen" :book="editingBook" @saved="saved" @unavailable="refresh" />
   </div>
 </template>
+<style scoped>
+.library-toolbar .library-heading-actions { width: 100%; justify-content: flex-end; }
+</style>
