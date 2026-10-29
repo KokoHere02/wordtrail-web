@@ -17,6 +17,46 @@
 .word-plan-facts dt { color: var(--muted); font-size: var(--text-sm); margin-bottom: var(--s2); }
 .word-plan-facts dd { margin: 0; color: var(--ink); overflow-wrap: anywhere; }
 .history-detail-link { margin-top: var(--s4); min-height: var(--control); }
+.word-history-dialog { display: flex; flex-direction: column; width: min(100%, 780px); padding: var(--s6); border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); }
+.word-history-dialog > header { flex-shrink: 0; margin-bottom: var(--s5); padding-bottom: var(--s4); border-bottom: 1px solid var(--line); }
+.word-history-dialog > header h2 { font-size: 25px; letter-spacing: -.02em; overflow-wrap: anywhere; }
+.word-history-dialog > header p { font-size: var(--text-sm); }
+.word-history-dialog .history-type-tabs { flex-shrink: 0; display: flex; gap: var(--s1); margin: 0 0 var(--s5); padding: var(--s1); border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--hover); }
+.word-history-dialog .history-type-tabs > button { flex: 1; padding: var(--s2) var(--s3); border: 0; border-radius: 6px; background: transparent; color: var(--muted); font-size: var(--text-base); }
+.word-history-dialog .history-type-tabs > button.active { background: var(--surface); color: var(--accent-strong); font-weight: 600; box-shadow: var(--shadow); }
+.word-history-dialog .history-type-tabs > button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+.word-history-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-right: var(--s1); }
+.word-history-dialog .history-group { margin: 0 0 var(--s5); }
+.word-history-group-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); margin-bottom: var(--s3); color: var(--muted); font-size: var(--text-sm); }
+.word-history-group-heading h3 { font-size: var(--text-base); font-weight: 500; color: var(--control-text); }
+.word-history-dialog .word-history-event { margin-bottom: var(--s3); padding: var(--s4); border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.word-history-event-heading { display: flex; align-items: center; gap: var(--s3); }
+.word-history-mark { display: inline-grid; place-items: center; flex-shrink: 0; width: 36px; height: 36px; border-radius: 10px; background: var(--sage); color: var(--accent); }
+.word-history-mark.is-correction { color: var(--amber); background: var(--amber-bg); }
+.word-history-event-heading > div { display: grid; gap: var(--s1); }
+.word-history-event-heading strong { font-size: var(--text-base); font-weight: 600; }
+.word-history-event-kind { color: var(--muted); font-size: var(--text-sm); }
+.word-history-event-heading time { margin-left: auto; font-size: var(--text-sm); color: var(--muted); font-variant-numeric: tabular-nums; }
+.word-history-event-meta { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4); margin: var(--s3) 0 0 48px; color: var(--muted); font-size: var(--text-sm); }
+.word-history-details { margin-top: var(--s4); border-top: 1px solid var(--line); padding-top: var(--s3); }
+.word-history-details summary { cursor: pointer; width: fit-content; padding-block: var(--s1); color: var(--muted); font-size: var(--text-sm); }
+.word-history-details summary:hover { color: var(--accent); }
+.word-history-facts { display: flex; flex-wrap: wrap; gap: var(--s3) var(--s6); margin-top: var(--s3); font-size: var(--text-sm); }
+.word-history-facts dt, .word-history-schedules dt { color: var(--muted); }
+.word-history-facts dd { margin-top: var(--s1); }
+.word-history-schedules { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s3); margin-top: var(--s4); }
+.word-history-schedules > section { padding: var(--s3); background: var(--hover); border-radius: var(--radius-sm); }
+.word-history-schedules h4 { font-size: var(--text-sm); font-weight: 600; margin-bottom: var(--s3); }
+.word-history-schedules dl { display: grid; gap: var(--s3); font-size: var(--text-sm); }
+.word-history-schedules dd { margin-top: var(--s1); overflow-wrap: anywhere; }
+.word-history-dialog .pagination { margin: 0; padding-block: var(--s3); border-top: 1px solid var(--line); }
+.word-history-footer { flex-shrink: 0; display: flex; justify-content: flex-end; padding-top: var(--s4); border-top: 1px solid var(--line); margin-top: var(--s3); font-size: var(--text-sm); }
+.dictation-history-event.is-incorrect .word-history-mark { color: var(--error); background: var(--error-bg); }
+.dictation-history-event.is-revealed .word-history-mark { color: var(--amber); background: var(--amber-bg); }
+.dictation-history-input { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s4); padding-top: var(--s4); margin-top: var(--s4); border-top: 1px solid var(--line); }
+.dictation-history-input dt { font-size: var(--text-sm); color: var(--muted); }
+.dictation-history-input dd { font-size: var(--text-base); margin-top: var(--s2); overflow-wrap: anywhere; white-space: pre-wrap; }
+.dictation-history-event.is-incorrect .dictation-history-input > div:last-child dd { color: var(--error); }
 .weak-words-sheet { padding-bottom: 0; }
 .weak-toolbar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--s3); padding-block: var(--s3); min-height: var(--s16); border-bottom: 1px solid var(--line); background: var(--surface); }
 .weak-selection, .weak-toolbar-actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s3); font-size: var(--text-sm); color: var(--muted); }
@@ -36,6 +76,12 @@
 .weak-word-feedback p.statistics-word-warning { color: var(--amber); }
 .weak-word-row > button { min-height: var(--control); }
 @media (max-width: 700px) {
+  .word-history-dialog { padding: var(--s4); }
+  .word-history-dialog > header h2 { font-size: 21px; }
+  .word-history-event-heading { flex-wrap: wrap; }
+  .word-history-event-heading time { flex-basis: 100%; margin-left: 48px; }
+  .word-history-event-meta { margin-left: 0; }
+  .word-history-schedules { grid-template-columns: 1fr; }
   .weak-toolbar-actions { width: 100%; justify-content: flex-end; }
   .weak-toolbar-actions .btn { flex: 1; }
   .word-detail-heading { align-items: flex-start; flex-direction: column; gap: var(--s5); }

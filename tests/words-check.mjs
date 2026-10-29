@@ -132,7 +132,7 @@ assert.equal(weakWrites().length, 0);
 const archivedDailyRow = [...document.querySelectorAll('.weak-word-row')].find(row => row.querySelector('a')?.getAttribute('href') === '/words/1001');
 click('学习历史', archivedDailyRow);
 await until(() => dialog()?.querySelector('.history-event'), 'archived word history');
-assert.match(dialog().textContent, /本页历史认读专项事件/);
+assert.match(dialog().textContent, /历史认读专项/);
 document.querySelector('button[aria-label="关闭弹窗"]').click();
 await until(() => !dialog(), 'history closed');
 for (const path of ['/learning', '/study/900', '/learning/900/result', '/study/900/items/900001']) {
