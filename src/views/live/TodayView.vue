@@ -29,10 +29,6 @@ onMounted(refresh);
       <StatePanel :loading="loading" :error="error" @retry="refresh" />
       <template v-if="data && !loading && !error">
         <p class="live-date">{{ data.learningDate }} · {{ data.task ? '本任务目标' : '今日目标' }} {{ data.dailyTarget }} 词 · <RouterLink to="/settings" class="violet-link">设置目标</RouterLink></p>
-        <p v-if="(data.task ? data.task.newWordTarget : data.newWordTarget) != null && (data.task ? data.task.reviewLimit : data.reviewLimit) != null" class="subtle-copy">{{ data.task ? '当前任务每轮偏好' : '下一任务每轮偏好' }}：新词 {{ data.task ? data.task.newWordTarget : data.newWordTarget }} · 复习 {{ data.task ? data.task.reviewLimit : data.reviewLimit }}</p>
-        <p v-else class="subtle-copy">当前任务策略：优先复习，再补新词。</p>
-        <p class="subtle-copy">未编入今日任务的到期复习：{{ data.reviewBacklogCount ?? '—' }} 词 · 逾期复习：{{ data.overdueReviewCount ?? '—' }} 词</p>
-        <p class="subtle-copy">逾期指上海今日零点前已到期、仍未完成的启用词，可能包含今日已安排的词。</p>
         <p v-if="data.task?.status === 'COMPLETED'" class="subtle-copy">本组已结束</p>
         <p v-if="goal" class="daily-goal-status">{{ goal.reached ? '每日目标已达成' : `距每日目标还差 ${goal.remainingCount} 词` }}</p>
         <p v-if="data.needsMoreWords || noWords" class="daily-needs-words">请添加单词到学习计划，收进词本后还需选择“加入学习计划”。</p>
