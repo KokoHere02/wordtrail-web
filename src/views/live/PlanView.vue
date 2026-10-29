@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref } from 'vue';
 import { Plus, Search } from 'lucide-vue-next';
 import { usePlan } from '../../composables/usePlan';
 import type { PlanWord, PlanStatus, PlanLearningStatus } from '../../types/daily';
@@ -14,11 +14,9 @@ const statuses: { value: PlanStatus; label: string }[] = [{ value: 'ACTIVE', lab
 const learningStatuses: { value: PlanLearningStatus; label: string }[] = [{ value: 'ALL', label: '全部单词' }, { value: 'DUE', label: '待复习' }, { value: 'NEW', label: '新加入' }, { value: 'LEARNED', label: '已开始' }];
 const historyWord = ref<PlanWord>();
 const historyOpen = ref(false);
-const expandedId = ref<number>();
 const confirmOpen = ref(false);
 const removeIds = ref<number[]>([]);
 const removeBulk = ref(false);
-watch(data, value => { if (!value?.records.some(word => word.wordId === expandedId.value)) expandedId.value = value?.records[0]?.wordId; });
 function askRemove(ids: number[], bulk = false) { removeIds.value = ids; removeBulk.value = bulk; confirmOpen.value = true; }
 async function remove() { if (await plan.change(removeIds.value, 'REMOVED', removeBulk.value)) confirmOpen.value = false; }
 function history(word: PlanWord) { historyWord.value = word; historyOpen.value = true; }
@@ -33,7 +31,7 @@ function history(word: PlanWord) { historyWord.value = word; historyOpen.value =
       <p v-if="count > 100" class="inline-error plan-message" role="alert">每批最多操作 100 词，请减少选择。</p>
       <div class="plan-table" role="table" aria-label="计划词表"><div class="plan-table-header" role="row"><div class="plan-check-cell" role="columnheader"><input type="checkbox" :checked="pageSelected" :indeterminate="!pageSelected && pageIds.some(id => selected.has(id))" :disabled="status === 'REMOVED' || busy || loading || !pageIds.length" aria-label="选择当前页计划单词" title="选择当前页" @change="plan.togglePage(pageIds, !pageSelected)" /></div><span role="columnheader">单词 / 释义</span><span role="columnheader">复习进度</span><span role="columnheader">下次复习</span><span class="plan-operation-heading" role="columnheader">操作</span></div>
         <StatePanel :loading="loading" :error="error" :empty="!!data && !data.records.length" message="这里还没有符合条件的计划单词。" @retry="plan.refresh" />
-        <template v-if="!loading && !error"><PlanWordRow v-for="word in data?.records" :key="word.wordId" :word="word" :selected="selected.has(word.wordId)" :expanded="expandedId === word.wordId" :busy="busy" @select="plan.toggle(word.wordId, $event)" @expand="expandedId = expandedId === word.wordId ? undefined : word.wordId" @history="history(word)" @change="(id, target) => plan.change([id], target)" @remove="askRemove([word.wordId])" /></template>
+        <template v-if="!loading && !error"><PlanWordRow v-for="word in data?.records" :key="word.wordId" :word="word" :selected="selected.has(word.wordId)" :busy="busy" @select="plan.toggle(word.wordId, $event)" @history="history(word)" @change="(id, target) => plan.change([id], target)" @remove="askRemove([word.wordId])" /></template>
       </div>
       <AppPagination v-if="data" :page="page" :size="size" :total="data.total" :disabled="loading || busy" numbered noun="个单词" @change="page = $event" />
     </section>

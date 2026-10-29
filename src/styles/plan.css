@@ -24,7 +24,7 @@
 .skip-link { color: var(--surface); }
 
 /* One grid definition keeps word, review and action columns aligned. */
-.plan-page { --plan-columns: var(--s12) minmax(0, 1fr) var(--plan-progress-width) var(--plan-review-width) var(--s10); width: min(calc(100% - var(--s12)), var(--plan-width)); margin: var(--s8) auto 0; }
+.plan-page { --plan-columns: var(--s12) minmax(0, 1fr) var(--plan-progress-width) var(--plan-review-width) 288px; width: min(calc(100% - var(--s12)), var(--plan-width)); margin: var(--s8) auto 0; }
 .plan-page-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--s6); margin-bottom: var(--s8); }
 .plan-eyebrow { font: 400 var(--text-sm)/1.5 var(--font-serif); letter-spacing: .3em; color: var(--control-text); margin-bottom: var(--s1); }
 .plan-page-heading h1 { font-size: var(--plan-title-size); font-weight: 600; letter-spacing: -.04em; }
@@ -54,13 +54,14 @@
 .plan-table-header { min-height: var(--s12); color: var(--muted); font-size: var(--text-base); }
 .plan-operation-heading { text-align: right; }
 .plan-sheet .live-plan-row { display: block; padding: 0; border-top: 1px solid var(--line); transition: background var(--motion-fast) var(--ease); }
-.plan-row.is-open, .plan-row.is-selected { background: var(--row-selected); }
+.plan-row.is-selected { background: var(--row-selected); }
 .plan-row-main { min-height: var(--plan-row-height); padding-block: var(--s3); }
 .plan-check-cell { display: flex; align-items: center; }
 .plan-check-cell input { width: var(--s5); height: var(--s5); }
 .plan-word { min-width: 0; }
 .plan-word-title { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--s2) var(--s4); }
-.plan-word-title button { border: 0; padding: 0; background: transparent; color: var(--ink); text-align: left; min-width: 0; }
+.plan-word-title > a { color: var(--ink); text-align: left; min-width: 0; }
+.plan-word-title > a:hover { color: var(--accent); }
 .plan-sheet .plan-word strong { font-family: var(--font-serif); font-size: var(--plan-word-size); font-weight: 400; letter-spacing: -.035em; line-height: 1.1; overflow-wrap: anywhere; }
 .plan-phonetic { color: var(--phonetic); font-family: var(--font-serif); font-size: var(--text-base); overflow-wrap: anywhere; }
 .plan-sheet .plan-word p { margin-top: var(--s1); font-size: var(--text-base); color: var(--translation); line-height: 1.5; }
@@ -70,26 +71,32 @@
 .plan-level-bars i.filled { background: var(--accent); }
 .plan-review-badge { display: inline-block; max-width: 100%; padding: var(--s1) var(--s3); border-radius: var(--radius); color: var(--neutral-tag-text); background: var(--neutral-tag); font-size: var(--text-base); line-height: 1.4; }
 .plan-review-badge.is-scheduled { background: var(--sage); color: var(--accent-strong); }
-.plan-more { display: flex; justify-content: flex-end; }
-.plan-more .round-icon { color: var(--muted); }
-.plan-detail-cell { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--s4); min-width: 0; margin: 0 var(--s5) var(--s3) var(--s16); padding: var(--s3) var(--s4); background: var(--plan-detail-bg); border-radius: var(--s1); }
-.plan-record { border-left: 1px solid var(--correction-line); padding-left: var(--s5); overflow-wrap: anywhere; }
-.plan-sheet .plan-record p { color: var(--ink); font-size: var(--text-base); }
-.plan-record span { display: block; color: var(--muted); font-size: var(--text-sm); margin-top: var(--s1); }
-.plan-item-actions { display: flex; align-items: center; gap: var(--s4); }
-.plan-item-actions button { min-height: var(--control); font-size: var(--text-base); }
-.plan-item-actions button + button { position: relative; }
-.plan-item-actions button + button:before { content: '·'; position: absolute; left: calc(var(--s3) * -1); color: var(--muted); }
+.plan-item-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: var(--s2); }
+.plan-item-actions .plan-action { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: var(--s2) var(--s3); border: 1px solid var(--line); border-radius: var(--radius-sm); font-size: var(--text-base); font-weight: 500; background: var(--surface); color: var(--control-text); transition: background var(--motion-fast), border-color var(--motion-fast); }
+.plan-action svg { flex-shrink: 0; }
+.plan-item-actions .plan-action-history, .plan-item-actions .plan-action-resume { color: var(--accent-strong); border-color: var(--checkbox-border); background: var(--sage); }
+.plan-item-actions .plan-action-pause { color: var(--amber); border-color: var(--amber-border); background: var(--amber-bg); }
+.plan-item-actions .plan-action-remove { color: var(--error); border-color: var(--error-border); }
+.plan-item-actions .plan-action:hover:not(:disabled) { border-color: currentColor; }
+.plan-item-actions .plan-action-remove:hover:not(:disabled) { background: var(--error-bg); }
+.plan-item-actions .plan-action:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
 .plan-sheet .pagination { border-top: 1px solid var(--line); margin: 0; padding: var(--s3) var(--s5); min-height: calc(var(--s12) + var(--s2)); }
 .plan-sheet .page-button { width: var(--s10); height: var(--s10); border: 0; background: transparent; color: var(--ink); border-radius: var(--s1); }
 .plan-sheet .page-button.is-current { opacity: 1; background: var(--sage); color: var(--accent-strong); }
 .plan-selection-help, .plan-count-error { margin-top: var(--s3); font-size: var(--text-sm); }
-.plan-details-enter-active, .plan-details-leave-active { transition: opacity var(--motion-fast), transform var(--motion-fast); }
-.plan-details-enter-from, .plan-details-leave-to { opacity: 0; transform: translateY(calc(var(--s1) * -1)); }
 @media (max-width: 1100px) {
-  .plan-page { --plan-progress-width: 160px; --plan-review-width: 144px; --plan-columns: var(--s8) minmax(0, 1fr) var(--plan-progress-width) var(--plan-review-width) var(--s8); }
+  .plan-page { --plan-progress-width: 128px; --plan-review-width: 128px; --plan-columns: var(--s8) minmax(0, 1fr) var(--plan-progress-width) var(--plan-review-width) 272px; }
   .plan-table-header, .plan-row-main { column-gap: var(--s4); }
   .wordory-app .brand-wordmark small { display: none; }
+}
+@media (min-width: 701px) and (max-width: 1000px) {
+  .plan-table-header, .plan-row-main { grid-template-columns: var(--s8) minmax(0, 1fr) 288px; gap: var(--s3); }
+  .plan-table-header > span:nth-of-type(2), .plan-table-header > .plan-operation-heading { display: none; }
+  .plan-check-cell { grid-column: 1; grid-row: 1; }
+  .plan-word { grid-column: 2; grid-row: 1; }
+  .plan-review { grid-column: 3; grid-row: 1; text-align: right; }
+  .plan-memory { grid-column: 2; grid-row: 2; }
+  .plan-item-actions { grid-column: 3; grid-row: 2; }
 }
 @media (max-width: 700px) {
   .wordory-app .site-header { flex-wrap: wrap; padding: var(--s3) var(--s5) 0; gap: var(--s2); }
@@ -112,25 +119,22 @@
   .plan-sort { margin-left: auto; }
   .plan-sort select { min-height: var(--control); }
   .plan-table-header, .plan-row-main { grid-template-columns: var(--s5) minmax(0, 1fr) calc(var(--s12) * 2); gap: var(--s3); padding-inline: var(--s3); }
-  .plan-table-header > span:nth-of-type(2), .plan-table-header > span:nth-of-type(3) { display: none; }
+  .plan-table-header > span:nth-of-type(2), .plan-table-header > span:nth-of-type(3), .plan-table-header > .plan-operation-heading { display: none; }
   .plan-table-header { font-size: var(--text-sm); }
   .plan-row-main { padding-block: var(--s4); }
   .plan-check-cell { grid-column: 1; grid-row: 1; }
-  .plan-word { grid-column: 2; grid-row: 1; }
+  .plan-word { grid-column: 2 / -1; grid-row: 1; }
   .plan-word-title { gap: var(--s1); }
   .plan-sheet .plan-word strong { font-size: var(--text-brand); }
   .plan-phonetic { font-size: var(--text-sm); }
   .plan-sheet .plan-word p { font-size: var(--text-sm); }
-  .plan-more { grid-column: 3; grid-row: 1; align-self: start; }
   .plan-memory { grid-column: 2; grid-row: 2; font-size: var(--text-sm); }
   .plan-level-bars { gap: 3px; margin-bottom: var(--s1); }
   .plan-level-bars i { width: var(--s3); height: var(--s2); }
   .plan-review { grid-column: 3; grid-row: 2; text-align: right; }
   .plan-review-badge { font-size: var(--text-sm); padding: var(--s1) var(--s2); }
-  .plan-detail-cell { margin: 0 var(--s3) var(--s3) var(--s12); padding: var(--s3); gap: var(--s2); }
-  .plan-record { padding-left: var(--s3); }
-  .plan-item-actions { margin-left: auto; gap: var(--s5); }
-  .plan-item-actions button { font-size: var(--text-sm); }
+  .plan-item-actions { grid-column: 1 / -1; grid-row: 3; width: 100%; gap: 6px; padding-top: var(--s2); }
+  .plan-item-actions .plan-action { flex: 1; padding-inline: var(--s1); font-size: var(--text-sm); min-height: var(--control); white-space: nowrap; }
   .plan-bulkbar { gap: var(--s3); padding-inline: var(--s3); }
   .plan-bulkbar > .live-actions { flex-basis: 100%; gap: var(--s4); }
   .plan-sheet .pagination { padding: var(--s2) var(--s3); font-size: var(--text-sm); }

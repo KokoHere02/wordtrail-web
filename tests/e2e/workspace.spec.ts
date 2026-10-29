@@ -1,5 +1,76 @@
 import { expect, test } from '@playwright/test';
 
+for (const [width, theme] of [[1280, 'light'], [900, 'light'], [320, 'dark']] as const) test(`plan actions and readable word history ${theme} ${width}px`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 900 });
+  await page.addInitScript(theme => localStorage.setItem('wordtrail.theme', theme), theme);
+  await page.goto('/login'); await page.locator('#username').fill('plan_history_reader'); await page.locator('#password').fill('example123'); await page.getByRole('button', { name: '登录', exact: true }).click();
+  await expect(page.locator('.daily-equation')).toBeVisible();
+  await page.evaluate(async () => {
+    const httpPath = '/src/api/http.ts', routerPath = '/src/router/index.ts';
+    const { http } = await import(/* @vite-ignore */ httpPath), { router } = await import(/* @vite-ignore */ routerPath);
+    const fallback = http.defaults.adapter, writes: unknown[] = []; Reflect.set(window, '__planHistoryWrites', writes);
+    const records = ['apple', 'banana', 'cherry', 'date'].map((word, index) => ({ wordId: 101 + index, word, phonetic: '/ˈæp.əl/', translation: '单词释义', planStatus: ['ACTIVE', 'PAUSED', 'REMOVED', 'ACTIVE'][index], joinedAt: '2026-10-21T16:34:03', firstLearnedAt: '2026-10-22T12:00:00', lastLearnedAt: '2026-10-28T15:42:57', lastResult: 2, nextReviewAt: '2026-10-30T00:00:00', reviewLevel: 3 }));
+    const history = Array.from({ length: 11 }, (_, index) => ({ logId: 1000 + index, batchId: 700, itemId: 701, learningDate: '2026-10-28', answeredAt: '2026-10-28T15:42:57', result: index === 2 ? 3 : 2, taskType: index === 2 || index === 10 ? 'PRACTICE' : 'DAILY', eventType: index === 0 ? 'CORRECTION' : 'ANSWER', correctsLogId: index === 0 ? 999 : null, attemptNo: index + 1, affectsSchedule: index === 0, scheduleAvailable: index === 0, scheduleBefore: index === 0 ? { reviewLevel: 3, nextReviewAt: '2026-11-04T00:00:00' } : null, scheduleAfter: index === 0 ? { reviewLevel: 0, nextReviewAt: '2026-10-29T00:00:00' } : null }));
+    http.defaults.adapter = async (config: { url: string; method: string; params?: { status?: string; page?: number; size?: number }; data?: string }) => {
+      const ok = (data: unknown) => ({ config, status: 200, headers: {}, data: { code: 'OK', data: structuredClone(data) } });
+      const paged = (rows: unknown[]) => { const page = config.params?.page ?? 1, size = config.params?.size ?? 10; return ok({ page, size, total: rows.length, records: rows.slice((page - 1) * size, page * size) }); };
+      if (config.url === '/learning-plan/words') return paged(records.filter(row => row.planStatus === config.params?.status));
+      if (config.url === '/learning-plan/words/101' && config.method === 'patch') { const body = JSON.parse(config.data ?? '{}'); writes.push(body); records[0]!.planStatus = body.status; return ok(null); }
+      if (config.url === '/learning-plan/words/101/history') return paged(history);
+      if (config.url === '/dictation/words/101/history') return paged([{ logId: 2000, batchId: 900, itemId: 901, taskType: 'PRACTICE', practiceMode: 'DICTATION', action: 'ANSWER', input: 'aple', expectedWord: 'apple', verdict: 'INCORRECT', attemptNo: 1, learningDate: '2026-10-28', answeredAt: '2026-10-28T15:00:00', affectsSchedule: false }]);
+      return fallback(config);
+    };
+    await router.push('/plan');
+  });
+  const actions = page.locator('.plan-row').first().locator('.plan-item-actions');
+  await expect(page.locator('.plan-row')).toHaveCount(2);
+  await expect(page.locator('.plan-more, .plan-row-details, button[aria-label*="的操作"]')).toHaveCount(0);
+  for (const row of await page.locator('.plan-row').all()) {
+    await expect(row.getByRole('button', { name: '学习历史', exact: true })).toBeVisible();
+    await expect(row.getByRole('button', { name: '暂停', exact: true })).toBeVisible();
+    await expect(row.getByRole('button', { name: '移出', exact: true })).toBeVisible();
+  }
+  await expect(page.locator('.plan-word-title a').first()).toHaveAttribute('href', '/words/101');
+  await expect(actions.getByRole('button', { name: '学习历史', exact: true })).toBeVisible();
+  await expect(actions.locator('button svg')).toHaveCount(3);
+  await expect(actions.locator('.plan-action-pause')).toHaveText('暂停');
+  await expect(actions.locator('.plan-action-remove')).toHaveText('移出');
+  await page.screenshot({ path: testInfo.outputPath('plan-actions.png'), animations: 'disabled' });
+  await actions.getByRole('button', { name: '学习历史', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'apple · 学习历史', exact: true });
+  await expect(dialog.locator('.word-history-event')).toHaveCount(10);
+  await expect(dialog).not.toContainText(/队列|原始反馈|reviewLevel/);
+  await expect(dialog.locator('.history-group').first()).not.toContainText('模糊');
+  await expect(dialog.locator('.history-group').last()).toContainText('不认识');
+  await dialog.locator('.word-history-event').first().locator('summary').click();
+  await expect(dialog.locator('.word-history-schedules')).toContainText('2026-11-04');
+  await expect(dialog.locator('.word-history-schedules')).toContainText('2026-10-29');
+  await page.screenshot({ path: testInfo.outputPath('word-history.png'), animations: 'disabled' });
+  await dialog.getByRole('button', { name: '下一页', exact: true }).click(); await expect(dialog.locator('.word-history-event')).toHaveCount(1);
+  await expect(dialog.getByRole('button', { name: '学习记录', exact: true })).toBeInViewport();
+  await dialog.getByRole('button', { name: '默写记录', exact: true }).click();
+  await expect(dialog.locator('.dictation-history-event')).toHaveCount(1); await expect(dialog.locator('.dictation-history-input')).toContainText('aple');
+  await page.screenshot({ path: testInfo.outputPath('dictation-history.png'), animations: 'disabled' });
+  expect(await page.evaluate(() => Reflect.get(window, '__planHistoryWrites'))).toEqual([]);
+  await page.keyboard.press('Escape'); await expect(dialog).toHaveCount(0);
+  await expect(actions.getByRole('button', { name: '学习历史', exact: true })).toBeFocused();
+  await actions.getByRole('button', { name: '暂停', exact: true }).click(); await expect(page.locator('.plan-row')).toHaveCount(1);
+  await page.getByRole('button', { name: '已暂停', exact: true }).click(); await expect(page.locator('.plan-row')).toHaveCount(2);
+  await expect(page.locator('.plan-action-resume')).toHaveCount(2);
+  await expect(actions.getByRole('button', { name: '重新启用', exact: true })).toBeVisible();
+  await actions.getByRole('button', { name: '移出', exact: true }).click(); await expect(page.getByRole('dialog', { name: '移出学习计划？', exact: true })).toBeVisible();
+  await page.keyboard.press('Escape'); expect(await page.evaluate(() => Reflect.get(window, '__planHistoryWrites'))).toEqual([{ status: 'PAUSED' }]);
+  await actions.getByRole('button', { name: '重新启用', exact: true }).click();
+  await expect(page.locator('.plan-row')).toHaveCount(1);
+  expect(await page.evaluate(() => Reflect.get(window, '__planHistoryWrites'))).toEqual([{ status: 'PAUSED' }, { status: 'ACTIVE' }]);
+  await page.getByRole('button', { name: '已移出', exact: true }).click();
+  await expect(page.locator('.plan-row')).toHaveCount(1);
+  await expect(actions.getByRole('button', { name: '学习历史', exact: true })).toBeVisible();
+  await expect(actions.getByRole('button', { name: '移出', exact: true })).toHaveCount(0);
+  await expect(actions.getByRole('button', { name: '重新启用', exact: true })).toHaveCount(0);
+  expect(await page.locator('html').evaluate(node => node.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
 for (const width of [1280, 375]) test(`weak words select across pages for independent dictation at ${width}px`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 900 });
   await page.goto('/login');
@@ -244,7 +315,7 @@ test('recognition advances without locked ratings or transient error alerts; fai
 
 // Explicit test responses, isolated from dev:api. No production fallback is installed.
 for (const width of [1440, 390, 320]) for (const theme of ['dark', 'light']) {
-  test(`unified daily ${theme} ${width}px`, async ({ page }) => {
+  test(`unified daily ${theme} ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 960 });
     await page.addInitScript(value => localStorage.setItem('wordtrail.theme', value), theme);
     await page.goto('/login');
@@ -314,7 +385,7 @@ for (const width of [1440, 390, 320]) for (const theme of ['dark', 'light']) {
     expect(await page.locator('#daily-training-input').evaluate(node => getComputedStyle(node).outlineStyle)).toBe('none');
     expect(await page.locator('.daily-training-card .letter-slots').evaluate(node => getComputedStyle(node).outlineStyle)).toBe('none');
     expect(await page.locator('html').evaluate(node => node.scrollWidth <= window.innerWidth)).toBe(true);
-    await page.screenshot({ path: `docs/screenshots/daily-dictation-${theme}-${width}.png`, fullPage: true, animations: 'disabled' });
+    await page.screenshot({ path: testInfo.outputPath(`daily-dictation-${theme}-${width}.png`), fullPage: true, animations: 'disabled' });
     await page.locator('#daily-training-input').press('F2');
     await expect(page.locator('.daily-assisted-note')).toBeVisible();
     await expect(page.locator('.daily-training-card .learning-word')).toHaveText('incomprehensibilities');
@@ -336,14 +407,14 @@ for (const width of [1440, 390, 320]) for (const theme of ['dark', 'light']) {
     expect(panel).not.toBeNull();
     expect(panel!.x).toBeGreaterThanOrEqual(0);
     expect(panel!.x + panel!.width).toBeLessThanOrEqual(width);
-    await page.screenshot({ path: `docs/screenshots/daily-settings-${theme}-${width}.png`, fullPage: true, animations: 'disabled' });
+    await page.screenshot({ path: testInfo.outputPath(`daily-settings-${theme}-${width}.png`), fullPage: true, animations: 'disabled' });
     await page.keyboard.press('Escape');
     await expect(page.getByRole('region', { name: '练习设置面板' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: '练习设置', exact: true })).toBeFocused();
     expect(await page.evaluate(() => Reflect.get(window, '__studyAudio').at(-1).src)).toMatch(/^blob:/);
     await page.locator('#daily-training-input').fill('incom');
     expect(await page.locator('html').evaluate(node => node.scrollWidth <= window.innerWidth)).toBe(true);
-    await page.screenshot({ path: `docs/screenshots/daily-follow-${theme}-${width}.png`, fullPage: true, animations: 'disabled' });
+    await page.screenshot({ path: testInfo.outputPath(`daily-follow-${theme}-${width}.png`), fullPage: true, animations: 'disabled' });
     await page.getByRole('button', { name: '显示中文释义', exact: true }).click();
     await expect(page.locator('.daily-training-card .word-meaning')).toHaveCount(0);
     await page.getByRole('button', { name: '显示中文释义', exact: true }).click();
@@ -368,7 +439,7 @@ for (const width of [1440, 390, 320]) for (const theme of ['dark', 'light']) {
       return color[0]! > color[1]! && color[0]! > color[2]!;
     });
     expect(feedbackColor).toBe(true);
-    await page.screenshot({ path: `docs/screenshots/daily-dictation-error-${theme}-${width}.png`, fullPage: true, animations: 'disabled' });
+    await page.screenshot({ path: testInfo.outputPath(`daily-dictation-error-${theme}-${width}.png`), fullPage: true, animations: 'disabled' });
     await page.locator('.daily-training-feedback > .btn').click();
     await expect(page.locator('#daily-training-input')).toBeFocused();
     await expect(page.locator('#daily-training-input')).toHaveValue('');
@@ -381,13 +452,13 @@ for (const width of [1440, 390, 320]) for (const theme of ['dark', 'light']) {
     await expect(page.locator('.daily-training-card .learning-word')).toHaveText('incomprehensibilities');
     await expect(page.getByRole('button', { name: '已查看答案', exact: true })).toBeDisabled();
     await expect(page.locator('#daily-training-input')).toHaveValue('draft');
-    await page.screenshot({ path: `docs/screenshots/daily-assisted-${theme}-${width}.png`, fullPage: true, animations: 'disabled' });
+    await page.screenshot({ path: testInfo.outputPath(`daily-assisted-${theme}-${width}.png`), fullPage: true, animations: 'disabled' });
     await changeMode('单词拼读');
     await expect(page.locator('.daily-training-card .word-meaning')).toHaveCount(0);
     await page.locator('.daily-training-card').click(); await page.keyboard.press('Space');
     await expect(page.locator('.daily-training-card .word-meaning')).toBeVisible();
     expect(await page.locator('html').evaluate(node => node.scrollWidth <= window.innerWidth)).toBe(true);
-    await page.screenshot({ path: `docs/screenshots/daily-recognition-${theme}-${width}.png`, fullPage: true, animations: 'disabled' });
+    await page.screenshot({ path: testInfo.outputPath(`daily-recognition-${theme}-${width}.png`), fullPage: true, animations: 'disabled' });
     await page.evaluate(async () => {
       const httpPath = '/src/api/http.ts', routerPath = '/src/router/index.ts';
       const { http } = await import(/* @vite-ignore */ httpPath), { router } = await import(/* @vite-ignore */ routerPath);
@@ -411,6 +482,6 @@ for (const width of [1440, 390, 320]) for (const theme of ['dark', 'light']) {
     await expect(page.locator('.trend-zero-note')).toHaveCount(0);
     await expect(page.locator('.trend-readout')).toContainText('训练 1 次');
     expect(await page.locator('html').evaluate(node => node.scrollWidth <= window.innerWidth)).toBe(true);
-    await page.screenshot({ path: `docs/screenshots/training-statistics-${theme}-${width}.png`, fullPage: true, animations: 'disabled' });
+    await page.screenshot({ path: testInfo.outputPath(`training-statistics-${theme}-${width}.png`), fullPage: true, animations: 'disabled' });
   });
 }

@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { Ellipsis } from 'lucide-vue-next';
+import { History, ListMinus, Pause, Play } from 'lucide-vue-next';
 import type { PlanWord, PlanStatus } from '../../types/daily';
 import WordMeaning from '../word/WordMeaning.vue';
-const props = defineProps<{ word: PlanWord; selected: boolean; expanded: boolean; busy: boolean }>();
-const emit = defineEmits<{ select: [checked: boolean]; expand: []; history: []; change: [id: number, status: PlanStatus]; remove: [] }>();
-const detailId = computed(() => `plan-word-${props.word.wordId}`);
+const props = defineProps<{ word: PlanWord; selected: boolean; busy: boolean }>();
+const emit = defineEmits<{ select: [checked: boolean]; history: []; change: [id: number, status: PlanStatus]; remove: [] }>();
 const schedule = computed(() => {
   const word = props.word;
   if (word.planStatus === 'PAUSED') return { label: '已暂停', due: false };
@@ -21,14 +20,13 @@ const schedule = computed(() => {
 });
 </script>
 <template>
-  <article :class="['live-plan-row', 'plan-row', { 'is-open': expanded, 'is-selected': selected }]" role="rowgroup">
+  <article :class="['live-plan-row', 'plan-row', { 'is-selected': selected }]" role="rowgroup">
     <div class="plan-row-main" role="row">
       <div class="plan-check-cell" role="cell"><input v-if="word.planStatus !== 'REMOVED'" type="checkbox" :checked="selected" :disabled="busy" :aria-label="`选择计划单词 ${word.word}`" @change="emit('select', ($event.target as HTMLInputElement).checked)" /></div>
-      <div class="plan-word" role="cell"><div class="plan-word-title"><button :aria-expanded="expanded" :aria-controls="detailId" @click="emit('expand')"><strong lang="en">{{ word.word }}</strong></button><span class="plan-phonetic">{{ word.phonetic }}</span></div><WordMeaning :translation="word.translation" :translation-groups="word.translationGroups" /></div>
+      <div class="plan-word" role="cell"><div class="plan-word-title"><RouterLink :to="`/words/${word.wordId}`"><strong lang="en">{{ word.word }}</strong></RouterLink><span class="plan-phonetic">{{ word.phonetic }}</span></div><WordMeaning :translation="word.translation" :translation-groups="word.translationGroups" /></div>
       <div class="plan-memory" role="cell"><div class="plan-level-bars" :aria-label="word.firstLearnedAt ? `复习等级 ${word.reviewLevel}，最高 6 级` : '尚未开始复习'" role="img"><i v-for="level in 7" :key="level" :class="{ filled: word.firstLearnedAt && level <= word.reviewLevel + 1 }" /></div><span>{{ word.firstLearnedAt ? `复习等级 ${word.reviewLevel} / 6` : '新加入' }}</span></div>
       <div class="plan-review" role="cell"><span :class="['plan-review-badge', { 'is-due': schedule.due, 'is-scheduled': word.nextReviewAt && word.planStatus === 'ACTIVE' }]" :title="word.nextReviewAt ? `北京时间 ${word.nextReviewAt.replace('T', ' ')}` : undefined">{{ schedule.label }}</span></div>
-      <div class="plan-more" role="cell"><button class="round-icon" :aria-expanded="expanded" :aria-controls="detailId" :aria-label="`${expanded ? '收起' : '展开'} ${word.word} 的操作`" @click="emit('expand')"><Ellipsis :size="22" /></button></div>
+      <div class="plan-item-actions" role="cell"><button type="button" class="plan-action plan-action-history" @click="emit('history')"><History :size="15" aria-hidden="true" />学习历史</button><template v-if="word.planStatus !== 'REMOVED'"><button type="button" :class="['plan-action', word.planStatus === 'ACTIVE' ? 'plan-action-pause' : 'plan-action-resume']" :disabled="busy" @click="emit('change', word.wordId, word.planStatus === 'ACTIVE' ? 'PAUSED' : 'ACTIVE')"><Pause v-if="word.planStatus === 'ACTIVE'" :size="15" aria-hidden="true" /><Play v-else :size="15" aria-hidden="true" />{{ word.planStatus === 'ACTIVE' ? '暂停' : '重新启用' }}</button><button type="button" class="plan-action plan-action-remove" :disabled="busy" @click="emit('remove')"><ListMinus :size="15" aria-hidden="true" />移出</button></template></div>
     </div>
-    <Transition name="plan-details"><div v-if="expanded" :id="detailId" class="plan-row-details" role="row"><div class="plan-detail-cell" role="cell" aria-colspan="5"><div class="plan-record"><span>{{ word.lastLearnedAt ? `上次学习 ${word.lastLearnedAt.replace('T', ' ')}` : `加入于 ${word.joinedAt.replace('T', ' ')}` }}（北京时间）</span></div><div class="plan-item-actions"><button class="muted-link" @click="emit('history')">学习历史</button><template v-if="word.planStatus !== 'REMOVED'"><button class="muted-link" :disabled="busy" @click="emit('change', word.wordId, word.planStatus === 'ACTIVE' ? 'PAUSED' : 'ACTIVE')">{{ word.planStatus === 'ACTIVE' ? '暂停' : '重新启用' }}</button><button class="muted-link" :disabled="busy" @click="emit('remove')">移出</button></template></div></div></div></Transition>
   </article>
 </template>
