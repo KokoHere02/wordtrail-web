@@ -24,13 +24,13 @@
 .skip-link { color: var(--surface); }
 
 /* One grid definition keeps word, review and action columns aligned. */
-.plan-page { --plan-columns: var(--s12) minmax(0, 1fr) var(--plan-progress-width) var(--plan-review-width) 288px; width: min(calc(100% - var(--s12)), var(--plan-width)); margin: var(--s8) auto 0; }
+.plan-page { --plan-progress-width: 128px; --plan-review-width: 128px; --plan-columns: var(--s8) minmax(0, 1fr) var(--plan-progress-width) var(--plan-review-width) 272px; width: min(calc(100% - var(--s5) * 2), var(--content-library-width)); margin: var(--s6) auto 0; }
 .plan-page-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--s6); margin-bottom: var(--s8); }
 .plan-eyebrow { font: 400 var(--text-sm)/1.5 var(--font-serif); letter-spacing: .3em; color: var(--control-text); margin-bottom: var(--s1); }
 .plan-page-heading h1 { font-size: var(--plan-title-size); font-weight: 600; letter-spacing: -.04em; }
 .plan-intro { margin-top: var(--s2); color: var(--muted); font-size: var(--text-md); letter-spacing: .05em; }
 .plan-page-heading .btn { min-height: var(--control); border-radius: var(--radius-sm); padding-inline: var(--s5); box-shadow: none; }
-.plan-sheet { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); overflow: clip; }
+.plan-sheet { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); overflow: clip; }
 .plan-topbar { min-height: calc(var(--s16) + var(--s1)); display: flex; align-items: center; justify-content: space-between; gap: var(--s6); padding: 0 var(--s5); border-bottom: 1px solid var(--line); }
 .plan-status-tabs { display: flex; align-self: stretch; gap: var(--s6); }
 .plan-status-tabs button { display: flex; align-items: center; gap: var(--s2); position: relative; background: transparent; border: 0; padding: var(--s4) var(--s1); color: var(--muted); font-size: var(--text-md); white-space: nowrap; }
@@ -62,7 +62,7 @@
 .plan-word-title { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--s2) var(--s4); }
 .plan-word-title > a { color: var(--ink); text-align: left; min-width: 0; }
 .plan-word-title > a:hover { color: var(--accent); }
-.plan-sheet .plan-word strong { font-family: var(--font-serif); font-size: var(--plan-word-size); font-weight: 400; letter-spacing: -.035em; line-height: 1.1; overflow-wrap: anywhere; }
+.plan-sheet .plan-word strong { font-family: var(--font-serif); font-size: var(--text-round); font-weight: 400; letter-spacing: -.035em; line-height: 1.2; overflow-wrap: anywhere; }
 .plan-phonetic { color: var(--phonetic); font-family: var(--font-serif); font-size: var(--text-base); overflow-wrap: anywhere; }
 .plan-sheet .plan-word p { margin-top: var(--s1); font-size: var(--text-base); color: var(--translation); line-height: 1.5; }
 .plan-memory { min-width: 0; color: var(--control-text); font-size: var(--text-base); }
@@ -103,7 +103,7 @@
   .wordory-app .main-nav { position: relative; order: 3; left: auto; top: auto; transform: none; width: 100%; height: var(--s12); }
   .wordory-app .main-nav a { font-size: var(--text-base); }
   .wordory-app .header-actions { margin-left: auto; gap: var(--s4); }
-  .plan-page { width: calc(100% - var(--s8)); margin-top: var(--s6); }
+  .plan-page { width: calc(100% - var(--s5) * 2); margin-top: var(--s6); }
   .plan-page-heading { gap: var(--s3); margin-bottom: var(--s6); }
   .plan-eyebrow { font-size: var(--text-xs); letter-spacing: .18em; }
   .plan-page-heading h1 { font-size: var(--text-title); }
@@ -125,7 +125,7 @@
   .plan-check-cell { grid-column: 1; grid-row: 1; }
   .plan-word { grid-column: 2 / -1; grid-row: 1; }
   .plan-word-title { gap: var(--s1); }
-  .plan-sheet .plan-word strong { font-size: var(--text-brand); }
+  .plan-sheet .plan-word strong { font-size: var(--text-xl); }
   .plan-phonetic { font-size: var(--text-sm); }
   .plan-sheet .plan-word p { font-size: var(--text-sm); }
   .plan-memory { grid-column: 2; grid-row: 2; font-size: var(--text-sm); }

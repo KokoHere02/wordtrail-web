@@ -1,0 +1,68 @@
+import { expect, test } from '@playwright/test';
+
+for (const width of [1280, 320]) test(`statistics overview and date details ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
+  await page.goto('/login');
+  await page.locator('#username').fill('statistics_overview_reader');
+  await page.locator('#password').fill('example123');
+  await page.getByRole('button', { name: '登录', exact: true }).click();
+  await expect(page.locator('.daily-equation')).toBeVisible();
+  await page.evaluate(async () => {
+    const httpPath = '/src/api/http.ts', routerPath = '/src/router/index.ts';
+    const { http } = await import(/* @vite-ignore */ httpPath), { router } = await import(/* @vite-ignore */ routerPath);
+    const fallback = http.defaults.adapter;
+    const calls: unknown[] = []; Reflect.set(window, '__overviewCalls', calls);
+    const coverage = { statisticsComplete: true, incompleteWordCount: 0, dataScope: 'RECORDED_ANSWERS_AND_DAILY_ITEMS', coverageScope: 'ALL_RETAINED_SOURCE_ITEMS', firstRecordedAt: null, lastRecordedAt: null };
+    const sentenceDate = (date: string) => ({ date, hasActivity: true, submissionCount: date.endsWith('27') ? 1 : 0, answerCount: 1, revealCount: 0, selfReviewCount: date.endsWith('28') ? 1 : 0 });
+    const sentenceRows = Array.from({ length: 21 }, (_, index) => ({ attemptId: index + 1, sessionId: 1, itemId: index + 1, sentenceId: index + 1, englishText: `Example sentence ${index + 1}`, action: 'ANSWER', translation: '我的译文', referenceTranslation: '参考译文', explanation: '解析', learningDate: '2026-10-27', submittedAt: '2026-10-27T23:50:00', selfAssessment: 'UNDERSTOOD', reviewDate: '2026-10-28', reviewedAt: '2026-10-28T00:01:00', submittedOnDate: false, reviewedOnDate: true, activityAt: '2026-10-28T00:01:00' }));
+    http.defaults.adapter = async (config: { url: string; params?: { date?: string; month?: string; days?: number; page?: number; size?: number } }) => {
+      const params = config.params ?? {}, url = config.url, days = params.days ?? 7;
+      const ok = (data: unknown) => ({ config, status: 200, headers: {}, data: { code: 'OK', data: structuredClone(data) } });
+      calls.push({ url, params });
+      if (url === '/learning/statistics/summary') return ok({ learningDate: '2026-10-28', source: 'DAILY', currentStreak: 3, longestStreak: 5, totalStudyDays: 8, hasStudiedToday: true, todayTrainingCount: 1, todayAnswerCount: 0, todayStudiedCount: 1, todayCompletedCount: 0, todayRecalledCount: 0, goal: { dailyTarget: 10, completedCount: 3, remainingCount: 7, reached: false, targetSource: 'TASK_SNAPSHOT', taskStatus: 'IN_PROGRESS' }, coverage });
+      if (url === '/learning/statistics/trends') return ok({ source: 'DAILY', days, from: '2026-10-27', to: '2026-10-28', totalTrainingCount: 1, totalAnswerCount: 0, totalCompletedCount: 0, totalRecalledCount: 0, coverage, records: [{ learningDate: '2026-10-28', trainingCount: 1, answerCount: 0, studiedCount: 1, completedCount: 0, recalledCount: 0, hasLearningActivity: true, hasRecordedAnswers: false }] });
+      if (url === '/learning/statistics/daily') return ok({ learningDate: params.date ?? '2026-10-28', trainingCount: 1, answerCount: 0, studiedCount: 1, completedCount: 0, recalledCount: 0, newCompletedCount: 0, reviewCompletedCount: 0, unfamiliarCount: 0, hasLearningActivity: true, statisticsComplete: false, incompleteWordCount: 1 });
+      if (url === '/learning/statistics/calendar') return ok({ month: params.month ?? '2026-10', statisticsComplete: false, days: [{ learningDate: '2026-10-28', trainingCount: 1, answerCount: 0, completedCount: 0, recalledCount: 0, hasLearningActivity: true, statisticsComplete: false, incompleteWordCount: 1 }] });
+      if (url === '/learning/statistics/words') return ok({ page: 1, size: 20, total: 1, records: [{ wordId: 1, word: 'apple', translation: '苹果', completed: false, answerCount: 0, statisticsComplete: false }] });
+      if (url === '/learning/statistics/training') return ok({ learningDate: params.date ?? '2026-10-28', completedWordCount: 3, modes: [{ mode: 'RECOGNITION', trainingCount: 2, answerCount: 2, revealCount: 0, correctCount: 0, inputAccuracy: null, hintedAnswerCount: 0, recognizedCount: 1, uncertainCount: 1, unknownCount: 0 }] });
+      if (url === '/sentence-translation/statistics') return ok({ currentStreak: 2, longestStreak: 4, learningDayCount: 9, submissionCount: 7, answerCount: 6, revealCount: 1, selfReviewCount: 4, weakSentenceCount: 2, dueSentenceCount: 3, from: '2026-10-27', to: '2026-10-28', days: [{ learningDate: '2026-10-27', submissionCount: 1, answerCount: 1, revealCount: 0, selfReviewCount: 0 }, { learningDate: '2026-10-28', submissionCount: 0, answerCount: 0, revealCount: 0, selfReviewCount: 1 }] });
+      if (url === '/sentence-translation/statistics/calendar') return ok({ month: params.month ?? '2026-10', days: [sentenceDate('2026-10-27'), sentenceDate('2026-10-28')] });
+      if (url === '/sentence-translation/statistics/daily') return ok(sentenceDate(params.date ?? '2026-10-28'));
+      if (url === '/sentence-translation/statistics/attempts') { const p = params.page ?? 1, size = params.size ?? 20; return ok({ page: p, size, total: 21, records: sentenceRows.slice((p - 1) * size, p * size) }); }
+      return fallback(config);
+    };
+    await router.push('/statistics');
+  });
+  await expect(page.locator('.overview-streaks')).toContainText('当前连续');
+  await expect(page.locator('.overview-streaks')).toContainText('3');
+  await expect(page.locator('.overview-calendar-grid button')).toHaveAttribute('aria-label', /完成 0 词，有学习活动，统计不完整/);
+  await expect(page.locator('.overview-day')).toContainText('部分历史记录不完整');
+  const more = page.locator('.overview-more');
+  await more.locator(':scope > summary').click();
+  await expect(more).toContainText('每日目标');
+  await expect(more).toContainText('剩余目标 7 词');
+  await expect(more).toContainText('自评认识');
+  await expect(more).not.toContainText('当前连续');
+  await expect(more).not.toContainText('最长连续');
+  await expect(more).not.toContainText('累计学习');
+  await expect(page.getByLabel('训练统计日期')).toHaveValue('2026-10-28');
+  await more.locator(':scope > summary').click();
+  await expect(more.locator('.overview-more-content')).toHaveCount(0);
+  await page.getByRole('button', { name: '查看当日详情' }).click();
+  await expect(page.getByRole('dialog')).toContainText('apple');
+  await page.getByRole('button', { name: '关闭弹窗' }).click();
+  await page.getByRole('link', { name: '句子统计' }).click();
+  await expect(page.locator('.overview-streaks')).toContainText('9');
+  await expect(page.locator('.overview-day-number')).toContainText('完成 1 句');
+  await page.getByRole('button', { name: '查看当日详情' }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.locator('.sentence-attempt')).toHaveCount(20);
+  await expect(dialog.locator('.sentence-attempt').first()).toContainText('当天自评');
+  await expect(dialog.locator('.sentence-attempt').first()).not.toContainText('当天提交');
+  await dialog.getByRole('button', { name: '下一页' }).click();
+  await expect(dialog.locator('.sentence-attempt')).toHaveCount(1);
+  await expect(dialog).toContainText('Example sentence 21');
+  const calls = await page.evaluate(() => Reflect.get(window, '__overviewCalls'));
+  expect(calls).toContainEqual({ url: '/sentence-translation/statistics/attempts', params: { date: '2026-10-28', page: 2, size: 20 } });
+  expect(await page.locator('html').evaluate(node => node.scrollWidth <= window.innerWidth)).toBe(true);
+});

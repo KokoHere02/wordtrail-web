@@ -1,5 +1,60 @@
 import { expect, test } from '@playwright/test';
 
+for (const width of [1280, 320]) test(`unified learning records filters and destinations ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
+  await page.goto('/login');
+  await page.locator('#username').fill('unified_record_reader');
+  await page.locator('#password').fill('example123');
+  await page.getByRole('button', { name: '登录', exact: true }).click();
+  await expect(page.locator('.daily-equation')).toBeVisible();
+  await page.evaluate(async () => {
+    const httpPath = '/src/api/http.ts', routerPath = '/src/router/index.ts';
+    const { http } = await import(/* @vite-ignore */ httpPath), { router } = await import(/* @vite-ignore */ routerPath);
+    const original = http.defaults.adapter;
+    const calls: unknown[] = []; Reflect.set(window, '__unifiedRecordCalls', calls);
+    const base = { recordDate: '2026-10-30', createdAt: '2026-10-30T14:30:00', rawStatus: 'IN_PROGRESS', displayStatus: 'IN_PROGRESS', canContinue: true, completedCount: 2, totalCount: 10, skippedCount: null, newCount: null, reviewCount: null, dailyTarget: null, goalReached: null, source: null, bookId: null, singleAttempt: null };
+    const rows = [
+      { ...base, type: 'DAILY', businessId: 1, newCount: 5, reviewCount: 5 },
+      { ...base, type: 'DICTATION', businessId: 1, rawStatus: 'COMPLETED', displayStatus: 'COMPLETED', canContinue: false, singleAttempt: true },
+      ...['BANK', 'REVIEW', 'FAVORITES', 'DUE', 'UNKNOWN'].map((source, index) => ({ ...base, type: 'SENTENCE', businessId: index + 2, source })),
+      { ...base, type: 'DAILY', businessId: 20, recordDate: '2026-10-29', createdAt: '2026-10-29T09:00:00', displayStatus: 'INCOMPLETE', canContinue: false },
+      { ...base, type: 'DICTATION', businessId: 21, recordDate: '2026-10-29', displayStatus: 'INCOMPLETE', canContinue: false, singleAttempt: false },
+      { ...base, type: 'DAILY', businessId: 22, recordDate: '2026-10-29', rawStatus: 'ABANDONED', displayStatus: 'ABANDONED', canContinue: false },
+      ...Array.from({ length: 11 }, (_, index) => ({ ...base, type: 'SENTENCE', businessId: 100 + index, recordDate: '2026-10-29', source: 'BANK' })),
+    ];
+    http.defaults.adapter = async (config: { url: string; params?: { type?: string; status?: string; page?: number; size?: number } }) => {
+      if (config.url !== '/learning/records') return original(config);
+      const params = config.params ?? {}; calls.push({ ...params });
+      const selected = rows.filter(row => (params.type === 'ALL' || row.type === params.type) && (params.status === 'ALL' || row.displayStatus === params.status));
+      const current = params.page ?? 1, size = params.size ?? 20;
+      return { config, status: 200, headers: {}, data: { code: 'OK', data: { page: current, size, total: selected.length, records: selected.slice((current - 1) * size, current * size) } } };
+    };
+    await router.push('/records');
+  });
+  await expect(page.locator('.unified-record-row')).toHaveCount(20);
+  await expect(page.locator('.records-date-group')).toHaveCount(2);
+  await expect(page.locator('.unified-record-row').nth(0)).toContainText('每日单词学习');
+  await expect(page.locator('.unified-record-row').nth(0)).toContainText('14:30');
+  await expect(page.locator('.unified-record-row').nth(0).locator('a')).toHaveAttribute('href', '/learn/1');
+  await expect(page.locator('.unified-record-row').nth(1)).toContainText('独立默写');
+  await expect(page.locator('.unified-record-row').nth(1).locator('a')).toHaveAttribute('href', '/dictation/1/result');
+  for (const [index, name] of ['句子题库练习', '薄弱句子练习', '收藏句子练习', '到期句子复习'].entries()) await expect(page.locator('.unified-record-row').nth(index + 2).locator('.record-name')).toHaveText(name);
+  await expect(page.locator('.unified-record-row').nth(6).locator('.record-name')).toHaveText('句子练习');
+  await expect(page.locator('.unified-record-row').nth(7).locator('a')).toHaveAttribute('href', '/records/20');
+  await expect(page.locator('.unified-record-row').nth(8).locator('a')).toHaveAttribute('href', '/dictation/21/result');
+  await expect(page.locator('.unified-record-row').nth(9).locator('a')).toHaveCount(0);
+  await page.getByRole('button', { name: '下一页' }).click();
+  await expect(page.locator('.unified-record-row')).toHaveCount(1);
+  expect(await page.evaluate(() => Reflect.get(window, '__unifiedRecordCalls').at(-1))).toMatchObject({ page: 2, type: 'ALL', status: 'ALL' });
+  await page.getByRole('button', { name: '单词默写', exact: true }).click();
+  await expect(page.locator('.unified-record-row')).toHaveCount(2);
+  await page.getByRole('combobox', { name: /记录状态/ }).click();
+  await page.getByRole('option', { name: '未完成' }).click();
+  await expect(page.locator('.unified-record-row')).toHaveCount(1);
+  expect(await page.evaluate(() => Reflect.get(window, '__unifiedRecordCalls').at(-1))).toMatchObject({ type: 'DICTATION', status: 'INCOMPLETE', page: 1, size: 20 });
+  expect(await page.locator('html').evaluate(node => node.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
 for (const [width, theme] of [[1280, 'light'], [900, 'light'], [320, 'dark']] as const) test(`plan actions and readable word history ${theme} ${width}px`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 900 });
   await page.addInitScript(theme => localStorage.setItem('wordtrail.theme', theme), theme);
@@ -197,7 +252,7 @@ for (const width of [1280, 375]) test(`daily record detail stays concise and pag
       const ok = (data: unknown) => ({ config, status: 200, headers: {}, data: { code: 'OK', data: structuredClone(data) } });
       const paged = (rows: unknown[]) => { const page = config.params?.page ?? 1, size = config.params?.size ?? 20; return ok({ page, size, total: rows.length, records: rows.slice((page - 1) * size, page * size) }); };
       if (config.url === '/learning/today') return ok({ learningDate: '2099-10-28', dailyTarget: 20, task: null, canAddMore: false, needsMoreWords: false });
-      if (config.url === '/learning/daily-tasks') return paged([task, { ...task, batchId: 931, skippedCount: 1 }]);
+      if (config.url === '/learning/records') return paged([930, 931].map((id, index) => ({ type: 'DAILY', businessId: id, recordDate: task.learningDate, createdAt: `${task.learningDate}T12:00:00`, rawStatus: 'IN_PROGRESS', displayStatus: 'INCOMPLETE', canContinue: false, completedCount: 18, totalCount: 21, skippedCount: index, newCount: 10, reviewCount: 11, dailyTarget: 20, goalReached: false, source: null, bookId: null, singleAttempt: null })));
       if (config.url === '/learning-batches/930/daily') return ok(task);
       if (config.url.endsWith('/training/items')) return paged(items);
       if (config.url.endsWith('/training/attempts')) return paged(attempts);
@@ -205,10 +260,10 @@ for (const width of [1280, 375]) test(`daily record detail stays concise and pag
     };
     await router.push('/records');
   });
-  await expect(page.locator('.record-card')).toHaveCount(2);
-  await expect(page.locator('.record-card').first().locator('.record-summary')).toHaveText('18 / 21词');
-  await expect(page.locator('.record-card').last().locator('.record-summary')).toContainText('跳过 1 词');
-  await page.locator('.record-card').first().click();
+  await expect(page.locator('.unified-record-row')).toHaveCount(2);
+  await expect(page.locator('.unified-record-row').first().locator('.record-progress')).toHaveText('18 / 21 词');
+  await expect(page.locator('.unified-record-row').first().locator('.record-status')).toHaveText('未完成');
+  await page.locator('.unified-record-row').first().getByRole('link', { name: '查看详情' }).click();
   await expect(page.locator('.daily-record-heading h1')).toHaveText('2099-10-27 学习记录');
   await expect(page.locator('.daily-record-heading .learning-badge')).toHaveText('已结束 · 未完成');
   await expect(page.locator('.daily-record-progress')).toContainText('18 / 21');
@@ -477,10 +532,9 @@ for (const width of [1440, 390, 320]) for (const theme of ['dark', 'light']) {
       };
       await router.push('/statistics');
     });
-    await expect(page.locator('.insights-today-status.recorded')).toBeVisible();
-    await expect(page.locator('.calendar-day.has-activity')).toHaveAttribute('aria-label', /训练 1 次.*作答 0 次.*完成 0 词.*有学习活动/);
-    await expect(page.locator('.trend-zero-note')).toHaveCount(0);
-    await expect(page.locator('.trend-readout')).toContainText('训练 1 次');
+    await expect(page.locator('.overview-day')).toContainText('当天有学习活动');
+    await expect(page.locator('.overview-calendar-grid button[aria-label*="2026-10-25"]')).toHaveAttribute('aria-label', /完成 0 词.*有学习活动/);
+    await expect(page.locator('.statistics-bar-column').last()).toHaveAttribute('aria-label', /完成 0 词.*有学习活动/);
     expect(await page.locator('html').evaluate(node => node.scrollWidth <= window.innerWidth)).toBe(true);
     await page.screenshot({ path: testInfo.outputPath(`training-statistics-${theme}-${width}.png`), fullPage: true, animations: 'disabled' });
   });

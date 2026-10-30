@@ -31,7 +31,7 @@ const bank = new Map(Array.from({ length: 12 }, (_, index) => [index + 1, questi
 const schedule = { sentenceId: 7, lastAttemptId: 970, reviewLevel: 4, lastAssessment: 'UNDERSTOOD', reviewedAt: '2026-10-24T00:01:00', nextReviewDate: '2026-11-07' };
 const due = Array.from({ length: 12 }, (_, index) => ({ sentenceId: index + 1, englishText: `Due sentence ${index + 1}.`, difficulty: 1, source: '原创', sourceReference: null, reviewLevel: index % 5, lastAssessment: 'PARTIAL', nextReviewDate: '2026-10-23' }));
 let dueEmpty = false;
-const statistics = days => ({ submissionCount: 110, answerCount: 70, revealCount: 40, selfReviewCount: 81, learningDayCount: 39, weakSentenceCount: 8, dueSentenceCount: 12, from: days === 7 ? '2026-10-18' : '2026-09-25', to: '2026-10-24', days: days === 7 ? [{ learningDate: '2026-10-23', submissionCount: 2, answerCount: 1, revealCount: 1, selfReviewCount: 0 }, { learningDate: '2026-10-24', submissionCount: 0, answerCount: 0, revealCount: 0, selfReviewCount: 2 }] : [] });
+const statistics = days => ({ currentStreak: 2, longestStreak: 4, submissionCount: 110, answerCount: 70, revealCount: 40, selfReviewCount: 81, learningDayCount: 39, weakSentenceCount: 8, dueSentenceCount: 12, from: days === 7 ? '2026-10-18' : '2026-09-25', to: '2026-10-24', days: days === 7 ? [{ learningDate: '2026-10-23', submissionCount: 2, answerCount: 1, revealCount: 1, selfReviewCount: 0 }, { learningDate: '2026-10-24', submissionCount: 0, answerCount: 0, revealCount: 0, selfReviewCount: 2 }] : [] });
 let phase = 'PENDING';
 const progress = () => ({ sessionId: 550, selectionSource: 'DUE', status: phase === 'DONE' ? 'COMPLETED' : 'IN_PROGRESS', totalCount: 2, submissionCount: phase === 'PENDING' ? 0 : 1, answerCount: 0, revealCount: phase === 'PENDING' ? 0 : 1, selfReviewCount: phase === 'NEXT' ? 1 : 0, completedCount: phase === 'NEXT' ? 1 : 0, understoodCount: phase === 'NEXT' ? 1 : 0, partialCount: 0, notUnderstoodCount: 0, nextItemId: phase === 'NEXT' ? 802 : 801, createdAt: '2026-10-24T00:00:00', completedAt: null });
 const pageOf = (records, params) => ({ page: params.page, size: params.size, total: records.length, records: records.slice((params.page - 1) * params.size, params.page * params.size) });
@@ -80,6 +80,8 @@ http.defaults.adapter = async config => {
   }
   if (config.url === `${base}/reviews/due`) return ok(config, pageOf(dueEmpty ? [] : due, config.params));
   if (/\/questions\/\d+\/schedule$/.test(config.url)) return ok(config, config.url.includes('/7/') ? schedule : null);
+  if (config.url === `${base}/statistics/calendar`) return ok(config, { month: config.params?.month || '2026-10', days: [{ date: '2026-10-23', hasActivity: true, submissionCount: 2, answerCount: 1, revealCount: 1, selfReviewCount: 0 }, { date: '2026-10-24', hasActivity: true, submissionCount: 0, answerCount: 0, revealCount: 0, selfReviewCount: 2 }] });
+  if (config.url === `${base}/statistics/daily`) return ok(config, { date: config.params?.date || '2026-10-24', hasActivity: true, submissionCount: 0, answerCount: 0, revealCount: 0, selfReviewCount: 2 });
   if (config.url === `${base}/statistics`) {
     const days = config.params.days;
     if (statisticsError) { statisticsError = false; return reject(config, 'TEMPORARY', 503); }
@@ -169,14 +171,15 @@ assert.equal(document.querySelector('.sentence-reference'), null); await click('
 const createCount = writes('/sessions').length; await go('/sentences/records', '.sentence-session-row'); assert.match(document.querySelector('.sentence-session-row').textContent, /到期复习/); await go('/sentences/sessions/550', '#sentence-translation'); assert.equal(writes('/sessions').length, createCount, 'restore never creates DUE session');
 console.log('PASS distinct due list, backend dates/levels, null/current schedule, source=DUE, hidden answers and original GET-only restoration');
 
-await go('/sentences/statistics', '.sentence-stat-grid');
-assert.deepEqual([...document.querySelectorAll('.sentence-stat-grid dd')].map(row => Number(row.textContent.replace('天', '').trim())), [110, 70, 40, 81, 39]);
-assert.equal(document.querySelectorAll('.sentence-trend-chart tbody tr').length, 2); assert.match(document.querySelector('.sentence-current-links').textContent, /待巩固 8/);
-assert.deepEqual([...document.querySelectorAll('.sentence-trend-chart tbody tr')].map(row => [...row.children].map(cell => cell.textContent)), [['2026-10-23', '2', '1', '1', '0'], ['2026-10-24', '0', '0', '0', '2']], 'review date does not become submission date');
+await go('/sentences/statistics', '.overview-streaks strong');
+assert.deepEqual([...document.querySelectorAll('.overview-streaks strong')].map(row => Number(row.textContent.replace('天', '').trim())), [2, 4, 39]);
+await until(() => document.querySelectorAll('.statistics-bar-column').length === 2, 'sentence trend');
+assert.match(document.querySelectorAll('.statistics-bar-column')[0].getAttribute('aria-label'), /完成 0 句，有学习活动/);
+assert.match(document.querySelectorAll('.statistics-bar-column')[1].getAttribute('aria-label'), /完成 2 句，有学习活动/);
 let release;
-holdStatistics = new Promise(resolve => { release = resolve; }); await click('最近 30 天'); await until(() => calls.filter(call => call.url.endsWith('/statistics')).at(-1)?.params.days === 30, 'held 30'); await click('最近 7 天'); await until(() => document.querySelector('.sentence-trend-chart tbody tr'), 'newer 7 response'); release(); await sleep(80); assert.equal(document.querySelectorAll('.sentence-trend-chart tbody tr').length, 2, 'late 30 does not overwrite 7');
-await click('最近 30 天'); await until(() => document.body.textContent.includes('暂无趋势数据'), 'empty trends'); assert.equal(document.querySelector('.sentence-stat-grid dd').textContent.trim(), '110');
-statisticsError = true; await click('刷新统计'); await until(() => document.querySelector('.sentence-statistics [role="alert"]'), 'statistics error'); await click('重新加载'); await until(() => document.querySelector('.sentence-stat-grid'), 'statistics retry');
+holdStatistics = new Promise(resolve => { release = resolve; }); await click('最近 30 天'); await until(() => calls.filter(call => call.url.endsWith('/statistics')).at(-1)?.params.days === 30, 'held 30'); await click('最近 7 天'); await until(() => document.querySelector('.statistics-bar-column'), 'newer 7 response'); release(); await sleep(80); assert.equal(document.querySelectorAll('.statistics-bar-column').length, 2, 'late 30 does not overwrite 7');
+await click('最近 30 天'); await until(() => document.body.textContent.includes('暂无趋势数据'), 'empty trends'); assert.match(document.querySelector('.overview-streaks').textContent, /39/);
+statisticsError = true; await click('刷新统计'); await until(() => document.querySelector('.statistics-overview [role="alert"]'), 'statistics error'); await click('重新加载'); await until(() => document.querySelector('.overview-streaks strong'), 'statistics retry');
 assert.ok(calls.every(call => call.authorization), 'shared Bearer auth');
 let releaseAccess; holdAccess = new Promise(resolve => { releaseAccess = resolve; }); const late = access.load(true); await sleep(30); const auth = useAuthStore(); const identity = clone(auth.user); auth.user = { ...identity, id: identity.id + 1 }; releaseAccess(); await late; assert.equal(access.canManage, false, 'late permission cannot grant a new user'); auth.user = identity;
 console.log('PASS cumulative/current/trend boundaries, actual review dates, 7/30 race/error/empty states, JWT and user-scoped late permission rejection');

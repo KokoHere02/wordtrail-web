@@ -1,5 +1,5 @@
 /* Content-library sentence pages reuse the site's controls and theme tokens. */
-.sentence-library-page { width: min(calc(100% - var(--s5) * 2), 1120px); margin: var(--s6) auto var(--s8); min-width: 0; flex: 1; }
+.sentence-library-page { width: min(calc(100% - var(--s5) * 2), var(--content-library-width)); margin: var(--s6) auto var(--s8); min-width: 0; flex: 1; }
 .sentence-library-page .sentence-nav { display: flex; flex-wrap: nowrap; gap: var(--s1); overflow-x: auto; margin: 0 0 var(--s5); padding: var(--s1); border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); scrollbar-width: thin; }
 .sentence-library-page .sentence-nav > a, .sentence-library-page .sentence-nav > button { flex-shrink: 0; min-height: var(--control); padding: var(--s2) var(--s4); border: 0; border-radius: var(--radius-sm); font-size: var(--text-base); white-space: nowrap; }
 .sentence-library-page .sentence-nav > a.active { background: var(--sage); color: var(--accent-strong); font-weight: 600; }
@@ -107,6 +107,19 @@
 .sentence-dialog .sentence-comparison > div { padding-left: 0; border-left: 0; }
 .sentence-dialog .sentence-comparison dt { font-size: var(--text-sm); }
 .sentence-dialog .sentence-comparison dd { font-size: var(--text-base); }
+/* The catalog and notes share a compact navigation and filter panel. */
+.sentence-catalog, .sentence-notes { margin-top: 0; }
+:is(.sentence-catalog, .sentence-notes) .sentence-nav { margin: 0; padding: var(--s2) var(--s3); border-radius: 0; border-bottom: 0; }
+:is(.sentence-catalog, .sentence-notes) .sentence-nav > a { display: inline-flex; align-items: center; gap: var(--s2); }
+:is(.sentence-catalog, .sentence-notes) .sentence-filter-sheet { gap: var(--s4); margin-bottom: var(--s4); padding: var(--s4); border-radius: 0 0 var(--radius-lg) var(--radius-lg); background: var(--hover); }
+.sentence-catalog .sentence-library-sheet { padding-inline: var(--s4); }
+.sentence-catalog .sentence-selection-toolbar { min-height: 64px; }
+.sentence-catalog .sentence-question-row { grid-template-columns: 24px minmax(0, 1fr) auto; gap: var(--s3); padding-block: var(--s4); }
+.sentence-catalog .sentence-english { line-height: 1.5; }
+.sentence-catalog .sentence-row-meta { margin-top: var(--s2); }
+.sentence-catalog .sentence-row-actions { max-width: 190px; gap: 0 var(--s2); }
+.sentence-catalog .sentence-row-actions > button { min-height: 32px; padding: var(--s1); border-color: transparent; }
+.sentence-catalog .sentence-row-check { min-height: 32px; }
 @media (max-width: 760px) {
   .sentence-library-page { margin-top: var(--s4); }
   .sentence-library-page .sentence-nav > a { padding-inline: var(--s3); }
@@ -150,4 +163,8 @@
   .sentence-dialog .sentence-schedule-facts > div { padding-inline: var(--s2); }
   .sentence-dialog .sentence-english { font-size: 18px; }
   .sentence-dialog .sentence-comparison { padding: var(--s3); }
+  .sentence-catalog, .sentence-notes { margin-top: 0; }
+  .sentence-catalog .sentence-question-row { grid-template-columns: 24px minmax(0, 1fr); }
+  .sentence-catalog .sentence-row-actions { max-width: none; }
+  .sentence-catalog .sentence-row-actions > button { min-height: 40px; }
 }

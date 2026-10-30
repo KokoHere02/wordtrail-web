@@ -166,7 +166,9 @@ for (const width of [1440, 390, 320]) for (const theme of ['light', 'dark']) {
         if (config.url.endsWith('/management/questions')) return ok({ page: 1, size: 10, total: 1, records: [question] });
         if (config.url.endsWith('/management/questions/1')) return ok(question);
         if (config.url.endsWith('/reviews/due')) return ok({ page: 1, size: 10, total: 1, records: [due] });
-        if (config.url.endsWith('/statistics')) return ok({ submissionCount: 120, answerCount: 90, revealCount: 30, selfReviewCount: 115, weakSentenceCount: 6, dueSentenceCount: 1, learningDayCount: 32, from: '2026-10-18', to: '2026-10-24', days: Array.from({ length: config.params?.days || 7 }, (_, index) => ({ learningDate: `2026-10-${String(index + 1).padStart(2, '0')}`, submissionCount: index % 5, answerCount: index % 5, revealCount: 0, selfReviewCount: (index + 1) % 5 })) });
+        if (config.url.endsWith('/statistics/calendar')) return ok({ month: '2026-10', days: [{ date: '2026-10-24', hasActivity: true, submissionCount: 1, answerCount: 1, revealCount: 0, selfReviewCount: 1 }] });
+        if (config.url.endsWith('/statistics/daily')) return ok({ date: '2026-10-24', hasActivity: true, submissionCount: 1, answerCount: 1, revealCount: 0, selfReviewCount: 1 });
+        if (config.url.endsWith('/statistics')) return ok({ currentStreak: 3, longestStreak: 5, submissionCount: 120, answerCount: 90, revealCount: 30, selfReviewCount: 115, weakSentenceCount: 6, dueSentenceCount: 1, learningDayCount: 32, from: '2026-10-18', to: '2026-10-24', days: Array.from({ length: config.params?.days || 7 }, (_, index) => ({ learningDate: `2026-10-${String(index + 1).padStart(2, '0')}`, submissionCount: index % 5, answerCount: index % 5, revealCount: 0, selfReviewCount: (index + 1) % 5 })) });
         throw new Error(`Unexpected expansion fixture endpoint ${config.url}`);
       };
       await router.push('/sentences/manage');
@@ -176,7 +178,7 @@ for (const width of [1440, 390, 320]) for (const theme of ['light', 'dark']) {
       ['/sentences/manage/1/edit', '#sentence-explanation', 'editor'],
       ['/sentences/manage/import', '#sentence-csv-text', 'import'],
       ['/sentences/due', '.sentence-due-date', 'due'],
-      ['/sentences/statistics', '.sentence-stat-grid', 'statistics'],
+      ['/sentences/statistics', '.overview-streaks', 'statistics'],
     ]) {
       await page.evaluate(async target => { const modulePath = '/src/router/index.ts'; const { router } = await import(/* @vite-ignore */ modulePath); await router.push(target); }, path!);
       await expect(page.locator(selector!)).toBeVisible();
@@ -184,7 +186,7 @@ for (const width of [1440, 390, 320]) for (const theme of ['light', 'dark']) {
       await page.screenshot({ path: `docs/screenshots/sentence-${name}-${theme}-${width}.png`, fullPage: true, animations: 'disabled' });
     }
     await page.getByRole('button', { name: '最近 30 天', exact: true }).click();
-    await expect(page.locator('.sentence-trend-chart tbody tr')).toHaveCount(30);
+    await expect(page.locator('.statistics-bar-column')).toHaveCount(30);
     expect(await page.locator('html').evaluate(element => element.scrollWidth <= window.innerWidth)).toBe(true);
   });
 }

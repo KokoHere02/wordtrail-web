@@ -1,5 +1,6 @@
 .insights-controls, .insights-summary-heading, .insights-trend-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--s4); flex-wrap: wrap; }
 .insights-controls { margin-bottom: var(--s5); }
+.insights-controls > button { margin-left: auto; }
 .insights-controls .category-tabs { margin: 0; }
 .insights-summary-panel, .insights-trend-panel { padding: var(--s6); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: var(--s6); }
 .insights-summary-heading > span, .insights-trend-heading p { color: var(--muted); font-size: var(--text-sm); }

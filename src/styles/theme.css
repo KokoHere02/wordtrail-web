@@ -96,6 +96,7 @@
   --review-meaning-height: 236px;
   --review-answer-height: 60px;
   --plan-width: 1330px;
+  --content-library-width: 1120px;
   --plan-word-size: clamp(30px, 3vw, 40px);
   --plan-title-size: clamp(32px, 3.5vw, 46px);
   --plan-row-height: 88px;

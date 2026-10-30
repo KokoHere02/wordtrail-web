@@ -149,8 +149,8 @@ assert.equal(calls.some(call => call.url === '/learning-batches' || /^\/learning
 assert.deepEqual(await dailyApi.today(), dailyBefore);
 assert.equal(localStorage.getItem('wordtrail.mock.dom_reader'), historyBefore);
 await router.push('/statistics?source=PRACTICE');
-await until(() => document.querySelector('.insights-summary-heading')?.textContent.includes('历史认读专项'), 'historical source via retired page link');
-assert.equal(document.querySelector('.insights-goal'), null);
+await until(() => document.querySelector('.overview-streaks strong'), 'old historical statistics link falls back to daily statistics');
+assert.equal(document.querySelector('.statistics-overview').textContent.includes('历史认读专项'), false);
 await router.push('/records'); await until(() => document.querySelector('.records-page'), 'records');
 assert.equal(document.querySelector('a[href="/learning"]'), null);
 await router.push('/words/1001'); await until(() => document.querySelector('.word-detail-heading'), 'word detail');

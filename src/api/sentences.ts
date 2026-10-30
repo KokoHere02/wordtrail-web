@@ -1,7 +1,7 @@
 import { request } from './http';
 import type { Page } from '../types/api';
 import type { SentenceQuestion, SentenceQuery, SentenceReviewItem, CreateSentenceSession, SentenceProgress, SentenceSessionStatus, SentenceCurrent, SentenceSubmission, SentenceSelfReview, SentenceFeedback, SentenceHistory } from '../types/sentences';
-import type { SentenceDueItem, SentenceSchedule, SentenceStatistics } from '../types/sentences';
+import type { SentenceDueItem, SentenceSchedule, SentenceStatistics, SentenceStatisticsCalendar, SentenceStatisticsDate, SentenceStatisticsAttempt } from '../types/sentences';
 const base = '/sentence-translation';
 const session = (id: number) => `${base}/sessions/${id}`;
 export const sentencesApi = {
@@ -20,4 +20,7 @@ export const sentencesApi = {
   due: (query: SentenceQuery) => request<Page<SentenceDueItem>>('GET', `${base}/reviews/due`, undefined, query),
   schedule: (sentenceId: number) => request<SentenceSchedule | null>('GET', `${base}/questions/${sentenceId}/schedule`),
   statistics: (days: 7 | 30) => request<SentenceStatistics>('GET', `${base}/statistics`, undefined, { days }),
+  statisticsCalendar: (month?: string) => request<SentenceStatisticsCalendar>('GET', `${base}/statistics/calendar`, undefined, month ? { month } : undefined),
+  statisticsDaily: (date?: string) => request<SentenceStatisticsDate>('GET', `${base}/statistics/daily`, undefined, date ? { date } : undefined),
+  statisticsAttempts: (query: { date: string; page: number; size: number }) => request<Page<SentenceStatisticsAttempt>>('GET', `${base}/statistics/attempts`, undefined, query),
 };

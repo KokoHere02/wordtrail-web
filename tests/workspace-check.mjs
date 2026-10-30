@@ -185,7 +185,9 @@ await until(() => document.querySelectorAll('.training-item-row').length > 0, 'h
 assert.equal(document.querySelectorAll('.training-items button.muted-link').length, 0, 'historical rows have no extra buttons');
 assert.ok(!calls.slice(beforeHistory).some(call => call.url.endsWith('/training/next')), 'historical reads do not create a presentation');
 unmountItems(); todayDate = '2026-10-25';
-await router.push('/statistics'); await until(() => document.querySelector('.training-mode-statistics'), 'training statistics'); assert.match(document.querySelector('.training-statistics').textContent, /输入正确率/);
+await router.push('/statistics'); await until(() => document.querySelector('.overview-more'), 'statistics disclosure');
+const more = document.querySelector('.overview-more'); more.open = true; more.dispatchEvent(new Event('toggle'));
+await until(() => document.querySelector('.training-mode-statistics'), 'training statistics'); assert.match(document.querySelector('.training-statistics').textContent, /输入正确率/);
 console.log('PASS mounted Vue: unified tabs and shared progress, hidden dictation target, native input/caret/IME, per-mode drafts, listening completion, hinted extra dictation counted once');
 console.log('PASS sentence input/self-review preserved, independent dictation entry retained, mode double clicks blocked, cached same-day GET restore, server training statistics');
 console.log('PASS persisted recognition phase without duplicate reveal, completion labels, item pagination, hidden pending/skipped answers, historical and unavailable extra entries');

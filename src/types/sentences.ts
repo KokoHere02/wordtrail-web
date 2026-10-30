@@ -65,6 +65,13 @@ export interface SentenceStatisticsDay {
 }
 export interface SentenceStatistics {
   submissionCount: number; answerCount: number; revealCount: number; selfReviewCount: number;
-  weakSentenceCount: number; dueSentenceCount: number; learningDayCount: number;
+  weakSentenceCount: number; dueSentenceCount: number; learningDayCount: number; currentStreak: number; longestStreak: number;
   from: string; to: string; days: SentenceStatisticsDay[];
+}
+export interface SentenceStatisticsDate {
+  date: string; hasActivity: boolean; submissionCount: number; answerCount: number; revealCount: number; selfReviewCount: number;
+}
+export interface SentenceStatisticsCalendar { month: string; days: SentenceStatisticsDate[] }
+export interface SentenceStatisticsAttempt extends SentenceHistory {
+  submittedOnDate: boolean; reviewedOnDate: boolean; activityAt: string;
 }

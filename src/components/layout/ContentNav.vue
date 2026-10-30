@@ -12,7 +12,7 @@ const tools = [
 ];
 </script>
 <template>
-  <nav class="content-library-nav" aria-label="内容库分类">
+  <nav :class="['content-library-nav', { 'sentence-content-nav': ['/sentences', '/sentences/notes', '/sentences/favorites', '/sentences/review', '/sentences/due'].includes(route.path) }]" aria-label="内容库分类">
     <div class="content-library-kinds workspace-shortcuts" role="group" aria-label="内容类型">
       <RouterLink v-for="entry in kinds" :key="entry.path" :to="entry.path" :class="{ active: entry.matches(route.path), 'is-active': entry.matches(route.path) }" :aria-current="entry.matches(route.path) ? 'page' : undefined"><component :is="entry.icon" :size="16" :stroke-width="1.7" aria-hidden="true" /><span>{{ entry.label }}</span></RouterLink>
     </div>
@@ -22,7 +22,7 @@ const tools = [
   </nav>
 </template>
 <style scoped>
-.content-library-nav { display: flex; align-items: center; gap: var(--s5); width: min(calc(100% - var(--s5) * 2), 1120px); margin: var(--s5) auto 0; }
+.content-library-nav { display: flex; align-items: center; gap: var(--s5); width: min(calc(100% - var(--s5) * 2), var(--content-library-width)); margin: var(--s5) auto 0; }
 .content-library-kinds, .content-library-tools { display: flex; align-items: center; gap: var(--s2); min-width: 0; }
 .content-library-kinds.workspace-shortcuts { margin: 0; }
 .content-library-tools { padding-left: var(--s5); border-left: 1px solid var(--line); }
@@ -31,11 +31,16 @@ const tools = [
 .content-library-tools a.active { color: var(--accent-strong); background: var(--sage); font-weight: 600; }
 .content-library-tools a:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
 .content-library-nav svg { flex-shrink: 0; }
+.sentence-content-nav { margin-bottom: 0; padding: var(--s2) var(--s3); border: 1px solid var(--line); border-bottom: 0; border-radius: var(--radius-lg) var(--radius-lg) 0 0; background: var(--surface); }
 @media (max-width: 760px) {
   .content-library-nav { flex-direction: column; align-items: stretch; gap: var(--s2); }
   .content-library-kinds { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .content-library-tools { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-left: 0; border-top: 1px solid var(--line); padding: var(--s2) 0 0; gap: var(--s1); }
   .content-library-tools a { padding-inline: var(--s1); font-size: var(--text-sm); }
   .content-library-tools svg { display: none; }
+  .sentence-content-nav { flex-direction: row; align-items: center; overflow-x: auto; gap: var(--s2); }
+  .sentence-content-nav .content-library-kinds, .sentence-content-nav .content-library-tools { display: flex; flex: none; }
+  .sentence-content-nav .content-library-tools { padding: 0 0 0 var(--s2); border-top: 0; border-left: 1px solid var(--line); }
+  .sentence-content-nav .content-library-tools svg { display: block; }
 }
 </style>
