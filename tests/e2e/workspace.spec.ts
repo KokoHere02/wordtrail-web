@@ -300,7 +300,7 @@ test('recognition advances without locked ratings or transient error alerts; fai
     const httpPath = '/src/api/http.ts', routerPath = '/src/router/index.ts';
     const { http } = await import(/* @vite-ignore */ httpPath), { router } = await import(/* @vite-ignore */ routerPath);
     const original = http.defaults.adapter;
-    const control = { loseResponse: false, alerts: 0, bodies: [] as Record<string, unknown>[] };
+    const control = { loseResponse: false, alerts: 0, bodies: [] as Record<string, unknown>[], corrections: [] as Record<string, unknown>[], audio: [] as string[] };
     Reflect.set(window, '__recognitionRegression', control);
     const observer = new MutationObserver(records => {
       for (const record of records) for (const node of record.addedNodes) {
@@ -315,8 +315,10 @@ test('recognition advances without locked ratings or transient error alerts; fai
     http.defaults.adapter = async (config: { url: string; data?: string }) => {
       const body = config.data ? JSON.parse(config.data) : {};
       const ok = (data: unknown) => ({ config, status: 200, headers: {}, data: { code: 'OK', message: '成功', data: structuredClone(data) } });
+      if (/^\/words\/\d+\/audio\?/.test(config.url)) { control.audio.push(config.url); return { config, status: 200, headers: { 'content-type': 'audio/wav' }, data: new Blob([new Uint8Array([1])], { type: 'audio/wav' }) }; }
       if (config.url === '/learning/today') return ok({ learningDate: '2026-10-25', dailyTarget: 4, activeCount: 4, dueCount: 0, newCount: 4, unassignedCount: 0, canAddMore: false, task: progress() });
       if (config.url === '/learning-batches/90/daily') return ok(progress());
+      if (config.url.endsWith('/correction')) { control.corrections.push(structuredClone(body)); return ok({ itemId: 901, logId: 600 + control.corrections.length, result: body.result, correction: true, progress: progress() }); }
       if (config.url.endsWith('/training/next')) {
         await new Promise(resolve => setTimeout(resolve, 80));
         return ok({ itemId: 901 + position, wordId: 101 + position, word: words[position], phonetic: null, mode: 'RECOGNITION', modeVersion: 0,
@@ -329,7 +331,7 @@ test('recognition advances without locked ratings or transient error alerts; fai
         const index = position; position++; trainingCount++; if (body.result === 1) completedCount++;
         const answer = { trainingId: trainingCount, itemId: 901 + index, wordId: 101 + index, mode: 'RECOGNITION', action: body.action, verdict: 'SELF_ASSESSED',
           input: null, selfAssessment: body.result, word: words[index], translation: `释义 ${index + 1}`, translationGroups: [], hintUsed: true, extraTraining: false, attemptNo: 1,
-          reviewLogId: null, affectsSchedule: false, answeredAt: '2026-10-25T12:00:00', itemStatus: body.result === 1 ? 'DONE' : 'RELEARNING', completionReason: body.result === 1 ? 'RECALLED' : null, progress: progress() };
+          reviewLogId: 500 + index, affectsSchedule: false, answeredAt: '2026-10-25T12:00:00', itemStatus: body.result === 1 ? 'DONE' : 'RELEARNING', completionReason: body.result === 1 ? 'RECALLED' : null, progress: progress() };
         saved.set(body.requestId, answer);
         if (control.loseResponse) { control.loseResponse = false; throw new Error('test response lost after save'); }
         return ok(answer);
@@ -343,12 +345,26 @@ test('recognition advances without locked ratings or transient error alerts; fai
     await expect(page.locator('.daily-training-card .learning-word')).toHaveText(word);
     for (let index = 0; index < 3; index++) await expect(ratings.nth(index)).toBeEnabled();
     await expect(page.locator('.daily-training-card .word-meaning')).toHaveCount(0);
-    await ratings.nth(2).click();
+    await expect(page.locator('.daily-training-card')).toHaveCSS('padding-top', '8px');
+    if (word === 'apple') { await page.locator('#mode-panel-words').focus(); await expect(page.locator('#mode-panel-words')).toHaveCSS('outline-style', 'none'); await page.keyboard.press('3'); } else { await ratings.nth(1).click(); }
     await expect(page.getByRole('status').filter({ hasText: '正在保存' })).toBeVisible();
     await expect(page.locator('.learning-error')).toHaveCount(0);
     await page.evaluate(() => document.querySelectorAll<HTMLButtonElement>('.daily-training-rating button').forEach(button => button.click()));
     await expect(page.locator('.daily-training-feedback')).toBeVisible();
-    await page.locator('.daily-training-feedback > .btn').click();
+    await expect(page.locator('.daily-training-feedback')).toHaveCSS('padding-top', '8px');
+    await expect.poll(() => page.evaluate(() => Reflect.get(window, '__recognitionRegression').audio.length)).toBe(word === 'apple' ? 1 : 2);
+    await expect(ratings).toHaveCount(3);
+    await expect(ratings.nth(word === 'apple' ? 2 : 1)).toHaveAttribute('aria-pressed', 'true');
+    if (word === 'apple') {
+      await ratings.nth(0).click(); await expect(ratings.nth(0)).toHaveAttribute('aria-pressed', 'true');
+      await ratings.nth(1).click(); await expect(ratings.nth(1)).toHaveAttribute('aria-pressed', 'true');
+      await ratings.nth(2).click(); await expect(ratings.nth(2)).toHaveAttribute('aria-pressed', 'true');
+      const corrections = await page.evaluate(() => Reflect.get(window, '__recognitionRegression').corrections);
+      expect(corrections.map((c: { result: number }) => c.result)).toEqual([3, 2, 1]);
+      expect(corrections.every((c: { logId: number }) => c.logId === 500)).toBe(true);
+    }
+    await expect(page.locator('.daily-training-feedback > .btn')).toBeFocused();
+    await page.keyboard.press('Enter');
   }
   await expect(page.locator('.daily-training-card .learning-word')).toHaveText('cherry');
   expect(await page.evaluate(() => Reflect.get(window, '__recognitionRegression').alerts)).toBe(0);
@@ -359,6 +375,7 @@ test('recognition advances without locked ratings or transient error alerts; fai
   for (let index = 0; index < 3; index++) await expect(ratings.nth(index)).toBeDisabled();
   await page.getByRole('button', { name: '重试原请求', exact: true }).click();
   await expect(page.locator('.daily-training-feedback')).toBeVisible();
+  await expect(ratings.nth(0)).toHaveAttribute('aria-pressed', 'true');
   const bodies = await page.evaluate(() => Reflect.get(window, '__recognitionRegression').bodies);
   expect(bodies).toHaveLength(4);
   expect(bodies[3]).toEqual(bodies[2]);
@@ -402,6 +419,7 @@ for (const width of [1440, 390, 320]) for (const theme of ['dark', 'light']) {
           if (config.method === 'put') pronunciation = body;
           return ok({ dailyTarget: 20, newWordTarget: 10, reviewLimit: 10, pronunciation });
         }
+        if (config.url === '/words/1') return ok({ id: 1, word: 'incomprehensibilities', phonetic: '/ˌɪnkɒmprɪhensəˈbɪlɪtiz/' });
         if (config.url.includes('/audio?')) { audioRequests.push(config.url); return { config, status: 200, headers: { 'content-type': 'audio/mpeg' }, data: new Blob(['fixture audio'], { type: 'audio/mpeg' }) }; }
         if (config.url === '/learning/today') return ok({ learningDate: '2026-10-25', dailyTarget: 20, activeCount: 20, dueCount: 0, newCount: 20, unassignedCount: 0, canAddMore: false, task: progress() });
         if (config.url === '/learning-batches/50/daily') return ok(progress());
@@ -486,19 +504,39 @@ for (const width of [1440, 390, 320]) for (const theme of ['dark', 'light']) {
     await page.locator('#daily-training-input').fill('draft');
     await page.locator('#daily-training-input').press('Enter');
     await expect(page.locator('.daily-training-feedback.is-incorrect')).toBeVisible();
-    await expect(page.locator('.daily-feedback-error')).toContainText('拼写错误');
-    await expect(page.locator('.daily-submitted.is-incorrect del')).toHaveText('draft');
-    await expect(page.locator('.daily-feedback-answer-label')).toHaveText('正确拼写');
-    const feedbackColor = await page.locator('.daily-feedback-error').evaluate(node => {
+    await expect(page.locator('.dictation-submitted-word')).toHaveText('draft');
+    await expect(page.locator('.dictation-answer-verdict')).toHaveText('拼写错误');
+    await expect(page.locator('.dictation-feedback-answer .learning-word')).toHaveText('incomprehensibilities');
+    await expect(page.locator('.dictation-feedback-answer .daily-word-phonetic')).toHaveText('/ˌɪnkɒmprɪhensəˈbɪlɪtiz/');
+    await expect(page.locator('.dictation-feedback-heading .training-play')).toBeVisible();
+    const answerY = (await page.locator('.dictation-feedback-answer').boundingBox())!.y;
+    const meaningY = (await page.locator('.dictation-answer-feedback .word-meaning').boundingBox())!.y;
+    const inputY = (await page.locator('.dictation-submitted-word').boundingBox())!.y;
+    expect(answerY).toBeLessThan(meaningY); expect(meaningY).toBeLessThan(inputY);
+    await expect(page.locator('.dictation-answer-feedback .workspace-answer-actions button')).toHaveCount(1);
+    const feedbackColor = await page.locator('.dictation-submitted-word').evaluate(node => {
       const color = getComputedStyle(node).color.match(/\d+/g)?.map(Number) ?? [];
       return color[0]! > color[1]! && color[0]! > color[2]!;
     });
     expect(feedbackColor).toBe(true);
     await page.screenshot({ path: testInfo.outputPath(`daily-dictation-error-${theme}-${width}.png`), fullPage: true, animations: 'disabled' });
-    await page.locator('.daily-training-feedback > .btn').click();
+    await expect(page.getByRole('button', { name: '下一个 Enter' })).toBeFocused();
+    await page.keyboard.press('Enter');
     await expect(page.locator('#daily-training-input')).toBeFocused();
     await expect(page.locator('#daily-training-input')).toHaveValue('');
     await expect(page.locator('.daily-training-card .letter-slot')).toHaveCount(1);
+    await page.locator('#daily-training-input').fill('incomprehensibilities');
+    await page.locator('#daily-training-input').press('Enter');
+    await expect(page.locator('.dictation-submitted-word')).toHaveText('incomprehensibilities');
+    await expect(page.locator('.dictation-answer-verdict')).toHaveText('拼写正确');
+    const correctColor = await page.locator('.dictation-submitted-word').evaluate(node => {
+      const color = getComputedStyle(node).color.match(/\d+/g)?.map(Number) ?? [];
+      return color[1]! > color[0]!;
+    });
+    expect(correctColor).toBe(true);
+    await expect(page.getByRole('button', { name: '下一个 Enter' })).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#daily-training-input')).toBeFocused();
     await page.keyboard.type('draft');
     await expect(page.locator('#daily-training-input')).toHaveValue('draft');
     await expect(page.getByRole('button', { name: '不会／看答案', exact: true })).toHaveAttribute('aria-keyshortcuts', 'F2');
@@ -510,7 +548,7 @@ for (const width of [1440, 390, 320]) for (const theme of ['dark', 'light']) {
     await page.screenshot({ path: testInfo.outputPath(`daily-assisted-${theme}-${width}.png`), fullPage: true, animations: 'disabled' });
     await changeMode('单词拼读');
     await expect(page.locator('.daily-training-card .word-meaning')).toHaveCount(0);
-    await page.locator('.daily-training-card').click(); await page.keyboard.press('Space');
+    await page.locator('#mode-panel-words').focus(); await page.keyboard.press('Space');
     await expect(page.locator('.daily-training-card .word-meaning')).toBeVisible();
     expect(await page.locator('html').evaluate(node => node.scrollWidth <= window.innerWidth)).toBe(true);
     await page.screenshot({ path: testInfo.outputPath(`daily-recognition-${theme}-${width}.png`), fullPage: true, animations: 'disabled' });

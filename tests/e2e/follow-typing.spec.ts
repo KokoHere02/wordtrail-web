@@ -85,6 +85,17 @@ test('follow survives reload/cross-day and lost save without duplicate training 
   await page.getByRole('button', { name: '练习设置', exact: true }).click(); await page.getByRole('button', { name: '放弃本轮', exact: true }).click(); await page.getByRole('dialog', { name: '放弃本轮跟拼？', exact: true }).getByRole('button', { name: '放弃本轮', exact: true }).click(); await expect(page.getByRole('heading', { name: '本轮已放弃', exact: true })).toBeVisible(); state.noWords = true;
   await page.getByRole('button', { name: '开始新一轮', exact: true }).click(); await expect(page.locator('.learning-error')).toContainText('冷却'); expect(state.creates).toBe(2);
 });
+test('follow typing reads each submitted word once, including the last word', async ({ page }) => {
+  const state = await setup(page, true);
+  await page.goto('/follow-typing');
+  await page.locator('#follow-typing-input').fill('wrong');
+  await page.locator('#follow-typing-input').press('Enter');
+  await expect.poll(() => state.urls.filter(url => url === 'GET /words/88/audio').length).toBe(1);
+  await page.locator('#follow-typing-input').fill('incomprehensibilities');
+  await page.locator('#follow-typing-input').press('Enter');
+  await expect(page.getByRole('heading', { name: '本轮跟拼完成', exact: true })).toBeVisible();
+  await expect.poll(() => state.urls.filter(url => url === 'GET /words/88/audio').length).toBe(2);
+});
 for (const width of [1440, 390, 320]) for (const theme of ['light', 'dark']) {
   test(`independent follow ${theme} ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 }); await page.addInitScript(value => localStorage.setItem('wordtrail.theme', value), theme);

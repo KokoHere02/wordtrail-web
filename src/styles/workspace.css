@@ -128,12 +128,16 @@
 .daily-training-main .word-meaning { margin-block: var(--s5); text-align: left; overflow-wrap: anywhere; }
 .daily-training-main .word-meaning--study { padding: var(--s6); border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
 .daily-training-card .learning-word { margin-bottom: var(--s1); }
+.study-workspace .unified-daily-page .daily-training-card[data-mode="RECOGNITION"],
+.study-workspace .unified-daily-page .recognition-feedback { padding-top: var(--s2); }
 .daily-training-card .word-meaning--study { margin-block: var(--s3); padding: var(--s4); }
 .daily-training-card .translation-heading { display: none; }
 .daily-recall-prompt { width: 100%; padding: var(--s4); min-height: var(--control); border: 1px solid var(--recall-prompt-border); border-radius: var(--radius); color: var(--accent); background: var(--recall-prompt-bg); line-height: 1.7; }
 .daily-training-rating { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .daily-training-rating .rating-button { display: flex; justify-content: center; align-items: center; gap: var(--s3); min-width: 0; min-height: 52px; padding: var(--s3) var(--s2); border: 1px solid var(--answer-border); border-radius: var(--radius); color: var(--control-text); background: transparent; font-size: var(--text-md); }
 .daily-training-rating .rating-button:hover:not(:disabled), .daily-recall-prompt:hover:not(:disabled) { background: var(--hover); }
+.recognition-feedback .rating-button:disabled { opacity: 1; }
+.recognition-feedback .rating-button.is-selected { border-color: var(--accent); color: var(--accent-strong); background: var(--secondary-hover); box-shadow: inset 0 0 0 1px var(--accent); font-weight: 600; }
 .daily-training-main kbd { padding: var(--s1) var(--s2); color: var(--key-text); background: var(--key-bg); border-radius: var(--radius-sm); font: inherit; font-size: var(--text-base); }
 .daily-typing-form .letter-input { margin-top: var(--s6); }
 .daily-submitted { margin-block: var(--s3); white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -144,6 +148,24 @@
 .daily-feedback-error .daily-submitted.is-incorrect { margin: var(--s2) 0 0; padding-left: calc(24px + var(--s3)); color: inherit; }
 .daily-submitted.is-incorrect del { font-weight: 600; text-decoration-thickness: 2px; }
 .daily-training-feedback > .btn { margin-top: var(--s5); }
+.study-workspace .dictation-answer-feedback { padding-top: var(--s4); }
+.dictation-feedback-heading { position: relative; min-height: var(--control); }
+.dictation-feedback-heading > .training-play { position: absolute; top: 0; left: 0; }
+.dictation-feedback-answer { padding-inline: 190px; }
+.daily-training-main .dictation-feedback-answer .learning-word { margin-top: 0; font-size: clamp(32px, 3.5vw, 48px); }
+.dictation-feedback-phonetic { min-height: 1.5em; }
+.dictation-submitted { margin-top: var(--s6); }
+.dictation-submitted-word { margin: var(--s6) 0 var(--s2); color: var(--ink); text-align: center; font: 400 clamp(32px, 5vw, 44px)/1.3 var(--font-serif); white-space: pre-wrap; overflow-wrap: anywhere; }
+.dictation-submitted-word.is-incorrect, .dictation-answer-verdict.is-incorrect { color: var(--spelling-error); }
+.dictation-submitted-word.is-correct, .dictation-answer-verdict.is-correct { color: var(--success); }
+.dictation-answer-verdict { text-align: center; }
+.dictation-answer-feedback .dictation-feedback-actions { justify-content: flex-start; margin-top: var(--s6); }
+@media (max-width: 600px) {
+  .dictation-feedback-heading > .training-play { position: static; }
+  .dictation-feedback-answer { padding: var(--s3) 0 0; }
+}
+/* This panel is a programmatic focus target, not a keyboard control. */
+#mode-panel-words:focus-visible { outline: none; }
 .daily-correction { margin-block: var(--s4); }
 .daily-extra-note { line-height: 1.8; }
 .training-history { margin-block: var(--s6); text-align: left; min-width: 0; }

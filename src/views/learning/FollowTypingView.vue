@@ -5,6 +5,7 @@ import { ArrowRight, ChartNoAxesCombined, History, Keyboard, ListOrdered, X } fr
 import { useAuthStore } from '../../stores/auth';
 import { useFollowTyping } from '../../composables/useFollowTyping';
 import { useAudioPlayer } from '../../composables/useAudioPlayer';
+import { ordinaryAudioUrl } from '../../api/learningMedia';
 import { useLearningKeys } from '../../composables/useLearningKeys';
 import { usePronunciation } from '../../stores/pronunciation';
 import { followTypingApi } from '../../api/followTyping';
@@ -74,15 +75,24 @@ function toggleMeaning() { preferences.showFollowChinese = !preferences.showFoll
 watch(() => [preferences.showFollowWord, preferences.showFollowChinese], () => { if (ready.value) field.value?.focus(); }, { flush: 'post' });
 function submit() { if (ready.value) void session.action('ANSWER'); }
 function closePanel() { const index = panels.findIndex(panel => panel.id === activePanel.value); activePanel.value = undefined; toolButtons.value[index]?.focus(); }
-function playShortcut() { if (!abandonDialog.value) play(); }
 async function extra(itemId?: number) { activePanel.value = undefined; await session.extra(itemId); }
 let autoAttempt = '';
+let spokenAnswer = '';
 watch([() => question.value?.presentationId, overallBusy, blocked, active, () => audioSettings.value.autoPlay,
   () => audioSettings.value.accent, () => audioSettings.value.playbackRate, () => audioSettings.value.repeatCount], () => {
   audio.stop(); audio.error.value = '';
   const key = `${question.value?.presentationId}:${audioSettings.value.accent}:${audioSettings.value.playbackRate}:${audioSettings.value.repeatCount}`;
-  if (canPronounce.value && audioSettings.value.autoPlay && autoAttempt !== key) { autoAttempt = key; play(); }
+  const answerKey = receipt.value?.action === 'ANSWER' ? `${task.value?.batchId}:${receipt.value.trainingId}` : '';
+  if (canPronounce.value && audioSettings.value.autoPlay && autoAttempt !== key && (!answerKey || answerKey === spokenAnswer)) { autoAttempt = key; play(); }
 }, { flush: 'sync' });
+watch([overallBusy, receipt, active], () => {
+  const answer = receipt.value;
+  if (overallBusy.value || !active.value || answer?.action !== 'ANSWER' || !answer.wordId) return;
+  const key = `${task.value?.batchId}:${answer.trainingId}`;
+  if (spokenAnswer === key) return;
+  spokenAnswer = key;
+  void audio.play(ordinaryAudioUrl(answer.wordId), { ...audioSettings.value, repeatCount: 1 });
+}, { flush: 'post' });
 useLearningKeys({ reveal: () => {}, rate: () => {}, previous: () => {}, next: () => {}, pronounce: play, correct: () => {}, cancelCorrection: () => {} });
 const rounds = useResource<Page<TrainingTask>>(), roundPage = ref(1), roundStatus = ref<Status>('COMPLETED');
 const statusOptions = [{ value: 'IN_PROGRESS', label: '进行中' }, { value: 'COMPLETED', label: '已完成' }, { value: 'ABANDONED', label: '已放弃' }];
@@ -112,11 +122,12 @@ onMounted(() => {
 defineExpose({ toggleWord, toggleMeaning, play, canPronounce, speaking: audio.speaking, count, countOptions, task, settingsBlocked, setCount, requestAbandon });
 </script>
 <template>
-  <div class="review-page learning-page unified-follow-page" @keydown.alt.p.prevent="playShortcut">
+  <div class="review-page learning-page unified-follow-page">
     <ReviewHeader :completed="task?.completedCount || 0" :total="task?.totalCount || 0" :skipped="task?.skippedCount || 0" back-to="/learn" label="单词练习" />
     <div class="daily-training-main" :aria-busy="overallBusy">
 
       <StatePanel :loading="overallBusy && !displayedQuestion" />
+      <p v-if="audio.error.value && !displayedQuestion" class="speech-error" role="status">{{ audio.error.value }}</p>
       <p v-if="notice" class="learning-notice" role="status">{{ notice }}</p>
       <div v-if="error || session.error.value || pending || abandonPending === task?.batchId && !!task" class="learning-error" role="alert">
         <p>{{ error || session.error.value || (pending ? '有一次输入结果尚未确认，请重试原请求。' : '放弃结果尚未确认，请先同步或重试。') }}</p>
@@ -132,7 +143,7 @@ defineExpose({ toggleWord, toggleMeaning, play, canPronounce, speaking: audio.sp
         <h1 v-if="preferences.showFollowWord" lang="en" class="learning-word">{{ displayedQuestion.word }}</h1>
         <button v-else type="button" class="daily-recall-prompt" @click="toggleWord">显示英文</button>
         <p v-if="preferences.showFollowWord && preferences.showPhonetic && displayedQuestion.phonetic" class="daily-word-phonetic follow-pronunciation" lang="en">{{ displayedQuestion.phonetic }}</p>
-        <button v-if="displayedQuestion.audioUrl" type="button" class="btn btn-secondary training-play" :disabled="!canPronounce" @click="play">播放发音</button>
+        <button v-if="displayedQuestion.audioUrl" type="button" class="btn btn-secondary training-play" aria-keyshortcuts="Alt+P" title="播放发音（Alt + P）" :disabled="!canPronounce" @click="play">播放发音 <kbd aria-hidden="true">Alt + P</kbd></button>
         <p v-if="audio.error.value" class="speech-error" role="status">{{ audio.error.value }} <button class="muted-link" :disabled="!canPronounce" @click="play">重试播放</button></p>
         <form class="daily-typing-form" @submit.prevent="submit">
           <WordMeaning v-if="preferences.showFollowChinese" :translation="displayedQuestion.translation" :translation-groups="displayedQuestion.translationGroups" layout="study" :word-key="displayedQuestion.itemId" />

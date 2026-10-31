@@ -12,6 +12,7 @@ import WordMeaning from '../../components/word/WordMeaning.vue';
 import { useAudioPlayer } from '../../composables/useAudioPlayer';
 import { usePronunciation } from '../../stores/pronunciation';
 import { ordinaryAudioUrl } from '../../api/learningMedia';
+import { wordsApi } from '../../api/words';
 import { errorMessage } from '../../api/http';
 import { useStudyPreferences } from '../../stores/studyPreferences';
 import LetterInput from '../../components/learning/LetterInput.vue';
@@ -50,7 +51,29 @@ const canPronounce = computed(() => viewActive.value && !!audioSource.value && !
 const canToggleMeaning = computed(() => !!question.value && !listeningHidden.value && !showingFeedback.value && !session.blocked.value);
 const meaningVisible = computed(() => !listeningHidden.value && preferences.showChinese && !!question.value && (question.value.mode !== 'RECOGNITION' || !!definition.value));
 const field = ref<InstanceType<typeof LetterInput>>();
+const dictationNext = ref<HTMLButtonElement>();
+const recognitionNext = ref<HTMLButtonElement>();
+const ratings = [{ result: 3 as const, label: '不认识', key: 1 }, { result: 2 as const, label: '模糊', key: 2 }, { result: 1 as const, label: '认识', key: 3 }];
+const recognitionPhonetic = ref('');
+watch(question, value => { if (value?.mode === 'RECOGNITION' && !showingFeedback.value) recognitionPhonetic.value = value.phonetic || ''; }, { flush: 'sync' });
 const incorrect = computed(() => receipt.value?.verdict === 'INCORRECT');
+const dictationFeedback = computed(() => showingFeedback.value && receipt.value?.mode === 'DICTATION' && receipt.value.input !== null);
+const recognitionFeedback = computed(() => showingFeedback.value && receipt.value?.mode === 'RECOGNITION');
+const feedbackPhonetic = ref('');
+watch([dictationFeedback, () => receipt.value?.trainingId, () => receipt.value?.wordId], async ([visible, trainingId, wordId], _old, onCleanup) => {
+  feedbackPhonetic.value = '';
+  if (!visible || !trainingId || !wordId) return;
+  let current = true;
+  onCleanup(() => { current = false; });
+  try { const word = await wordsApi.detail(wordId); if (current) feedbackPhonetic.value = word.phonetic || ''; }
+  catch { /* Pronunciation details are optional and must not block the exercise. */ }
+});
+watch([dictationFeedback, busy, viewActive, () => surface?.active.value], ([show, saving, active, surfaceActive]) => {
+  if (show && !saving && active && surfaceActive !== false) void nextTick(() => dictationNext.value?.focus({ preventScroll: true }));
+}, { flush: 'post' });
+watch([recognitionFeedback, busy, viewActive, () => surface?.active.value], ([show, saving, active, surfaceActive]) => {
+  if (show && !saving && active && surfaceActive !== false) void nextTick(() => recognitionNext.value?.focus({ preventScroll: true }));
+}, { flush: 'post' });
 const inputReady = computed(() => !!question.value && question.value.mode !== 'RECOGNITION' && !showingFeedback.value && !session.blocked.value && viewActive.value && surface?.active.value !== false);
 watch(inputReady, ready => { if (ready) field.value?.focus(); }, { flush: 'post' });
 const correction = ref(false), itemsOpen = ref(false), itemsRevision = ref(0);
@@ -94,7 +117,16 @@ watch([() => question.value?.presentationId, showingFeedback, busy, viewActive, 
   if (settings?.autoPlay && !showingFeedback.value && canPronounce.value && key !== autoAttempt) { autoAttempt = key; pronounce(); }
 }, { flush: 'sync' });
 onMounted(() => { void pronunciation.load().catch(e => { speechError.value = errorMessage(e); }); });
-useLearningKeys({ reveal, pronounce, rate: result => correction.value ? saveCorrection(result) : session.action('ANSWER', result), previous: () => {}, next,
+let spokenAnswer = '';
+watch([busy, receipt, showingFeedback, viewActive, () => surface?.active.value], () => {
+  const answer = receipt.value;
+  if (busy.value || !showingFeedback.value || answer?.action !== 'ANSWER' || !answer.wordId || !viewActive.value || surface?.active.value === false) return;
+  const key = `${task.value?.batchId}:${answer.trainingId}`;
+  if (spokenAnswer === key) return;
+  spokenAnswer = key;
+  void play(ordinaryAudioUrl(answer.wordId), { ...audioSettings.value, repeatCount: 1 });
+}, { flush: 'post' });
+useLearningKeys({ reveal, pronounce, rate: result => recognitionFeedback.value ? session.correct(result) : session.action('ANSWER', result), previous: () => {}, next,
   correct: () => { if (canCorrect.value) correction.value = true; }, cancelCorrection: () => { correction.value = false; } });
 async function saveCorrection(result: 1 | 2 | 3) { if (result === 1) return; await session.correct(result); correction.value = false; }
 watch(mode, value => {
@@ -130,7 +162,25 @@ defineExpose({ changeMode: async (value: DailyStudyMode) => { await initializing
       <p v-if="busy && pending" class="subtle-copy" role="status">正在保存…</p>
       <div v-if="!busy && (error || pending)" class="live-error learning-error" role="alert"><p>{{ error || '有一次操作尚未确认，请重试原请求。' }}</p><button v-if="pending && !expired && !historical" class="muted-link" :disabled="busy" @click="session.retry">重试原请求</button><button v-else-if="!expired" class="muted-link" :disabled="busy" @click="sync">重新同步</button><RouterLink v-if="expired" to="/today" class="muted-link">进入今日任务</RouterLink></div>
       <p v-if="extraItemId" class="subtle-copy daily-extra-note">追加训练 · 不重复计入每日目标 <button class="muted-link" :disabled="busy || !!pending" @click="session.extra()">返回当前队列</button></p>
-      <section v-if="showingFeedback && receipt" :class="['daily-training-feedback', { 'is-incorrect': incorrect }]" aria-live="polite">
+      <section v-if="dictationFeedback && receipt" :class="['daily-training-card', 'learning-card', 'daily-training-feedback', 'dictation-answer-feedback', { 'is-incorrect': incorrect }]" aria-live="polite">
+        <div class="dictation-feedback-heading">
+          <button type="button" class="btn btn-secondary training-play" aria-keyshortcuts="Alt+P" title="播放发音（Alt + P）" :disabled="!canPronounce || audioLoading" @click="pronounce">{{ audioLoading ? '音频加载中…' : speaking ? '重新播放' : '播放发音' }} <kbd aria-hidden="true">Alt + P</kbd></button>
+          <div class="dictation-feedback-answer"><h1 class="learning-word" lang="en">{{ receipt.word }}</h1><p v-if="preferences.showPhonetic" class="daily-word-phonetic dictation-feedback-phonetic" lang="en">{{ feedbackPhonetic }}</p></div>
+        </div>
+        <WordMeaning :translation="receipt.translation" :translation-groups="receipt.translationGroups" layout="study" :word-key="receipt.trainingId" />
+        <div class="dictation-submitted"><p class="letter-input-label">英文拼写</p><p :class="['dictation-submitted-word', incorrect ? 'is-incorrect' : 'is-correct']" lang="en">{{ receipt.input }}</p><p :class="['dictation-answer-verdict', incorrect ? 'is-incorrect' : 'is-correct']">{{ incorrect ? '拼写错误' : '拼写正确' }}</p></div>
+        <div class="workspace-answer-actions dictation-feedback-actions"><button ref="dictationNext" type="button" class="btn btn-primary" :disabled="session.blocked.value" @click="next">下一个 <kbd>Enter</kbd></button></div>
+      </section>
+      <section v-else-if="recognitionFeedback && receipt" class="daily-training-card learning-card daily-training-feedback recognition-feedback" aria-live="polite">
+        <h1 class="learning-word" lang="en">{{ receipt.word }}</h1>
+        <p v-if="preferences.showPhonetic && recognitionPhonetic" class="daily-word-phonetic" lang="en">{{ recognitionPhonetic }}</p>
+        <div v-if="receipt.wordId"><button type="button" class="btn btn-secondary training-play" aria-keyshortcuts="Alt+P" title="播放发音（Alt + P）" :disabled="!canPronounce || audioLoading" @click="pronounce">{{ audioLoading ? '音频加载中…' : speaking ? '重新播放' : '播放发音' }} <kbd aria-hidden="true">Alt + P</kbd></button></div>
+        <WordMeaning :translation="receipt.translation" :translation-groups="receipt.translationGroups" layout="study" :word-key="receipt.trainingId" />
+        <div class="learning-rating daily-training-rating" role="group" aria-label="本次认读选择"><button v-for="entry in ratings" :key="entry.result" type="button" :class="['rating-button', { 'is-selected': receipt.selfAssessment === entry.result }]" :aria-pressed="receipt.selfAssessment === entry.result" :disabled="!canCorrect" @click="session.correct(entry.result)">{{ entry.label }}<kbd>{{ entry.key }}</kbd></button></div>
+        <p v-if="!receipt.reviewLogId || scope === 'CONSOLIDATION'" class="subtle-copy">本次练习暂不支持修改已保存的选择。</p>
+        <button ref="recognitionNext" type="button" class="btn btn-primary" :disabled="session.blocked.value" @click="next">下一个 <kbd>Enter</kbd></button>
+      </section>
+      <section v-else-if="showingFeedback && receipt" :class="['daily-training-feedback', { 'is-incorrect': incorrect }]" aria-live="polite">
         <div v-if="incorrect" class="daily-feedback-error">
           <p class="daily-feedback-error-heading"><CircleX :size="24" aria-hidden="true" /><span>{{ feedbackLabel }}</span></p>
           <p v-if="receipt.input !== null" class="daily-submitted is-incorrect">你的输入：<del lang="en">{{ receipt.input }}</del></p>
@@ -147,12 +197,12 @@ defineExpose({ changeMode: async (value: DailyStudyMode) => { await initializing
       </section>
       <section v-else-if="question && !historical && !expired" class="daily-training-card learning-card" :data-mode="question.mode" :data-item-id="question.itemId">
         <template v-if="!['DICTATION', 'LISTEN_DICTATION'].includes(question.mode) || question.answerRevealed"><h1 class="learning-word" lang="en">{{ question.word }}</h1><p v-if="preferences.showPhonetic && question.phonetic" class="daily-word-phonetic" lang="en">{{ question.phonetic }}</p></template>
-        <button v-if="question.audioUrl || canPronounce" type="button" class="btn btn-secondary training-play" :disabled="!canPronounce || audioLoading" @click="pronounce">{{ audioLoading ? '音频加载中…' : speaking ? '重新播放' : '播放发音' }}</button>
+        <button v-if="question.audioUrl || canPronounce" type="button" class="btn btn-secondary training-play" aria-keyshortcuts="Alt+P" title="播放发音（Alt + P）" :disabled="!canPronounce || audioLoading" @click="pronounce">{{ audioLoading ? '音频加载中…' : speaking ? '重新播放' : '播放发音' }} <kbd aria-hidden="true">Alt + P</kbd></button>
         <p v-if="question.extraTraining" class="subtle-copy">追加练习 · {{ trainingStatusLabel(question) }}</p>
         <template v-if="question.mode === 'RECOGNITION'">
           <WordMeaning v-if="definition && meaningVisible" :translation="definition.translation" :translation-groups="definition.translationGroups" layout="study" :word-key="question.itemId" />
           <button v-else class="daily-recall-prompt" :disabled="session.blocked.value" @click="reveal">查看释义 <kbd>Space</kbd></button>
-          <div class="learning-rating daily-training-rating"><button v-for="entry in [{ result: 3 as const, label: '不认识', key: 1 }, { result: 2 as const, label: '模糊', key: 2 }, { result: 1 as const, label: '认识', key: 3 }]" :key="entry.result" class="rating-button" :disabled="!canRate" @click="session.action('ANSWER', entry.result)">{{ entry.label }}<kbd>{{ entry.key }}</kbd></button></div>
+          <div class="learning-rating daily-training-rating"><button v-for="entry in ratings" :key="entry.result" class="rating-button" :disabled="!canRate" @click="session.action('ANSWER', entry.result)">{{ entry.label }}<kbd>{{ entry.key }}</kbd></button></div>
         </template>
         <form v-else class="daily-typing-form" @submit.prevent="session.action('ANSWER')">
           <WordMeaning v-if="meaningVisible" :translation="question.translation" :translation-groups="question.translationGroups" layout="study" :word-key="`${question.itemId}:${question.modeVersion}`" />

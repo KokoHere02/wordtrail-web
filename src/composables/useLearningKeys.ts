@@ -12,7 +12,13 @@ export function useLearningKeys(actions: {
   onDeactivated(() => { active = false; });
   function keyboard(event: KeyboardEvent) {
     if (!active || surface && !surface.active.value) return;
-    if (event.repeat || event.isComposing || event.altKey || event.ctrlKey || event.metaKey || document.querySelector('[role="dialog"]')) return;
+    if (event.repeat || event.isComposing || document.querySelector('[role="dialog"]')) return;
+    if (event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey && event.key.toLowerCase() === 'p') {
+      event.preventDefault();
+      void actions.pronounce();
+      return;
+    }
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
     const target = event.target instanceof HTMLElement ? event.target : undefined;
     const shortcutOnLearningButton = ['ArrowLeft', 'ArrowRight', '1', '2', '3', 'r', 'R', 'Escape'].includes(event.key)
       && target?.closest('button') && target.closest('.learning-card, .learning-controls, .daily-training-feedback');

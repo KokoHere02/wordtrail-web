@@ -113,8 +113,13 @@ await check('recognition remains answerable after continuing to a fresh QUESTION
 await check('recognition correction uses the returned log ID and does not add a training event', async () => {
   const { s } = session(); await s.open(); await s.action('REVEAL'); await s.action('ANSWER', 1);
   const n = s.task.value.trainingCount; await s.correct(2);
-  assert.equal(s.receipt.value, undefined); assert.equal(s.showingFeedback.value, false); assert.equal(s.question.value.phase, 'QUESTION'); assert.equal(s.task.value.trainingCount, n);
+  assert.equal(s.receipt.value.selfAssessment, 2); assert.equal(s.showingFeedback.value, true); assert.equal(s.question.value.phase, 'QUESTION'); assert.equal(s.task.value.trainingCount, n);
   assert.equal(calls.find(c => c.url.endsWith('/correction')).body.logId, 200);
+  await s.correct(3); await s.correct(1);
+  assert.equal(s.receipt.value.selfAssessment, 1); assert.equal(s.receipt.value.reviewLogId, 200);
+  assert.deepEqual(calls.filter(c => c.url.endsWith('/correction')).map(c => c.body.result), [2, 3, 1]);
+  assert.ok(calls.filter(c => c.url.endsWith('/correction')).every(c => c.body.logId === 200));
+  assert.equal(s.task.value.trainingCount, n); s.continueTraining(); assert.equal(s.showingFeedback.value, false);
 });
 await check('recognition familiar feedback does not end reinforcement or deduplicate a reappearing item', async () => {
   const { s } = session(); await s.open(); await s.action('REVEAL'); await s.action('ANSWER', 3);

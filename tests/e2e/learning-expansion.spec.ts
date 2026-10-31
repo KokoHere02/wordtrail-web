@@ -47,7 +47,7 @@ async function setup(page: Page, autoPlay = false) {
       if (config.url === '/learning/consolidation/batches/92') return ok(progress());
       if (config.url.endsWith('/92/mode')) { mode = body.mode; version++; return ok(progress()); }
       if (config.url.endsWith('/92/next')) return ok({ itemId: 901, mode, modeVersion: version, presentationId: `current-${version}-${control.trainingWrites}`, attemptNo: control.trainingWrites + 1, phase: 'AWAITING_INPUT', answerRevealed: revealed, hintUsed: revealed, itemStatus: 'PENDING', completionReason: null, extraTraining: false, ...(revealed || mode === 'FOLLOW_TYPING' ? { wordId: 88, word: 'apple', phonetic: '/apple/', translation: '苹果' } : {}), audioUrl: `/api/learning-batches/92/training/items/901/audio?presentationId=current-${version}-${control.trainingWrites}&modeVersion=${version}&accent=UK`, pronunciation, progress: progress() });
-      if (config.url.endsWith('/901/answer')) { control.trainingWrites++; revealed = body.action === 'REVEAL'; return ok({ action: body.action, trainingId: control.trainingWrites, word: 'apple', progress: progress() }); }
+      if (config.url.endsWith('/901/answer')) { control.trainingWrites++; revealed = body.action === 'REVEAL'; return ok({ action: body.action, trainingId: control.trainingWrites, wordId: 88, word: 'apple', mode, input: body.input ?? null, verdict: 'INCORRECT', progress: progress() }); }
       if (config.url === '/learning/consolidation/issues') return ok({ page: config.params?.page || 1, size: 20, total: 1, records: [{ wordId: 88, word: 'incomprehensibilities', translation: '难以理解的事物；'.repeat(20), reason: 'SPELLING_ERROR', category: config.params?.category || 'ERROR', lastInput: 'incomprehensibility', mode: 'DICTATION', lastOccurredAt: '2026-10-27T12:00:00', occurrenceCount: 3 }] });
       if (config.url === '/learning/consolidation/summary') return ok(['SPELLING_ERROR', 'ANSWER_REVEALED', 'UNRECOGNIZED', 'ATTEMPT_LIMIT'].map(reason => ({ reason, category: 'ERROR', wordCount: reason === 'SPELLING_ERROR' ? 1 : 0 })));
       if (config.url === '/learning/consolidation/batches') return ok({ page: 1, size: 10, total: 1, records: [progress()] });
@@ -63,6 +63,26 @@ test('late settings restore does not cancel the current automatic audio playback
   await expect.poll(() => page.evaluate(() => Reflect.get(window, '__expansion').ended)).toBe(2);
   const audio = await page.evaluate(() => Reflect.get(window, '__expansion'));
   expect(audio.requests).toHaveLength(1); expect(audio.plays).toEqual([.75, .75]); expect(audio.trainingWrites).toBe(0);
+});
+test('Alt+P plays audio while typing without changing the answer', async ({ page }) => {
+  await setup(page);
+  const input = page.locator('#daily-training-input');
+  await input.fill('ap');
+  await input.press('Alt+p');
+  await expect.poll(() => page.evaluate(() => Reflect.get(window, '__expansion').requests.length)).toBe(1);
+  await expect(input).toHaveValue('ap');
+  await expect.poll(() => page.evaluate(() => Reflect.get(window, '__expansion').ended)).toBe(2);
+});
+test('submitting dictation reads the answered word once', async ({ page }) => {
+  await setup(page);
+  await page.locator('#daily-training-input').fill('aple');
+  await page.locator('#daily-training-input').press('Enter');
+  await expect(page.locator('.daily-training-feedback')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => Reflect.get(window, '__expansion').ended)).toBe(1);
+  const audio = await page.evaluate(() => Reflect.get(window, '__expansion'));
+  expect(audio.requests).toHaveLength(1);
+  expect(audio.requests[0].url).toContain('/words/88/audio');
+  expect(audio.plays).toEqual([.75]);
 });
 test('real browser audio applies UK/rate/repeats, stops on mode switch and downloads authenticated ZIP', async ({ page }) => {
   await setup(page);

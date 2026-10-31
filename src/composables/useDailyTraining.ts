@@ -40,7 +40,7 @@ export function useDailyTraining(userId: number, scope: TrainingScope = 'DAILY')
   const canRate = computed(() => !blocked.value && !showingFeedback.value && question.value?.mode === 'RECOGNITION');
   const canCorrect = computed(() => !practice && !blocked.value && showingFeedback.value && receipt.value?.mode === 'RECOGNITION' &&
     task.value?.studyMode === 'RECOGNITION' && receipt.value.progress.modeVersion === task.value.modeVersion &&
-    receipt.value.action === 'ANSWER' && !!receipt.value.reviewLogId && receipt.value.selfAssessment === 1);
+    receipt.value.action === 'ANSWER' && !!receipt.value.reviewLogId);
   function persist(value?: Pending) {
     const id = value?.batchId ?? pending.value?.batchId;
     // Persist before dispatch: an unknown response must survive refresh with the exact body.
@@ -225,9 +225,13 @@ export function useDailyTraining(userId: number, scope: TrainingScope = 'DAILY')
         const corrected = await dailyApi.correct(value.batchId, value.itemId, value.body);
         if (!alive || token !== generation) return;
         update(requireTrainingTask(corrected.progress)); persist();
-        // A correction may reopen a DONE item. Show the freshly fetched phase/status instead of the old receipt.
-        receipt.value = undefined; showingFeedback.value = false;
-        notice.value = '更正已保存，不增加训练次数。';
+        // Keep the original answer/log so further corrections still refer to the same answer.
+        if (receipt.value?.itemId === value.itemId && showingFeedback.value) {
+          receipt.value = { ...receipt.value, selfAssessment: corrected.result, progress: task.value! };
+        } else {
+          receipt.value = undefined; showingFeedback.value = false;
+          notice.value = '更正已保存，不增加训练次数。';
+        }
       }
       question.value = undefined;
       try { await fetchQuestion(token); } catch (e) { await handle(e, token); }
@@ -258,7 +262,7 @@ export function useDailyTraining(userId: number, scope: TrainingScope = 'DAILY')
     finally { if (alive && token === generation) busy.value = false; }
   }
   function correct(result: Result) {
-    if (!canCorrect.value || !receipt.value?.reviewLogId) return;
+    if (!canCorrect.value || !receipt.value?.reviewLogId || result === receipt.value.selfAssessment) return;
     return perform({ result, logId: receipt.value.reviewLogId, requestId: crypto.randomUUID() }, 'correction', receipt.value.itemId);
   }
   function continueTraining() {
