@@ -12,6 +12,14 @@
 .book-editor .live-actions { margin-top: var(--s3); }
 .dialog-panel:has(.dictionary-collector) { width: min(100%, var(--practice-width)); }
 .dictionary-collector { display: flex; flex-direction: column; gap: var(--s4); }
+.random-words-trigger { display: inline-flex; align-items: center; gap: var(--s1); }
+.random-words-dialog { width: min(100%, 680px); }
+.random-words { display: flex; flex-direction: column; gap: var(--s3); }
+.random-words-controls { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); }
+.random-words-controls input { width: 5.5rem; padding: var(--s2); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); }
+.random-words-list { max-height: min(45vh, 360px); overflow-y: auto; border-top: 1px solid var(--line); }
+.random-word { display: grid; grid-template-columns: auto minmax(6rem, 1fr) minmax(0, 2fr); align-items: start; gap: var(--s3); padding: var(--s3) 0; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+@media (max-width: 540px) { .random-word { grid-template-columns: auto minmax(0, 1fr); } .random-word .word-meaning { grid-column: 2; } }
 .dictionary-search { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); }
 .dictionary-search .library-search { flex: 1; min-width: 0; }
 .dictionary-word { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; align-items: center; gap: var(--s4); padding: var(--s3) 0; border-bottom: 1px solid var(--line); }

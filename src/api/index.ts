@@ -32,4 +32,6 @@ export const api = {
   removeBookWords: (id: number, wordIds: number[]) => request<BookWordsChange>('DELETE', `/word-books/${id}/words`, { wordIds }),
   words: (id: number, query: PageQuery & { learningStatus: LearningStatus }) =>
     request<Page<BookWord>>("GET", `/word-books/${id}/words`, undefined, query),
+  randomBookWords: (id: number, count: number) =>
+    request<BookWord[]>('GET', `/word-books/${id}/words/random`, undefined, { count }),
 };

@@ -71,6 +71,18 @@ export function mockBooks(account: string, url: string, method: string, body: Re
     const results = dictionary.filter(word => matchType === 'EXACT' ? word.word === keyword : word.word.startsWith(keyword)).sort((a, b) => a.word < b.word ? -1 : a.word > b.word ? 1 : a.id - b.id);
     return respond(paginate(results.map(({ id, word, phonetic, translation, translationGroups }) => ({ id, word, phonetic, translation, translationGroups, inBook: ids ? ids.has(id) : null }))));
   }
+  const randomMatch = url.match(/^\/word-books\/(\d+)\/words\/random$/);
+  if (randomMatch && method === 'get') {
+    const id = Number(randomMatch[1]); lookup(id);
+    const count = Number(query.get('count') || 100);
+    if (!Number.isInteger(count) || count < 1 || count > 100) fail(400, 'INVALID_PARAMETER', '数量须为 1～100');
+    const words = catalog(id).filter(word => !mockLearned(account, word.id));
+    for (let i = words.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [words[i], words[j]] = [words[j]!, words[i]!];
+    }
+    return { data: words.slice(0, count), status: 200 };
+  }
   const match = url.match(/^\/word-books\/(\d+)(?:\/words(?:\/(\d+))?)?$/);
   if (!match) fail(404, 'NOT_FOUND', '演示接口不存在');
   const id = Number(match[1]);

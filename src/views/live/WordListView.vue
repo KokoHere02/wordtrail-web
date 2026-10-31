@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import { ArrowLeft, ArrowRight, Plus, Download, Upload } from 'lucide-vue-next';
+import { ArrowLeft, ArrowRight, Plus, Download, Upload, Shuffle } from 'lucide-vue-next';
 import { useBookContents } from '../../composables/useBookContents';
 import { useBookExport } from '../../composables/useBookExport';
 import type { BookWordsChange, BookWord, LearningStatus } from '../../types/api';
@@ -17,6 +17,7 @@ import SearchField from '../../components/ui/SearchField.vue';
 import StatePanel from '../../components/ui/StatePanel.vue';
 import WordHistoryDialog from '../../components/learning/WordHistoryDialog.vue';
 import WordMeaning from '../../components/word/WordMeaning.vue';
+import RandomBookWordsDialog from '../../components/word/RandomBookWordsDialog.vue';
 const id = Number(useRoute().params.bookId);
 const contents = useBookContents(id);
 const { book, bookLoading, bookError, data, loading, error, selection, keyword, filter, page, size, busy, available, editable, saveError, notice, pageIds, pageSelected } = contents;
@@ -26,6 +27,7 @@ const historyOpen = ref(false);
 const editorOpen = ref(false);
 const collectorOpen = ref(false);
 const importOpen = ref(false);
+const randomOpen = ref(false);
 const canTransfer = computed(() => editable.value && book.value?.bookType === 'PERSONAL');
 const { exporting, exportError, exportNotice, exportCsv } = useBookExport(id, () => { void contents.loadBook(); });
 const removeOpen = ref(false);
@@ -38,6 +40,10 @@ async function imported(result: BookWordsChange, skipped: number, duplicates: nu
   await contents.reload();
 }
 async function remove() { if (await contents.remove()) removeOpen.value = false; }
+function useRandomSelection(ids: number[]) {
+  selection.clear(); selection.togglePage(ids, true);
+  notice.value = `已随机选择 ${ids.length} 词，确认后可加入学习计划。`;
+}
 onMounted(contents.reload);
 </script>
 <template>
@@ -51,7 +57,7 @@ onMounted(contents.reload);
         <div class="category-tabs" role="group" aria-label="单词学习状态"><button v-for="entry in filters" :key="entry.value" :class="{ active: filter === entry.value }" :aria-pressed="filter === entry.value" :disabled="busy" @click="filter = entry.value">{{ entry.label }}</button></div>
         <form class="library-search" role="search" @submit.prevent="contents.search"><SearchField v-model="keyword" label="搜索单词" placeholder="寻找一个单词" :disabled="busy" :maxlength="255" /><button class="violet-link" type="submit" :disabled="busy">搜索</button></form>
       </div>
-      <div class="wordlist-selection"><label><input type="checkbox" :checked="pageSelected" :indeterminate="!pageSelected && pageIds.some(wordId => selection.selected.value.has(wordId))" :disabled="loading || busy || !available || !pageIds.length" @change="selection.togglePage(pageIds, !pageSelected)" />选择当前页</label><span class="selected-count">已选 {{ selection.count.value }} 词</span><button class="muted-link" :disabled="busy || !selection.count.value" @click="selection.clear">清空选择</button><button v-if="editable" class="muted-link" :disabled="busy || loading || !selection.count.value || selection.count.value > 100" @click="saveError = ''; removeOpen = true">移出所选</button></div>
+      <div class="wordlist-selection"><label><input type="checkbox" :checked="pageSelected" :indeterminate="!pageSelected && pageIds.some(wordId => selection.selected.value.has(wordId))" :disabled="loading || busy || !available || !pageIds.length" @change="selection.togglePage(pageIds, !pageSelected)" />选择当前页</label><span class="selected-count">已选 {{ selection.count.value }} 词</span><button class="muted-link" :disabled="busy || !selection.count.value" @click="selection.clear">清空选择</button><button class="muted-link random-words-trigger" :disabled="busy || loading || !available || !book?.wordCount" @click="randomOpen = true"><Shuffle :size="16" />随机选词</button><button v-if="editable" class="muted-link" :disabled="busy || loading || !selection.count.value || selection.count.value > 100" @click="saveError = ''; removeOpen = true">移出所选</button></div>
       <StatePanel :loading="loading" :error="error" :empty="!!data && !data.records.length" :message="book?.editable && book.wordCount === 0 ? '词本还是空的，可搜索收词或批量导入。' : '没有找到符合条件的单词。'" @retry="contents.refresh" />
       <template v-if="!loading && !error"><div v-for="word in data?.records" :key="word.id" class="preview-word-row"><label><input type="checkbox" :checked="selection.selected.value.has(word.id)" :disabled="busy || !available" :aria-label="`选择 ${word.word}`" @change="selection.toggle(word.id, !selection.selected.value.has(word.id))" /><span><RouterLink :to="`/words/${word.id}`"><strong lang="en">{{ word.word }}</strong></RouterLink><small>{{ word.phonetic }}</small></span></label><WordMeaning class="word-translation" :translation="word.translation" :translation-groups="word.translationGroups" /><span :class="['word-selected-state', { added: word.learned }]">{{ word.learned ? '已开始' : '未学' }}<button class="muted-link" @click="historyWord = word; historyOpen = true">学习历史</button></span></div></template>
       <AppPagination v-if="data" :page="page" :size="size" :total="data.total" :disabled="loading || busy" @change="page = $event" />
@@ -61,6 +67,7 @@ onMounted(contents.reload);
     <BookEditorDialog v-if="book" v-model="editorOpen" :book="book" @saved="contents.loadBook" @unavailable="contents.loadBook" />
     <DictionaryCollector v-if="collectorOpen && book" v-model="collectorOpen" :book-id="id" @changed="collected" @unavailable="contents.loadBook" />
     <BookImportDialog v-if="importOpen && book" v-model="importOpen" :book-id="id" @imported="imported" @unavailable="contents.loadBook" />
+    <RandomBookWordsDialog v-model="randomOpen" :book-id="id" :previous-count="selection.count.value" @selected="useRandomSelection" />
     <AppDialog :model-value="removeOpen" title="移出词本？" :description="`移出所选 ${selection.count.value} 词，学习计划与历史保留。`" @update:model-value="value => { if (!busy) removeOpen = value; }"><p v-if="saveError" class="inline-error" role="alert">{{ saveError }}</p><div class="live-actions"><AppButton :busy="busy" :disabled="!editable" @click="remove">确认移出词本</AppButton><AppButton variant="secondary" :disabled="busy" @click="removeOpen = false">取消</AppButton></div></AppDialog>
     <WordHistoryDialog v-model="historyOpen" :word-id="historyWord?.id ?? null" :word="historyWord?.word || ''" />
   </div>
