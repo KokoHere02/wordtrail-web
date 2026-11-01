@@ -1,4 +1,4 @@
 <script setup lang="ts">
-import StatisticsOverview from '../../components/learning/StatisticsOverview.vue';
+import SentencePracticeStatistics from '../../components/learning/SentencePracticeStatistics.vue';
 </script>
-<template><StatisticsOverview kind="sentence" /></template>
+<template><SentencePracticeStatistics /></template>

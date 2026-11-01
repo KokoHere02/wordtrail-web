@@ -1,7 +1,7 @@
 import type { Status } from './api';
 
 export type LearningRecordType = 'DAILY' | 'DICTATION' | 'SENTENCE';
-export type LearningRecordFilter = 'ALL' | LearningRecordType;
+export type LearningRecordFilter = 'ALL' | 'WORD' | LearningRecordType;
 export type LearningRecordStatus = Status | 'INCOMPLETE';
 export interface LearningRecord {
   type: LearningRecordType; businessId: number; recordDate: string; createdAt: string;

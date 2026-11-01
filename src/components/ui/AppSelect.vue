@@ -4,7 +4,7 @@ import { Check, ChevronDown } from 'lucide-vue-next';
 
 const props = defineProps<{
   modelValue: T; options: { value: T; label: string }[]; label: string;
-  disabled?: boolean; hideLabel?: boolean;
+  disabled?: boolean; hideLabel?: boolean; animated?: boolean;
 }>();
 const emit = defineEmits<{ 'update:modelValue': [value: T] }>();
 const id = useId(), root = ref<HTMLElement>(), trigger = ref<HTMLButtonElement>();
@@ -54,8 +54,10 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outside));
     <button :id="id" ref="trigger" type="button" class="app-select-trigger" role="combobox" aria-haspopup="listbox" :aria-labelledby="`${id}-label ${id}-value`" :aria-expanded="open" :aria-controls="open ? `${id}-options` : undefined" :aria-activedescendant="open && options.length ? `${id}-option-${active}` : undefined" :disabled="disabled" @click="open ? open = false : show()" @keydown="keyboard">
       <span :id="`${id}-value`">{{ current }}</span><ChevronDown :size="16" aria-hidden="true" />
     </button>
-    <ul v-if="open" :id="`${id}-options`" role="listbox" :aria-labelledby="`${id}-label`" class="app-select-options">
-      <li v-for="(option, index) in options" :id="`${id}-option-${index}`" :key="option.value ?? ''" role="option" :aria-selected="modelValue === option.value" :data-active="index === active" @pointermove="active = index" @pointerdown.prevent @click="choose(index)"><span>{{ option.label }}</span><Check v-if="modelValue === option.value" :size="16" aria-hidden="true" /></li>
-    </ul>
+    <Transition name="app-select-pop" :css="animated">
+      <ul v-if="open" :id="`${id}-options`" role="listbox" :aria-labelledby="`${id}-label`" class="app-select-options">
+        <li v-for="(option, index) in options" :id="`${id}-option-${index}`" :key="option.value ?? ''" role="option" :aria-selected="modelValue === option.value" :data-active="index === active" @pointermove="active = index" @pointerdown.prevent @click="choose(index)"><span>{{ option.label }}</span><Check v-if="modelValue === option.value" :size="16" aria-hidden="true" /></li>
+      </ul>
+    </Transition>
   </div>
 </template>

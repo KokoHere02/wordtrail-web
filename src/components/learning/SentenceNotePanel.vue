@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue';
+import { computed, onMounted, watch } from 'vue';
 import { useSentenceNote } from '../../composables/useSentenceNote';
 import { sentenceErrorTags, type SentenceNote } from '../../types/sentenceLinks';
 import AppSelect from '../ui/AppSelect.vue';
 const props = defineProps<{ sentenceId: number; personalNote?: SentenceNote; attemptId?: number | null }>();
 const emit = defineEmits<{ saved: [value: SentenceNote] }>();
 const { note, form, editing, loading, loaded, needsReview, error, notice, draft, busy, locked, reload, edit, save } = useSentenceNote(props.sentenceId, props.personalNote, value => emit('saved', value));
+onMounted(() => { if (!props.personalNote) void reload(); });
 watch(() => props.personalNote, value => { if (!editing.value && !busy.value) note.value = value; });
 const attempts = computed(() => [...new Set([note.value?.attemptId, props.attemptId].filter((value): value is number => typeof value === 'number'))]);
 const attemptOptions = computed<{ value: number | null; label: string }[]>(() => [{ value: null, label: '不关联作答' }, ...attempts.value.map(id => ({ value: id, label: `${id === props.attemptId ? '当前作答' : '原关联作答'} #${id}` }))]);

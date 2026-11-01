@@ -42,10 +42,10 @@ function confirmedMode(value: DailyStudyMode) {
 }
 function routeState() {
   if (!auth.user || !route.meta.workspace) return;
-  const id = Number(route.params.batchId), sentenceId = Number(route.params.sessionId);
+  const id = Number(route.params.batchId);
   if (route.path.startsWith('/dictation')) { workspace.lane = 'independent'; workspace.mode = 'dictation'; if (id > 0) { workspace.dictationId = id; states.independent!.settings = false; } else states.independent!.settings = true; }
   else if (route.query.mode === 'follow') { workspace.lane = 'follow'; workspace.mode = 'spelling'; lastWordMode.value = 'spelling'; const followId = Number(route.query.followBatchId); workspace.followId = Number.isSafeInteger(followId) && followId > 0 ? followId : undefined; }
-  else if (sentenceId > 0 || route.query.mode === 'sentences') { workspace.lane = 'sentences'; workspace.mode = 'sentences'; if (sentenceId > 0) workspace.sentenceId = sentenceId; }
+  else if (route.query.mode === 'sentences') { workspace.lane = 'sentences'; workspace.mode = 'sentences'; }
   else {
     workspace.lane = 'daily'; workspace.mode = lastDailyMode; lastWordMode.value = lastDailyMode;
     workspace.dailyId = id > 0 ? id : undefined;
@@ -57,7 +57,7 @@ async function select(mode: StudyMode) {
   if (workspace.lane === 'daily' && dailyBlocked.value) return;
   if (mode === 'spelling') { await router.push({ path: '/learn', query: { mode: 'follow', ...(workspace.followId ? { followBatchId: String(workspace.followId) } : {}) } }); return; }
   if (mode === 'sentences') {
-    await router.push(workspace.sentenceId ? `/sentences/sessions/${workspace.sentenceId}` : '/learn?mode=sentences');
+    await router.push('/learn?mode=sentences');
     workspace.lane = 'sentences'; workspace.mode = mode; visited.add('sentences'); return;
   }
   if (workspace.lane !== 'daily') {
@@ -99,7 +99,7 @@ function selectTab(id: 'words' | 'sentences') {
           <button v-if="followView?.task?.status === 'IN_PROGRESS'" class="muted-link" @click="wordToolbar?.closeSettings(); followView?.requestAbandon()">放弃本轮</button>
         </div></template>
       </WordPracticeToolbar>
-      <button v-else class="workspace-settings" :aria-expanded="current.settings" @click="current.settings = !current.settings"><Settings2 :size="19" />练习设置</button>
+      <button v-else-if="workspace.lane !== 'sentences'" class="workspace-settings" :aria-expanded="current.settings" @click="current.settings = !current.settings"><Settings2 :size="19" />练习设置</button>
     </div>
     <div v-if="workspace.lane !== 'independent' || (workspace.dictationId && !current.settings)" class="workspace-meta" :class="{ 'is-follow-meta': following }"><div v-if="!following" class="workspace-source"><small>SOURCE</small><span>{{ current.source }}</span></div><div class="workspace-progress"><small>PROGRESS</small><div><span>{{ current.completed }} / {{ current.total || '—' }} {{ current.noun }} · 剩余 {{ current.remaining }} {{ current.noun }}</span><div class="workspace-progress-track" role="progressbar" aria-label="当前任务完成进度" :aria-valuenow="current.completed" :aria-valuemax="current.total || 1"><span :style="{ width: `${current.total ? Math.min(100, current.completed / current.total * 100) : 0}%` }" /></div></div></div></div>
     <section id="mode-panel-words" v-show="activeTab === 'words' && workspace.lane !== 'independent'" role="tabpanel" tabindex="-1" aria-labelledby="mode-tab-words" class="workspace-panel">

@@ -12,6 +12,4 @@ export interface SentenceNote {
 export type SentenceNoteWrite = Pick<SentenceNote, 'content' | 'errorTags' | 'attemptId' | 'version'>;
 export interface SentenceNoteRow { sentenceId: number; englishText: string; available: boolean; note: SentenceNote }
 export interface SentenceNotesQuery { page: number; size: number; errorTag?: SentenceErrorTag; wordId?: number; difficulty?: SentenceDifficulty }
-export interface WordSentenceCount { wordId: number; sentenceCount: number }
-export interface WordSentencePractice { wordIds: number[]; count?: number; difficulty?: SentenceDifficulty }
 export interface SentenceCollection { bookId: number; wordId: number; collection: BookWordsChange; plan: JoinPlanResult | null }
