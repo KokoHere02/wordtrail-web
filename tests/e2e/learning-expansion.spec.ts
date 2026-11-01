@@ -22,7 +22,7 @@ async function setup(page: Page, autoPlay = false) {
       return audio;
     } as typeof Audio;
     const createUrl = URL.createObjectURL.bind(URL), revokeUrl = URL.revokeObjectURL.bind(URL);
-    URL.createObjectURL = blob => { control.created++; return createUrl(blob); };
+    URL.createObjectURL = blob => { control.created++; Reflect.set(window, '__lastAudioBlob', blob); return createUrl(blob); };
     URL.revokeObjectURL = url => { control.revoked++; revokeUrl(url); };
     let mode = 'LISTEN_DICTATION', version = 1, revealed = false;
     let pronunciation = { autoPlay, accent: 'UK', playbackRate: .75, repeatCount: 2 };
@@ -72,6 +72,14 @@ test('Alt+P plays audio while typing without changing the answer', async ({ page
   await expect.poll(() => page.evaluate(() => Reflect.get(window, '__expansion').requests.length)).toBe(1);
   await expect(input).toHaveValue('ap');
   await expect.poll(() => page.evaluate(() => Reflect.get(window, '__expansion').ended)).toBe(2);
+  const lead = await page.evaluate(async () => {
+    const blob = Reflect.get(window, '__lastAudioBlob') as Blob;
+    const context = new OfflineAudioContext(1, 1, 44100);
+    const audio = await context.decodeAudioData(await blob.arrayBuffer());
+    const channel = audio.getChannelData(0);
+    return { duration: audio.duration, early: Math.max(...channel.slice(0, 1000).map(Math.abs)), later: Math.max(...channel.slice(11000, 15000).map(Math.abs)) };
+  });
+  expect(lead.duration).toBeGreaterThan(.6); expect(lead.early).toBe(0); expect(lead.later).toBeGreaterThan(0);
 });
 test('submitting dictation reads the answered word once', async ({ page }) => {
   await setup(page);

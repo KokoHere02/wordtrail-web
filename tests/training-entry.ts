@@ -8,6 +8,7 @@ export { request } from '../src/api/http';
 export { consolidationApi } from '../src/api/consolidation';
 export { audioPath, audioBlob, exportLearningData } from '../src/api/learningMedia';
 export { useAudioPlayer } from '../src/composables/useAudioPlayer';
+export { preparePronunciation } from '../src/composables/preparePronunciation';
 export { usePronunciation } from '../src/stores/pronunciation';
 
 export { followTypingApi } from '../src/api/followTyping';

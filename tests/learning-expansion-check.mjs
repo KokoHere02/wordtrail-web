@@ -8,7 +8,7 @@ const storage = new Map();
 globalThis.sessionStorage = { getItem: k => storage.get(k) ?? null, setItem: (k, v) => storage.set(k, v), removeItem: k => storage.delete(k) };
 globalThis.window = { location: { origin: 'http://localhost:5173' } };
 await build({ configFile: false, mode: 'api', logLevel: 'error', build: { ssr: 'tests/training-entry.ts', target: 'es2022', outDir: '.qa-expansion-dist', emptyOutDir: true } });
-const { http, ApiError, tokens, consolidationApi: api, dailyApi, useDailyTraining, useAudioPlayer, usePronunciation, audioPath, exportLearningData } = await import('../.qa-expansion-dist/training-entry.js');
+const { http, ApiError, tokens, consolidationApi: api, dailyApi, useDailyTraining, useAudioPlayer, preparePronunciation, usePronunciation, audioPath, exportLearningData } = await import('../.qa-expansion-dist/training-entry.js');
 tokens.set({ accessToken: 'fixture-bearer', refreshToken: 'fixture-refresh', user: { id: 7 } });
 const clone = value => JSON.parse(JSON.stringify(value));
 const pronunciation = { autoPlay: false, accent: 'UK', playbackRate: .75, repeatCount: 2 };
@@ -111,8 +111,9 @@ await check('a delayed settings GET cannot overwrite a newer saved pronunciation
   await store.save(newer); release(); await reading; assert.deepEqual(store.value, newer); heldSettings = undefined;
 });
 const audios = [], revoked = [], objectUrls = [];
-globalThis.Audio = class {
-  constructor(src) { this.src = src; this.plays = 0; this.currentTime = 0; audios.push(this); }
+let nextReadyState = 4;
+globalThis.Audio = class extends EventTarget {
+  constructor(src) { super(); this.src = src; this.plays = 0; this.currentTime = 0; this.readyState = nextReadyState; audios.push(this); }
   async play() { this.plays++; if (this.reject) throw new Error('autoplay'); }
   pause() { this.paused = true; }
   removeAttribute() { this.src = ''; }
@@ -121,11 +122,58 @@ globalThis.Audio = class {
 URL.createObjectURL = () => { const url = `blob:fixture-${objectUrls.length}`; objectUrls.push(url); return url; };
 URL.revokeObjectURL = value => revoked.push(value);
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
-await check('audio is Bearer Blob only, applies accent/rate and sequential repeats then releases URL', async () => {
+await check('pronunciation has a 300ms silent lead-in at the selected playback rate', async () => {
+  const original = globalThis.OfflineAudioContext;
+  globalThis.OfflineAudioContext = class {
+    async decodeAudioData() { return { numberOfChannels: 2, sampleRate: 1000, duration: .002, length: 2, getChannelData: channel => channel ? new Float32Array([-.5, .25]) : new Float32Array([.5, -.25]) }; }
+  };
+  try {
+    const output = await preparePronunciation(new Blob(['fixture']), 1.5);
+    const view = new DataView(await output.arrayBuffer()), lead = 450;
+    assert.equal(output.type, 'audio/wav'); assert.equal(view.getUint16(22, true), 2);
+    assert.equal(view.getInt16(44 + (lead - 1) * 4, true), 0);
+    assert.equal(view.getInt16(44 + lead * 4, true), 16383);
+    assert.equal(view.getInt16(44 + lead * 4 + 2, true), -16384);
+    assert.equal(view.getInt16(44 + (lead + 1) * 4, true), -8192);
+  } finally {
+    if (original === undefined) delete globalThis.OfflineAudioContext; else globalThis.OfflineAudioContext = original;
+  }
+});
+await check('first playback waits for decoding and a stopped load never starts', async () => {
   const scope = effectScope(), player = scope.run(() => useAudioPlayer());
+  nextReadyState = 0;
+  const first = player.play(prompt().audioUrl, pronunciation); await tick();
+  const audio = audios.at(-1); assert.equal(player.loading.value, true); assert.equal(audio.plays, 0);
+  audio.readyState = 4; audio.dispatchEvent(new Event('canplaythrough')); await first;
+  assert.equal(audio.plays, 1); assert.equal(player.loading.value, false);
+  const second = player.play(prompt().audioUrl, pronunciation); await tick();
+  const stopped = audios.at(-1); assert.equal(stopped.plays, 0); player.stop(); await second;
+  stopped.readyState = 4; stopped.dispatchEvent(new Event('canplaythrough')); assert.equal(stopped.plays, 0);
+  nextReadyState = 4; scope.stop();
+});
+await check('stopping during pronunciation decoding does not play the previous word', async () => {
+  let release;
+  const original = globalThis.OfflineAudioContext;
+  globalThis.OfflineAudioContext = class {
+    decodeAudioData() { return new Promise(resolve => { release = resolve; }); }
+  };
+  const scope = effectScope(), player = scope.run(() => useAudioPlayer()), before = audios.length;
+  try {
+    const pending = player.play(prompt().audioUrl, pronunciation);
+    while (!release) await tick();
+    player.stop();
+    release({ numberOfChannels: 1, sampleRate: 1000, duration: .001, length: 1, getChannelData: () => new Float32Array([.5]) });
+    await pending; assert.equal(audios.length, before); assert.equal(player.loading.value, false);
+  } finally {
+    scope.stop();
+    if (original === undefined) delete globalThis.OfflineAudioContext; else globalThis.OfflineAudioContext = original;
+  }
+});
+await check('audio is Bearer Blob only, applies accent/rate and sequential repeats then releases URL', async () => {
+  const scope = effectScope(), player = scope.run(() => useAudioPlayer()), revokedBefore = revoked.length;
   await player.play(prompt().audioUrl, pronunciation); const audio = audios.at(-1);
   assert.equal(audio.playbackRate, .75); assert.equal(audio.plays, 1); assert.match(audio.src, /^blob:/);
-  audio.onended(); await tick(); assert.equal(audio.plays, 2); audio.onended(); assert.equal(player.speaking.value, false); assert.equal(revoked.length, 1);
+  audio.onended(); await tick(); assert.equal(audio.plays, 2); audio.onended(); assert.equal(player.speaking.value, false); assert.equal(revoked.length, revokedBefore + 1);
   assert.match(calls.at(-1).url, /accent=UK/); assert.equal(calls.at(-1).auth, 'Bearer fixture-bearer'); scope.stop();
 });
 await check('stopping during Blob load prevents stale playback and revoke occurs on scope disposal', async () => {

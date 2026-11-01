@@ -89,7 +89,7 @@ exampleApp.unmount();
 const audioFixture = http.defaults.adapter, players = [];
 let settingsReady = false;
 globalThis.Audio = class {
-  constructor(src) { this.src = src; this.playbackRate = 1; this.currentTime = 0; players.push(this); }
+  constructor(src) { this.src = src; this.playbackRate = 1; this.currentTime = 0; this.readyState = 4; players.push(this); }
   play() { return Promise.resolve(); }
   pause() {} removeAttribute() {} load() {}
 };

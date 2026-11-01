@@ -399,7 +399,7 @@ for (const width of [1440, 390, 320]) for (const theme of ['dark', 'light']) {
       const audioCalls: { src: string; rate: number }[] = [], audioRequests: string[] = [];
       Reflect.set(window, '__studyAudio', audioCalls); Reflect.set(window, '__studyAudioRequests', audioRequests);
       Object.defineProperty(window, 'Audio', { configurable: true, value: class {
-        src: string; playbackRate = 1; currentTime = 0; onended = null; onerror = null;
+        src: string; playbackRate = 1; currentTime = 0; readyState = 4; onended = null; onerror = null;
         constructor(src: string) { this.src = src; }
         play() { audioCalls.push({ src: this.src, rate: this.playbackRate }); return Promise.resolve(); }
         pause() {} removeAttribute() {} load() {}
