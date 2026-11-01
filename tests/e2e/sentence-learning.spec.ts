@@ -24,6 +24,13 @@ test('sentence list, skip, repeat and history', async ({page}, testInfo) => {
       return fallback(config);
     }; await router.push('/sentences');
   });
+  await page.evaluate(async () => {
+    Object.defineProperty(crypto, 'randomUUID', { value: undefined, configurable: true });
+    const {router}=await import(/* @vite-ignore */ '/src/router/index.ts');
+    await router.push('/learn?mode=sentences');
+  });
+  await expect(page.getByRole('heading', { name: '学习列表暂时没有句子' })).toBeVisible();
+  await page.getByRole('link', { name: '去句子库选句' }).click();
   await expect(page.getByText('Example sentence 1.')).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('desktop.png') });
   await page.getByRole('button', { name: '切换浅色主题' }).click();

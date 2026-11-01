@@ -3,6 +3,7 @@ import { computed, nextTick, onActivated, onDeactivated, onScopeDispose, ref, wa
 import { ArrowRight, BookOpen, RotateCcw } from 'lucide-vue-next';
 import { request, errorMessage } from '../../../api/http';
 import { useStudySurface } from '../../../composables/useStudySurface';
+import { createRequestId } from '../../../utils/requestId';
 
 type Sentence = { id: number; englishText: string; available: boolean };
 type Feedback = { referenceTranslation: string; explanation: string | null };
@@ -33,7 +34,7 @@ async function load() {
       offset += page.length;
     } while (page.length === 100);
     queue.value = list; index.value = 0; skipped.value = 0; answer.value = ''; feedback.value = null;
-    requestId.value = crypto.randomUUID(); loaded.value = true; needsRefresh.value = false;
+    requestId.value = list.length ? createRequestId() : ''; loaded.value = true; needsRefresh.value = false;
   } catch (value) {
     if (mounted) error.value = errorMessage(value);
   } finally {
@@ -54,7 +55,7 @@ function handleAnswerShortcut(event: KeyboardEvent) {
 function next(wasSkipped = false) {
   if (submitting.value || !current.value) return;
   if (wasSkipped) skipped.value++;
-  index.value++; answer.value = ''; feedback.value = null; error.value = ''; requestId.value = crypto.randomUUID();
+  index.value++; answer.value = ''; feedback.value = null; error.value = ''; requestId.value = current.value ? createRequestId() : '';
   void nextTick(() => { if (mounted && surface?.active.value !== false) answerInput.value?.focus(); });
 }
 async function submit() {
