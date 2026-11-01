@@ -34,3 +34,17 @@ onMounted(refresh);
     <template v-if="summary.data.value && !summary.loading.value && !summary.error.value"><template v-if="summary.data.value.singleAttempt === false || summary.data.value.status === 'COMPLETED'"><DictationStats :task="summary.data.value" /><p v-if="summary.data.value.singleAttempt === false" class="subtle-copy">旧版练习仅供回顾，不计算测验正确率。</p><div class="live-actions dictation-result-actions"><RouterLink to="/dictation/mistakes" class="btn btn-primary">错词另开测验</RouterLink><RouterLink to="/dictation" class="btn btn-secondary">新建测验</RouterLink></div><h2>本轮单词</h2><StatePanel :loading="words.loading.value" :error="words.error.value" :empty="words.data.value?.total === 0" message="本轮暂无可回顾的单词。" @retry="loadWords" /><DictationWordRows v-if="words.data.value && !words.loading.value && !words.error.value" :records="words.data.value.records" /><AppPagination v-if="words.data.value" :page="page" :size="size" :total="words.data.value.total" :disabled="words.loading.value" @change="changePage" /></template><div v-else class="library-empty"><h2>{{ summary.data.value.status === 'ABANDONED' ? '本轮已放弃' : '本轮尚未结束' }}</h2><RouterLink v-if="summary.data.value.singleAttempt && summary.data.value.canContinue && summary.data.value.status === 'IN_PROGRESS'" :to="`/dictation/${id}`" class="btn btn-primary">继续测验</RouterLink><RouterLink to="/dictation" class="btn btn-secondary">新建测验</RouterLink></div></template>
   </div>
 </template>
+<style scoped>
+.dictation-result :deep(.dictation-word-row) {
+  grid-template-columns: minmax(110px, .9fr) minmax(0, 1.5fr) minmax(0, 1fr) auto;
+  align-items: center;
+}
+.dictation-result :deep(.dictation-word-copy) { display: contents; }
+.dictation-result :deep(.dictation-word-copy > strong),
+.dictation-result :deep(.dictation-word-copy > .word-meaning) { min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 700px) {
+  .dictation-result :deep(.dictation-word-row) { grid-template-columns: minmax(95px, .9fr) minmax(0, 1.1fr); }
+  .dictation-result :deep(.dictation-word-feedback) { grid-column: 1; grid-row: 2; }
+  .dictation-result :deep(.dictation-word-row > button) { grid-column: 2; grid-row: 2; justify-self: end; }
+}
+</style>
