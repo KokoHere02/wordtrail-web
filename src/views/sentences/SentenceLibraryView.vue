@@ -7,7 +7,7 @@ import SentenceNotePanel from '../../components/learning/SentenceNotePanel.vue';
 import AppSelect from '../../components/ui/AppSelect.vue';
 import { useSentenceManagementAccess } from '../../stores/sentenceManagementAccess';
 type Tag = { id: number; category: string; name: string };
-type Sentence = { id: number; englishText: string; referenceTranslation: string; explanation: string | null; source: string; sourceReference: string | null; learning: boolean; favorite: boolean; available: boolean };
+type Sentence = { id: number; englishText: string; referenceTranslation: string; explanation: string | null; source: string; sourceReference: string | null; learning: boolean; favorite: boolean; available: boolean; tags?: Tag[] };
 type History = { id: number; translation: string; createdAt: string };
 const route = useRoute(); const access = useSentenceManagementAccess();
 const rows = ref<Sentence[]>([]), tags = ref<Tag[]>([]), scope = ref(route.query.scope === 'favorites' ? 'favorites' : 'bank'), tagId = ref(''), offset = ref(0), busy = ref(false), error = ref('');
@@ -15,7 +15,15 @@ const selected = ref<number[]>([]);
 const detail = ref<Sentence | null>(null), history = ref<History[]>([]), historyOffset = ref(0), selectedTags = ref<number[]>([]);
 const detailPanel = ref<HTMLElement | null>(null);
 const wordId = computed(() => { const n = Number(route.query.wordId); return Number.isSafeInteger(n) && n > 0 ? n : undefined; });
-const tagOptions = computed(() => [{ value: '', label: '全部标签' }, ...tags.value.map(tag => ({ value: String(tag.id), label: `${tag.category} · ${tag.name}` }))]);
+const tagOptions = computed(() => {
+  const groups = new Map<string, Tag[]>();
+  for (const tag of tags.value) {
+    const category = tag.category?.trim() || '其他';
+    if (!groups.has(category)) groups.set(category, []);
+    groups.get(category)!.push(tag);
+  }
+  return [{ value: '', label: '全部标签' }, ...Array.from(groups, ([group, items]) => items.map(tag => ({ value: String(tag.id), label: tag.name, group }))).flat()];
+});
 let loadRevision = 0;
 async function load() { const revision = ++loadRevision; busy.value = true; error.value = ''; try { const result = await request<Sentence[]>('GET','/sentence-practice/sentences',undefined,{ scope: scope.value, tagId: tagId.value || undefined, wordId: wordId.value, offset: offset.value, limit: 50 }); if (revision === loadRevision) { rows.value = result; selected.value = []; } } catch(e) { if (revision === loadRevision) error.value = errorMessage(e); } finally { if (revision === loadRevision) busy.value = false; } }
 function selectTag(value: string) { if (tagId.value === value) return; tagId.value = value; offset.value = 0; void load(); }
@@ -25,7 +33,7 @@ async function addSelected() { busy.value=true; error.value=''; try { for(const 
 async function favorite(row: Sentence) { try { await request('PUT', `/sentence-practice/sentences/${row.id}/favorite`, { favorite: !row.favorite }); row.favorite = !row.favorite; if (scope.value === 'favorites' && !row.favorite) await load(); } catch(e) { error.value = errorMessage(e); } }
 async function loadHistory() { if(!detail.value) return; history.value=await request<History[]>('GET',`/sentence-practice/sentences/${detail.value.id}/history`,undefined,{offset:historyOffset.value,limit:50}); }
 async function showDetail(row: Sentence) { detail.value=row; historyOffset.value=0; error.value=''; await nextTick(); detailPanel.value?.scrollIntoView({ behavior: 'smooth', block: 'start' }); try { [history.value,selectedTags.value] = await Promise.all([request<History[]>('GET',`/sentence-practice/sentences/${row.id}/history`,undefined,{offset:0,limit:50}), request<Tag[]>('GET',`/sentence-practice/sentences/${row.id}/tags`).then(v=>v.map(t=>t.id))]); } catch(e) {error.value=errorMessage(e);} }
-async function saveTags() { if(!detail.value)return; try { await request('PUT',`/sentence-practice/sentences/${detail.value.id}/tags`,{tagIds:selectedTags.value}); } catch(e) {error.value=errorMessage(e);} }
+async function saveTags() { if(!detail.value)return; try { await request('PUT',`/sentence-practice/sentences/${detail.value.id}/tags`,{tagIds:selectedTags.value}); detail.value.tags = tags.value.filter(tag => selectedTags.value.includes(tag.id)); } catch(e) {error.value=errorMessage(e);} }
 onMounted(async () => { try { tags.value=await request<Tag[]>('GET','/sentence-practice/tags'); await access.load(); await load(); } catch(e) { error.value=errorMessage(e); } });
 </script>
 <template>
@@ -46,7 +54,7 @@ onMounted(async () => { try { tags.value=await request<Tag[]>('GET','/sentence-p
       <section class="sentence-collection" aria-label="句子列表">
         <div class="collection-toolbar">
           <div class="collection-heading"><span class="collection-icon"><Layers3 :size="18" aria-hidden="true" /></span><div><h2>{{ scope === 'learning' ? '待学习的句子' : scope === 'favorites' ? '收藏的句子' : '全部句子' }}</h2><p>本页 {{ rows.length }} 句<span v-if="scope !== 'learning' && selected.length"> · 已选 {{ selected.length }} 句</span></p></div></div>
-          <div class="tag-filter"><span class="tag-filter-label"><SlidersHorizontal :size="15" aria-hidden="true" />标签</span><AppSelect :model-value="tagId" :options="tagOptions" label="筛选标签" hide-label animated @update:model-value="selectTag" /></div>
+          <div class="tag-filter"><span class="tag-filter-label"><SlidersHorizontal :size="15" aria-hidden="true" />标签</span><AppSelect :model-value="tagId" :options="tagOptions" label="筛选标签" hide-label animated searchable @update:model-value="selectTag" /></div>
         </div>
         <div class="collection-actions">
           <div class="selection-summary"><span class="selection-dot" />{{ scope === 'learning' ? '开始练习后将依次展示学习列表中的句子' : selected.length ? `已选择 ${selected.length} 句` : '选择句子后可批量操作' }}</div>
@@ -58,7 +66,7 @@ onMounted(async () => { try { tags.value=await request<Tag[]>('GET','/sentence-p
         <div v-else class="sentence-list">
           <article v-for="row in rows" :key="row.id" class="sentence-entry" :class="{ 'is-selected': selected.includes(row.id), 'is-learning': scope === 'learning' }">
             <label v-if="scope !== 'learning'" class="sentence-check"><input v-model="selected" type="checkbox" :value="row.id" /><span class="sr-only">选择句子</span></label>
-            <div class="sentence-copy"><div class="sentence-copy-top"><span v-if="!row.available" class="sentence-inactive">已停用</span><span v-else-if="row.learning" class="sentence-added"><Check :size="13" aria-hidden="true" />学习列表</span></div><p class="sentence-english" lang="en">{{ row.englishText }}</p><p class="sentence-translation">{{ row.referenceTranslation }}</p></div>
+            <div class="sentence-copy"><div class="sentence-copy-top"><span v-if="!row.available" class="sentence-inactive">已停用</span><span v-else-if="row.learning" class="sentence-added"><Check :size="13" aria-hidden="true" />学习列表</span></div><div class="sentence-english-line"><span class="sentence-english" lang="en">{{ row.englishText }}</span> <ul v-if="row.tags?.length" class="sentence-entry-tags" aria-label="句子标签" tabindex="0"><li v-for="tag in row.tags" :key="tag.id">{{ tag.name }}</li></ul></div><p class="sentence-translation">{{ row.referenceTranslation }}</p></div>
             <div class="entry-actions"><button type="button" class="entry-action entry-learn" :class="{ 'is-added': row.learning }" @click="learning(row, !row.learning)"><Check v-if="row.learning" :size="15" aria-hidden="true" /><BookmarkPlus v-else :size="15" aria-hidden="true" />{{ row.learning ? '移出学习列表' : '加入学习列表' }}</button><button type="button" class="entry-action" :aria-pressed="row.favorite" @click="favorite(row)"><Star :size="15" :fill="row.favorite ? 'currentColor' : 'none'" aria-hidden="true" />{{ row.favorite ? '取消收藏' : '收藏' }}</button><button type="button" class="entry-action" @click="showDetail(row)"><History :size="15" aria-hidden="true" />历史与笔记</button></div>
           </article>
         </div>
@@ -102,6 +110,11 @@ onMounted(async () => { try { tags.value=await request<Tag[]>('GET','/sentence-p
 .tag-filter :deep(.app-select.is-open .app-select-trigger) { box-shadow: 0 0 0 3px var(--shadow-tint); }
 .tag-filter :deep(.app-select-options) { inset-inline: auto 0; width: max(100%, 220px); max-width: min(280px, calc(100vw - 48px)); max-height: min(300px, 50vh); padding: 6px; border-radius: 12px; overscroll-behavior: contain; transform-origin: top right; }
 .tag-filter :deep(.app-select-options > li) { min-height: 40px; padding: 9px 11px; border-radius: 8px; font-size: 13px; transition: background-color 140ms ease, color 140ms ease; }
+.tag-filter :deep(.app-select-options > .app-select-search) { position: sticky; top: -6px; z-index: 1; padding: 4px; background: var(--surface); cursor: default; }
+.tag-filter :deep(.app-select-search input) { width: 100%; min-width: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg); color: var(--ink); font: inherit; outline-color: var(--focus-ring); }
+.tag-filter :deep(.app-select-options > .app-select-group) { min-height: 0; margin-top: 6px; padding: 10px 11px 5px; border-top: 1px solid var(--line); border-radius: 0; color: var(--accent-strong); font-size: 12px; font-weight: 700; letter-spacing: .03em; cursor: default; }
+.tag-filter :deep(.app-select-group + li[role=option]), .tag-filter :deep(li[role=option] ~ li[role=option]) { padding-left: 18px; }
+.tag-filter :deep(.app-select-options > .app-select-empty) { color: var(--muted); cursor: default; }
 .tag-filter :deep(.app-select-options > li[aria-selected=true]) { color: var(--accent-strong); background: var(--sage); font-weight: 600; }
 .tag-filter :deep(.app-select-pop-enter-active), .tag-filter :deep(.app-select-pop-leave-active) { transition: opacity 160ms ease, transform 160ms ease; }
 .tag-filter :deep(.app-select-pop-enter-from), .tag-filter :deep(.app-select-pop-leave-to) { opacity: 0; transform: translateY(-5px) scale(.98); }
@@ -121,7 +134,10 @@ onMounted(async () => { try { tags.value=await request<Tag[]>('GET','/sentence-p
 .sentence-added, .sentence-inactive { display: inline-flex; align-items: center; gap: 4px; margin-bottom: 7px; color: var(--accent-strong); font-size: 12px; }
 .sentence-inactive { color: var(--muted); }
 .sentence-workbench .sentence-english { margin: 0; color: var(--ink); font-size: 17px; font-weight: 550; line-height: 1.6; overflow-wrap: anywhere; }
+.sentence-english-line { min-width: 0; line-height: 1.6; }
 .sentence-translation { margin: 7px 0 0; color: var(--muted); font-size: 14px; line-height: 1.65; overflow-wrap: anywhere; }
+.sentence-entry-tags { display: inline-flex; vertical-align: middle; gap: 6px; max-width: 50%; margin: 0 0 0 12px; padding: 2px 0; overflow-x: auto; list-style: none; scrollbar-width: thin; }
+.sentence-entry-tags li { flex: none; white-space: nowrap; padding: 3px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--hover); color: var(--muted); font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
 .entry-actions { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 4px; max-width: 340px; }
 .entry-action, .quiet-button, .collection-pagination button, .history-pages button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 34px; padding: 6px 9px; border: 0; border-radius: 8px; color: var(--muted); background: transparent; font: inherit; font-size: 13px; white-space: nowrap; }
 .entry-action:hover, .quiet-button:hover, .collection-pagination button:hover:not(:disabled), .history-pages button:hover:not(:disabled) { color: var(--accent-strong); background: var(--hover); }
