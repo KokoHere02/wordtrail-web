@@ -4,6 +4,7 @@ import { consolidationApi } from '../api/consolidation';
 import { dailyApi } from '../api/daily';
 import { dailyTrainingApi, requireTrainingTask } from '../api/dailyTraining';
 import { ApiError, errorMessage } from '../api/http';
+import { createRequestId } from '../utils/requestId';
 import type { DailyCorrectionBody, TodayOverview } from '../types/daily';
 import type { Result } from '../types/api';
 import type { DailyStudyMode, TrainingTask, TrainingQuestion, TrainingAnswer, TrainingAnswerBody, TrainingScope } from '../types/dailyTraining';
@@ -250,7 +251,7 @@ export function useDailyTraining(userId: number, scope: TrainingScope = 'DAILY')
     if (follow && (action !== 'ANSWER' || result !== undefined)) return;
     const q = question.value;
     if (!q || blocked.value || showingFeedback.value || (action === 'ANSWER' && q.mode === 'RECOGNITION' && !canRate.value)) return;
-    const common = { requestId: crypto.randomUUID(), presentationId: q.presentationId, modeVersion: q.modeVersion, attemptNo: q.attemptNo };
+    const common = { requestId: createRequestId(), presentationId: q.presentationId, modeVersion: q.modeVersion, attemptNo: q.attemptNo };
     if (action === 'REVEAL') { if (!q.answerRevealed) return perform({ ...common, action }, 'training', q.itemId); return; }
     if (q.mode === 'RECOGNITION') { if (result) return perform({ ...common, action, result }, 'training', q.itemId); }
     else if (input.value.trim() && input.value.length <= 255) return perform({ ...common, action, input: input.value }, 'training', q.itemId);
@@ -263,7 +264,7 @@ export function useDailyTraining(userId: number, scope: TrainingScope = 'DAILY')
   }
   function correct(result: Result) {
     if (!canCorrect.value || !receipt.value?.reviewLogId || result === receipt.value.selfAssessment) return;
-    return perform({ result, logId: receipt.value.reviewLogId, requestId: crypto.randomUUID() }, 'correction', receipt.value.itemId);
+    return perform({ result, logId: receipt.value.reviewLogId, requestId: createRequestId() }, 'correction', receipt.value.itemId);
   }
   function continueTraining() {
     if (blocked.value) return;

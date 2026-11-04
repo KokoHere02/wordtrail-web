@@ -109,7 +109,11 @@ document.querySelector('button[aria-label="显示音标"]').click(); await until
 document.querySelector('button[aria-label="显示音标"]').click(); await until(() => document.querySelector('.daily-word-phonetic'), 'phonetic restored');
 assert.equal(document.querySelector('.daily-training-card .word-meaning'), null, 'initial Chinese hidden');
 assert.ok([...document.querySelectorAll('.daily-training-rating button')].every(b => !b.disabled), 'new recognition questions allow direct self assessment');
+// HTTP origins may expose getRandomValues but not randomUUID.
+const originalCrypto = globalThis.crypto;
+Object.defineProperty(globalThis, 'crypto', { configurable: true, value: { getRandomValues: originalCrypto.getRandomValues.bind(originalCrypto) } });
 document.querySelector('button[aria-label="显示中文释义"]').click(); await until(() => document.querySelector('.daily-training-card .word-meaning'), 'toolbar reveal + fresh identity');
+Object.defineProperty(globalThis, 'crypto', { configurable: true, value: originalCrypto });
 assert.equal(calls.filter(c => c.url.endsWith('/training-answer')).length, 1); assert.equal(calls.filter(c => c.url.endsWith('/next')).length, 2);
 document.querySelector('button[aria-label="显示中文释义"]').click(); await until(() => !document.querySelector('.daily-training-card .word-meaning'), 'Chinese hidden');
 key(' '); await until(() => document.querySelector('.daily-training-card .word-meaning'), 'Chinese restored with Space');

@@ -97,6 +97,19 @@ await check('recognition REVEAL retains meanings and obtains a fresh presentatio
   assert.equal(s.today.value.canAddMore, true, 'completion refreshes today through GET so same-day continue becomes available');
   assert.ok(!calls.some(c => c.url.endsWith('/today/start')));
 });
+await check('daily actions work when randomUUID is unavailable on HTTP', async () => {
+  const original = globalThis.crypto;
+  Object.defineProperty(globalThis, 'crypto', { configurable: true, value: { getRandomValues: original.getRandomValues.bind(original) } });
+  try {
+    const { s } = session(); await s.open();
+    await s.action('REVEAL'); await s.action('ANSWER', 1); await s.correct(2);
+    assert.equal(writes().length, 2);
+    const requests = [...writes(), ...calls.filter(c => c.url.endsWith('/correction'))];
+    assert.equal(requests.length, 3);
+    assert.ok(requests.every(c => /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(c.body.requestId)));
+    assert.equal(new Set(requests.map(c => c.body.requestId)).size, 3);
+  } finally { Object.defineProperty(globalThis, 'crypto', { configurable: true, value: original }); }
+});
 await check('recognition remains answerable after continuing to a fresh QUESTION without automatic REVEAL', async () => {
   const { s } = session(); await s.open();
   for (const result of [3, 2, 1]) {
