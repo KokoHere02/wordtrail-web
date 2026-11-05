@@ -9,6 +9,7 @@ import { useStudySurface } from '../../composables/useStudySurface';
 import { dailyModeLabels, type DailyStudyMode, type TrainingScope } from '../../types/dailyTraining';
 import ReviewHeader from '../../components/learning/ReviewHeader.vue';
 import WordMeaning from '../../components/word/WordMeaning.vue';
+import WordLearningDetails from '../../components/learning/WordLearningDetails.vue';
 import { useAudioPlayer } from '../../composables/useAudioPlayer';
 import { usePronunciation } from '../../stores/pronunciation';
 import { ordinaryAudioUrl } from '../../api/learningMedia';
@@ -167,7 +168,7 @@ defineExpose({ changeMode: async (value: DailyStudyMode) => { await initializing
           <button type="button" class="btn btn-secondary training-play" aria-keyshortcuts="Alt+P" title="播放发音（Alt + P）" :disabled="!canPronounce || audioLoading" @click="pronounce">{{ audioLoading ? '音频加载中…' : speaking ? '重新播放' : '播放发音' }} <kbd aria-hidden="true">Alt + P</kbd></button>
           <div class="dictation-feedback-answer"><h1 class="learning-word" lang="en">{{ receipt.word }}</h1><p v-if="preferences.showPhonetic" class="daily-word-phonetic dictation-feedback-phonetic" lang="en">{{ feedbackPhonetic }}</p></div>
         </div>
-        <WordMeaning :translation="receipt.translation" :translation-groups="receipt.translationGroups" layout="study" :word-key="receipt.trainingId" />
+        <WordLearningDetails :translation="receipt.translation" :translation-groups="receipt.translationGroups" :word-id="receipt.wordId" :word="receipt.word" :word-key="receipt.trainingId" />
         <div class="dictation-submitted"><p class="letter-input-label">英文拼写</p><p :class="['dictation-submitted-word', incorrect ? 'is-incorrect' : 'is-correct']" lang="en">{{ receipt.input }}</p><p :class="['dictation-answer-verdict', incorrect ? 'is-incorrect' : 'is-correct']">{{ incorrect ? '拼写错误' : '拼写正确' }}</p></div>
         <div class="workspace-answer-actions dictation-feedback-actions"><button ref="dictationNext" type="button" class="btn btn-primary" :disabled="session.blocked.value" @click="next">下一个 <kbd>Enter</kbd></button></div>
       </section>
@@ -175,10 +176,9 @@ defineExpose({ changeMode: async (value: DailyStudyMode) => { await initializing
         <h1 class="learning-word" lang="en">{{ receipt.word }}</h1>
         <p v-if="preferences.showPhonetic && recognitionPhonetic" class="daily-word-phonetic" lang="en">{{ recognitionPhonetic }}</p>
         <div v-if="receipt.wordId"><button type="button" class="btn btn-secondary training-play" aria-keyshortcuts="Alt+P" title="播放发音（Alt + P）" :disabled="!canPronounce || audioLoading" @click="pronounce">{{ audioLoading ? '音频加载中…' : speaking ? '重新播放' : '播放发音' }} <kbd aria-hidden="true">Alt + P</kbd></button></div>
-        <WordMeaning :translation="receipt.translation" :translation-groups="receipt.translationGroups" layout="study" :word-key="receipt.trainingId" />
-        <div class="learning-rating daily-training-rating" role="group" aria-label="本次认读选择"><button v-for="entry in ratings" :key="entry.result" type="button" :class="['rating-button', { 'is-selected': receipt.selfAssessment === entry.result }]" :aria-pressed="receipt.selfAssessment === entry.result" :disabled="!canCorrect" @click="session.correct(entry.result)">{{ entry.label }}<kbd>{{ entry.key }}</kbd></button></div>
+        <WordLearningDetails :translation="receipt.translation" :translation-groups="receipt.translationGroups" :word-id="receipt.wordId" :word="receipt.word" :word-key="receipt.trainingId" />
+        <div class="recognition-feedback-actions"><div class="learning-rating daily-training-rating" role="group" aria-label="本次认读选择"><button v-for="entry in ratings" :key="entry.result" type="button" :class="['rating-button', { 'is-selected': receipt.selfAssessment === entry.result }]" :aria-pressed="receipt.selfAssessment === entry.result" :disabled="!canCorrect" @click="session.correct(entry.result)">{{ entry.label }}<kbd>{{ entry.key }}</kbd></button></div><button ref="recognitionNext" type="button" class="btn btn-primary recognition-next" :disabled="session.blocked.value" @click="next">下一个 <kbd>Enter</kbd></button></div>
         <p v-if="!receipt.reviewLogId || scope === 'CONSOLIDATION'" class="subtle-copy">本次练习暂不支持修改已保存的选择。</p>
-        <button ref="recognitionNext" type="button" class="btn btn-primary" :disabled="session.blocked.value" @click="next">下一个 <kbd>Enter</kbd></button>
       </section>
       <section v-else-if="showingFeedback && receipt" :class="['daily-training-feedback', { 'is-incorrect': incorrect }]" aria-live="polite">
         <div v-if="incorrect" class="daily-feedback-error">
@@ -189,7 +189,7 @@ defineExpose({ changeMode: async (value: DailyStudyMode) => { await initializing
         <p v-if="incorrect" class="daily-feedback-answer-label">正确拼写</p>
         <h1 class="learning-word">{{ receipt.word }}</h1>
         <p v-if="!incorrect && receipt.input !== null" class="daily-submitted">你的输入：<span lang="en">{{ receipt.input }}</span></p>
-        <WordMeaning :translation="receipt.translation" :translation-groups="receipt.translationGroups" layout="study" :word-key="receipt.trainingId" />
+        <WordLearningDetails :translation="receipt.translation" :translation-groups="receipt.translationGroups" :word-id="receipt.wordId" :word="receipt.word" :word-key="receipt.trainingId" />
         <p v-if="receipt.extraTraining" class="subtle-copy">本次仅记录训练，不重复完成目标或改变复习安排。</p>
         <p v-else-if="task?.status === 'COMPLETED'" class="subtle-copy">本组已结束。训练完成不代表已经掌握。</p>
         <div v-if="canCorrect" class="daily-correction"><button class="muted-link" :aria-expanded="correction" @click="correction = !correction">记错了（R）</button><div v-if="correction" class="live-actions"><button class="btn btn-secondary" @click="saveCorrection(3)">改为不认识（1）</button><button class="btn btn-secondary" @click="saveCorrection(2)">改为模糊（2）</button></div></div>
@@ -200,7 +200,7 @@ defineExpose({ changeMode: async (value: DailyStudyMode) => { await initializing
         <button v-if="question.audioUrl || canPronounce" type="button" class="btn btn-secondary training-play" aria-keyshortcuts="Alt+P" title="播放发音（Alt + P）" :disabled="!canPronounce || audioLoading" @click="pronounce">{{ audioLoading ? '音频加载中…' : speaking ? '重新播放' : '播放发音' }} <kbd aria-hidden="true">Alt + P</kbd></button>
         <p v-if="question.extraTraining" class="subtle-copy">追加练习 · {{ trainingStatusLabel(question) }}</p>
         <template v-if="question.mode === 'RECOGNITION'">
-          <WordMeaning v-if="definition && meaningVisible" :translation="definition.translation" :translation-groups="definition.translationGroups" layout="study" :word-key="question.itemId" />
+          <WordLearningDetails v-if="definition && meaningVisible" :translation="definition.translation" :translation-groups="definition.translationGroups" :word-id="definition.wordId" :word="definition.word" :word-key="question.itemId" />
           <button v-else class="daily-recall-prompt" :disabled="session.blocked.value" @click="reveal">查看释义 <kbd>Space</kbd></button>
           <div class="learning-rating daily-training-rating"><button v-for="entry in ratings" :key="entry.result" class="rating-button" :disabled="!canRate" @click="session.action('ANSWER', entry.result)">{{ entry.label }}<kbd>{{ entry.key }}</kbd></button></div>
         </template>

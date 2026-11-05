@@ -122,12 +122,17 @@
 .section-hub-nav > a.active { color: var(--ink); border-color: var(--accent); }
 .content-page-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: var(--s3); margin-bottom: var(--s4); }
 .daily-training-main { max-width: 680px; min-width: 0; margin-inline: auto; padding-bottom: max(var(--s8), env(safe-area-inset-bottom)); }
+.daily-training-main:has(.word-learning-details) { max-width: 1100px; }
 .daily-training-main .learning-word { margin: var(--s5) 0 var(--s3); font: 400 clamp(42px, 6vw, 80px)/1.2 var(--font-serif); text-align: center; overflow-wrap: anywhere; }
 .daily-word-phonetic { color: var(--muted); text-align: center; font-size: var(--text-lg); margin-bottom: var(--s2); }
 .daily-training-card .review-pronunciation { display: flex; flex-direction: column; align-items: center; margin-bottom: var(--s8); }
 .daily-training-main .word-meaning { margin-block: var(--s5); text-align: left; overflow-wrap: anywhere; }
 .daily-training-main .word-meaning--study { padding: var(--s6); border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
 .daily-training-card .learning-word { margin-bottom: var(--s1); }
+.daily-training-main:has(.word-learning-details) .daily-training-card > .learning-word { margin: 0 0 var(--s1); }
+.workspace-panel:has(.daily-training-main .word-learning-details) { padding-top: var(--s2); }
+.daily-training-main:has(.word-learning-details) .training-play { margin-block: var(--s2) var(--s1); }
+.daily-training-main:has(.word-learning-details) .daily-training-card .learning-rating { margin-top: var(--s4); }
 .study-workspace .unified-daily-page .daily-training-card[data-mode="RECOGNITION"],
 .study-workspace .unified-daily-page .recognition-feedback { padding-top: var(--s2); }
 .daily-training-card .word-meaning--study { margin-block: var(--s3); padding: var(--s4); }
@@ -138,6 +143,10 @@
 .daily-training-rating .rating-button:hover:not(:disabled), .daily-recall-prompt:hover:not(:disabled) { background: var(--hover); }
 .recognition-feedback .rating-button:disabled { opacity: 1; }
 .recognition-feedback .rating-button.is-selected { border-color: var(--accent); color: var(--accent-strong); background: var(--secondary-hover); box-shadow: inset 0 0 0 1px var(--accent); font-weight: 600; }
+.recognition-feedback-actions { display: flex; align-items: stretch; gap: var(--s4); margin-top: var(--s4); }
+.study-workspace .recognition-feedback-actions .learning-rating, .daily-training-main:has(.word-learning-details) .recognition-feedback-actions .learning-rating { flex: 1; max-width: none; margin: 0; }
+.recognition-next { flex: none; min-width: 150px; justify-content: center; }
+@media (max-width: 600px) { .recognition-feedback-actions { flex-direction: column; gap: var(--s3); } .recognition-next { width: 100%; min-height: 48px; } }
 .daily-training-main kbd { padding: var(--s1) var(--s2); color: var(--key-text); background: var(--key-bg); border-radius: var(--radius-sm); font: inherit; font-size: var(--text-base); }
 .daily-typing-form .letter-input { margin-top: var(--s6); }
 .daily-submitted { margin-block: var(--s3); white-space: pre-wrap; overflow-wrap: anywhere; }

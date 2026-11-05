@@ -300,7 +300,7 @@ test('recognition advances without locked ratings or transient error alerts; fai
     const httpPath = '/src/api/http.ts', routerPath = '/src/router/index.ts';
     const { http } = await import(/* @vite-ignore */ httpPath), { router } = await import(/* @vite-ignore */ routerPath);
     const original = http.defaults.adapter;
-    const control = { loseResponse: false, alerts: 0, bodies: [] as Record<string, unknown>[], corrections: [] as Record<string, unknown>[], audio: [] as string[] };
+    const control = { loseResponse: false, alerts: 0, bodies: [] as Record<string, unknown>[], corrections: [] as Record<string, unknown>[], audio: [] as string[], detailRequests: [] as string[] };
     Reflect.set(window, '__recognitionRegression', control);
     const observer = new MutationObserver(records => {
       for (const record of records) for (const node of record.addedNodes) {
@@ -312,9 +312,13 @@ test('recognition advances without locked ratings or transient error alerts; fai
     let position = 0, trainingCount = 0, completedCount = 0;
     const saved = new Map<string, unknown>();
     const progress = () => ({ batchId: 90, learningDate: '2026-10-25', dailyTarget: 4, taskType: 'DAILY', status: 'IN_PROGRESS', totalCount: 4, completedCount, skippedCount: 0, answerCount: trainingCount, unfamiliarCount: 0, newCount: 4, reviewCount: 0, nextItemId: 901 + position, studyMode: 'RECOGNITION', modeVersion: 0, trainingCount });
-    http.defaults.adapter = async (config: { url: string; data?: string }) => {
+    http.defaults.adapter = async (config: { url: string; data?: string; params?: { term?: string } }) => {
       const body = config.data ? JSON.parse(config.data) : {};
       const ok = (data: unknown) => ({ config, status: 200, headers: {}, data: { code: 'OK', message: '成功', data: structuredClone(data) } });
+      if (/^\/words\/\d+\/forms$/.test(config.url)) { control.detailRequests.push(config.url); return ok([{ form: 'apples', formType: 'PLURAL' }]); }
+      if (config.url === '/words/lookup') return ok(config.params?.term === 'apples' ? [{ id: 101, word: 'apple', phonetic: '/ˈæpəl/', translation: 'n. 苹果' }] : []);
+      if (config.url === '/learning/settings') return ok({ dailyTarget: 20, newWordTarget: 10, reviewLimit: 10, pronunciation: { autoPlay: false, accent: 'US', playbackRate: 1, repeatCount: 1 } });
+      if (config.url === '/sentence-practice/sentences') { control.detailRequests.push(config.url); return ok([{ id: 1, englishText: 'I like apples.', referenceTranslation: '我喜欢苹果。' }]); }
       if (/^\/words\/\d+\/audio\?/.test(config.url)) { control.audio.push(config.url); return { config, status: 200, headers: { 'content-type': 'audio/wav' }, data: new Blob([new Uint8Array([1])], { type: 'audio/wav' }) }; }
       if (config.url === '/learning/today') return ok({ learningDate: '2026-10-25', dailyTarget: 4, activeCount: 4, dueCount: 0, newCount: 4, unassignedCount: 0, canAddMore: false, task: progress() });
       if (config.url === '/learning-batches/90/daily') return ok(progress());
@@ -330,7 +334,7 @@ test('recognition advances without locked ratings or transient error alerts; fai
         if (saved.has(body.requestId)) return ok(saved.get(body.requestId));
         const index = position; position++; trainingCount++; if (body.result === 1) completedCount++;
         const answer = { trainingId: trainingCount, itemId: 901 + index, wordId: 101 + index, mode: 'RECOGNITION', action: body.action, verdict: 'SELF_ASSESSED',
-          input: null, selfAssessment: body.result, word: words[index], translation: `释义 ${index + 1}`, translationGroups: [], hintUsed: true, extraTraining: false, attemptNo: 1,
+          input: null, selfAssessment: body.result, word: words[index], translation: `释义 ${index + 1}`, translationGroups: [{ partOfSpeech: 'n.', meaning: '苹果；水果；果实；苹果树；第五种含义；第六种含义' }, { partOfSpeech: null, meaning: '[法] 专业释义完整内容' }], hintUsed: true, extraTraining: false, attemptNo: 1,
           reviewLogId: 500 + index, affectsSchedule: false, answeredAt: '2026-10-25T12:00:00', itemStatus: body.result === 1 ? 'DONE' : 'RELEARNING', completionReason: body.result === 1 ? 'RECALLED' : null, progress: progress() };
         saved.set(body.requestId, answer);
         if (control.loseResponse) { control.loseResponse = false; throw new Error('test response lost after save'); }
@@ -345,12 +349,49 @@ test('recognition advances without locked ratings or transient error alerts; fai
     await expect(page.locator('.daily-training-card .learning-word')).toHaveText(word);
     for (let index = 0; index < 3; index++) await expect(ratings.nth(index)).toBeEnabled();
     await expect(page.locator('.daily-training-card .word-meaning')).toHaveCount(0);
+    if (word === 'apple') expect(await page.evaluate(() => Reflect.get(window, '__recognitionRegression').detailRequests)).toHaveLength(0);
     await expect(page.locator('.daily-training-card')).toHaveCSS('padding-top', '8px');
     if (word === 'apple') { await page.locator('#mode-panel-words').focus(); await expect(page.locator('#mode-panel-words')).toHaveCSS('outline-style', 'none'); await page.keyboard.press('3'); } else { await ratings.nth(1).click(); }
     await expect(page.getByRole('status').filter({ hasText: '正在保存' })).toBeVisible();
     await expect(page.locator('.learning-error')).toHaveCount(0);
     await page.evaluate(() => document.querySelectorAll<HTMLButtonElement>('.daily-training-rating button').forEach(button => button.click()));
     await expect(page.locator('.daily-training-feedback')).toBeVisible();
+    if (word === 'apple') {
+      await expect(page.getByRole('region', { name: '释义与词形' })).toContainText('复数');
+      await expect(page.getByRole('region', { name: '释义与词形' })).toContainText('第六种含义');
+      await expect(page.getByRole('region', { name: '释义与词形' })).toContainText('专业释义完整内容');
+      await expect(page.getByRole('region', { name: '双语例句' })).toContainText('我喜欢苹果。');
+      await expect(page.locator('.example-english .is-match')).toHaveText('apples');
+      await page.getByRole('button', { name: '查询 apples' }).click();
+      const lookup = page.getByRole('region', { name: 'apples 的词典释义' });
+      await expect(lookup).toContainText('apple');
+      await expect(lookup).toContainText('/ˈæpəl/');
+      await expect(lookup).toContainText('苹果');
+      await expect.poll(() => page.evaluate(() => Reflect.get(window, '__recognitionRegression').audio.length)).toBe(1);
+      await lookup.getByRole('button', { name: '朗读 apple' }).click();
+      await expect.poll(() => page.evaluate(() => Reflect.get(window, '__recognitionRegression').audio.length)).toBe(2);
+      expect(await page.evaluate(() => Reflect.get(window, '__recognitionRegression').audio.at(-1))).toContain('/words/101/audio?');
+      await page.evaluate(() => Reflect.get(window, '__recognitionRegression').audio.pop());
+      const wordBox = await page.getByRole('button', { name: '查询 apples' }).boundingBox();
+      const lookupBox = await lookup.boundingBox();
+      expect(wordBox && lookupBox && lookupBox.y >= wordBox.y + wordBox.height).toBeTruthy();
+      await lookup.getByRole('button', { name: '关闭释义' }).click();
+      await expect(lookup).toHaveCount(0);
+      await page.getByRole('button', { name: '查询 apples' }).click();
+      await page.locator('.example-chinese').click();
+      await expect(lookup).toHaveCount(0);
+      await page.getByRole('button', { name: '查询 like' }).click();
+      await expect(page.getByRole('region', { name: 'like 的词典释义' })).toContainText('词库中未找到');
+      await page.keyboard.press('Escape');
+      await expect(page.getByRole('region', { name: 'like 的词典释义' })).toHaveCount(0);
+      await page.setViewportSize({ width: 375, height: 800 });
+      await page.getByRole('button', { name: '查询 apples' }).click();
+      const mobileLookup = await page.getByRole('region', { name: 'apples 的词典释义' }).boundingBox();
+      expect(mobileLookup && mobileLookup.x >= 0 && mobileLookup.x + mobileLookup.width <= 375).toBeTruthy();
+      await page.getByRole('button', { name: '关闭释义' }).click();
+      expect(await page.locator('html').evaluate(el => el.scrollWidth <= window.innerWidth)).toBe(true);
+      await page.setViewportSize({ width: 1280, height: 720 });
+    }
     await expect(page.locator('.daily-training-feedback')).toHaveCSS('padding-top', '8px');
     await expect.poll(() => page.evaluate(() => Reflect.get(window, '__recognitionRegression').audio.length)).toBe(word === 'apple' ? 1 : 2);
     await expect(ratings).toHaveCount(3);
@@ -363,7 +404,7 @@ test('recognition advances without locked ratings or transient error alerts; fai
       expect(corrections.map((c: { result: number }) => c.result)).toEqual([3, 2, 1]);
       expect(corrections.every((c: { logId: number }) => c.logId === 500)).toBe(true);
     }
-    await expect(page.locator('.daily-training-feedback > .btn')).toBeFocused();
+    await expect(page.locator('.recognition-feedback-actions .recognition-next')).toBeFocused();
     await page.keyboard.press('Enter');
   }
   await expect(page.locator('.daily-training-card .learning-word')).toHaveText('cherry');
@@ -379,7 +420,7 @@ test('recognition advances without locked ratings or transient error alerts; fai
   const bodies = await page.evaluate(() => Reflect.get(window, '__recognitionRegression').bodies);
   expect(bodies).toHaveLength(4);
   expect(bodies[3]).toEqual(bodies[2]);
-  await page.locator('.daily-training-feedback > .btn').click();
+  await page.locator('.recognition-feedback-actions .recognition-next').click();
   await expect(page.locator('.daily-training-card .learning-word')).toHaveText('date');
   for (let index = 0; index < 3; index++) await expect(ratings.nth(index)).toBeEnabled();
   await expect(page.locator('.learning-error')).toHaveCount(0);
