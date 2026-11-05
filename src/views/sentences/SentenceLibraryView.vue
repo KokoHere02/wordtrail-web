@@ -1,19 +1,25 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import { ArrowRight, BookmarkPlus, Check, ChevronLeft, ChevronRight, History, Layers3, Library, ListChecks, NotebookPen, Play, SlidersHorizontal, Star, X } from 'lucide-vue-next';
+import { ArrowRight, BookmarkPlus, Check, ChevronLeft, ChevronRight, History, Library, ListChecks, NotebookPen, Play, Search, SlidersHorizontal, Star } from 'lucide-vue-next';
 import { request, errorMessage } from '../../api/http';
 import SentenceNotePanel from '../../components/learning/SentenceNotePanel.vue';
 import AppSelect from '../../components/ui/AppSelect.vue';
+import AppDialog from '../../components/ui/AppDialog.vue';
 import { useSentenceManagementAccess } from '../../stores/sentenceManagementAccess';
 type Tag = { id: number; category: string; name: string };
 type Sentence = { id: number; englishText: string; referenceTranslation: string; explanation: string | null; source: string; sourceReference: string | null; learning: boolean; favorite: boolean; available: boolean; tags?: Tag[] };
 type History = { id: number; translation: string; createdAt: string };
 const route = useRoute(); const access = useSentenceManagementAccess();
 const rows = ref<Sentence[]>([]), tags = ref<Tag[]>([]), scope = ref(route.query.scope === 'favorites' ? 'favorites' : 'bank'), tagId = ref(''), offset = ref(0), busy = ref(false), error = ref('');
+const searchInput = ref(''), keyword = ref('');
 const selected = ref<number[]>([]);
 const detail = ref<Sentence | null>(null), history = ref<History[]>([]), historyOffset = ref(0), selectedTags = ref<number[]>([]);
-const detailPanel = ref<HTMLElement | null>(null);
+const notePanel = ref<InstanceType<typeof SentenceNotePanel> | null>(null);
+const detailLoading = ref(false), detailError = ref(''), tagsSaving = ref(false);
+const tagsReady = ref(false);
+const savedTagIds = ref<number[]>([]);
+let detailRevision = 0;
 const wordId = computed(() => { const n = Number(route.query.wordId); return Number.isSafeInteger(n) && n > 0 ? n : undefined; });
 const tagOptions = computed(() => {
   const groups = new Map<string, Tag[]>();
@@ -25,15 +31,17 @@ const tagOptions = computed(() => {
   return [{ value: '', label: '全部标签' }, ...Array.from(groups, ([group, items]) => items.map(tag => ({ value: String(tag.id), label: tag.name, group }))).flat()];
 });
 let loadRevision = 0;
-async function load() { const revision = ++loadRevision; busy.value = true; error.value = ''; try { const result = await request<Sentence[]>('GET','/sentence-practice/sentences',undefined,{ scope: scope.value, tagId: tagId.value || undefined, wordId: wordId.value, offset: offset.value, limit: 50 }); if (revision === loadRevision) { rows.value = result; selected.value = []; } } catch(e) { if (revision === loadRevision) error.value = errorMessage(e); } finally { if (revision === loadRevision) busy.value = false; } }
+async function load() { const revision = ++loadRevision; busy.value = true; error.value = ''; try { const result = await request<Sentence[]>('GET','/sentence-practice/sentences',undefined,{ scope: scope.value, tagId: tagId.value || undefined, wordId: wordId.value, keyword: keyword.value || undefined, offset: offset.value, limit: 50 }); if (revision === loadRevision) { rows.value = result; selected.value = []; } } catch(e) { if (revision === loadRevision) error.value = errorMessage(e); } finally { if (revision === loadRevision) busy.value = false; } }
+function search() { keyword.value = searchInput.value.trim(); offset.value = 0; detail.value = null; void load(); }
 function selectTag(value: string) { if (tagId.value === value) return; tagId.value = value; offset.value = 0; void load(); }
 async function changeScope(value: string) { scope.value = value; offset.value = 0; await load(); }
 async function learning(row: Sentence, add: boolean) { try { await request(add ? 'PUT' : 'DELETE', `/sentence-practice/learning/${row.id}`); row.learning = add; if (scope.value === 'learning' && !add) await load(); } catch(e) { error.value = errorMessage(e); } }
 async function addSelected() { busy.value=true; error.value=''; try { for(const id of selected.value) await request('PUT', `/sentence-practice/learning/${id}`); await load(); } catch(e) { const message=errorMessage(e); await load(); error.value=message; } finally { busy.value=false; } }
 async function favorite(row: Sentence) { try { await request('PUT', `/sentence-practice/sentences/${row.id}/favorite`, { favorite: !row.favorite }); row.favorite = !row.favorite; if (scope.value === 'favorites' && !row.favorite) await load(); } catch(e) { error.value = errorMessage(e); } }
-async function loadHistory() { if(!detail.value) return; history.value=await request<History[]>('GET',`/sentence-practice/sentences/${detail.value.id}/history`,undefined,{offset:historyOffset.value,limit:50}); }
-async function showDetail(row: Sentence) { detail.value=row; historyOffset.value=0; error.value=''; await nextTick(); detailPanel.value?.scrollIntoView({ behavior: 'smooth', block: 'start' }); try { [history.value,selectedTags.value] = await Promise.all([request<History[]>('GET',`/sentence-practice/sentences/${row.id}/history`,undefined,{offset:0,limit:50}), request<Tag[]>('GET',`/sentence-practice/sentences/${row.id}/tags`).then(v=>v.map(t=>t.id))]); } catch(e) {error.value=errorMessage(e);} }
-async function saveTags() { if(!detail.value)return; try { await request('PUT',`/sentence-practice/sentences/${detail.value.id}/tags`,{tagIds:selectedTags.value}); detail.value.tags = tags.value.filter(tag => selectedTags.value.includes(tag.id)); } catch(e) {error.value=errorMessage(e);} }
+async function loadHistory(nextOffset = historyOffset.value) { if(!detail.value) return; const revision = detailRevision, id = detail.value.id; detailLoading.value = true; detailError.value = ''; try { const result = await request<History[]>('GET',`/sentence-practice/sentences/${id}/history`,undefined,{offset:nextOffset,limit:50}); if (revision === detailRevision) { history.value = result; historyOffset.value = nextOffset; } } catch(e) { if (revision === detailRevision) detailError.value = errorMessage(e); } finally { if (revision === detailRevision) detailLoading.value = false; } }
+async function showDetail(row: Sentence) { const revision = ++detailRevision; detail.value=row; history.value=[]; historyOffset.value=0; selectedTags.value=[]; savedTagIds.value=[]; tagsReady.value=false; detailError.value=''; detailLoading.value=true; try { const [entries, rowTags] = await Promise.all([request<History[]>('GET',`/sentence-practice/sentences/${row.id}/history`,undefined,{offset:0,limit:50}), request<Tag[]>('GET',`/sentence-practice/sentences/${row.id}/tags`)]); if (revision === detailRevision) { history.value=entries; selectedTags.value=rowTags.map(t=>t.id); savedTagIds.value=[...selectedTags.value]; tagsReady.value=true; } } catch(e) { if (revision === detailRevision) detailError.value=errorMessage(e); } finally { if (revision === detailRevision) detailLoading.value=false; } }
+function closeDetail() { if (notePanel.value?.saving || tagsSaving.value) return; const tagsChanged = access.canManage && [...selectedTags.value].sort().join(',') !== [...savedTagIds.value].sort().join(','); if ((notePanel.value?.hasUnsavedChanges || tagsChanged) && !window.confirm('有未保存的修改，确定关闭吗？')) return; detailRevision++; detail.value=null; }
+async function saveTags() { if(!detail.value || tagsSaving.value)return; const row = detail.value, ids = [...selectedTags.value]; tagsSaving.value=true; detailError.value=''; try { await request('PUT',`/sentence-practice/sentences/${row.id}/tags`,{tagIds:ids}); row.tags = tags.value.filter(tag => ids.includes(tag.id)); savedTagIds.value=ids; } catch(e) {detailError.value=errorMessage(e);} finally {tagsSaving.value=false;} }
 onMounted(async () => { try { tags.value=await request<Tag[]>('GET','/sentence-practice/tags'); await access.load(); await load(); } catch(e) { error.value=errorMessage(e); } });
 </script>
 <template>
@@ -53,7 +61,7 @@ onMounted(async () => { try { tags.value=await request<Tag[]>('GET','/sentence-p
 
       <section class="sentence-collection" aria-label="句子列表">
         <div class="collection-toolbar">
-          <div class="collection-heading"><span class="collection-icon"><Layers3 :size="18" aria-hidden="true" /></span><div><h2>{{ scope === 'learning' ? '待学习的句子' : scope === 'favorites' ? '收藏的句子' : '全部句子' }}</h2><p>本页 {{ rows.length }} 句<span v-if="scope !== 'learning' && selected.length"> · 已选 {{ selected.length }} 句</span></p></div></div>
+          <form class="sentence-search" role="search" @submit.prevent="search"><label class="sentence-search-field"><span class="sr-only">搜索句子</span><Search :size="18" aria-hidden="true" /><input v-model="searchInput" type="search" maxlength="100" placeholder="搜索英文句子或中文译文" /></label><button type="submit" class="btn btn-secondary">搜索</button></form>
           <div class="tag-filter"><span class="tag-filter-label"><SlidersHorizontal :size="15" aria-hidden="true" />标签</span><AppSelect :model-value="tagId" :options="tagOptions" label="筛选标签" hide-label animated searchable @update:model-value="selectTag" /></div>
         </div>
         <div class="collection-actions">
@@ -62,7 +70,7 @@ onMounted(async () => { try { tags.value=await request<Tag[]>('GET','/sentence-p
         </div>
 
         <div v-if="busy" class="collection-empty" role="status">正在加载句子…</div>
-        <div v-else-if="!rows.length" class="collection-empty"><span class="empty-icon"><Library :size="22" aria-hidden="true" /></span><strong>暂无句子</strong><span>{{ scope === 'learning' ? '从句子库选择想学习的句子' : scope === 'favorites' ? '收藏喜欢的句子，方便以后查看' : '换个标签看看，或稍后再来' }}</span></div>
+        <div v-else-if="!rows.length" class="collection-empty"><span class="empty-icon"><Library :size="22" aria-hidden="true" /></span><strong>{{ keyword ? '没有找到匹配的句子' : '暂无句子' }}</strong><span>{{ keyword ? '试试其他关键词或筛选条件' : scope === 'learning' ? '从句子库选择想学习的句子' : scope === 'favorites' ? '收藏喜欢的句子，方便以后查看' : '换个标签看看，或稍后再来' }}</span></div>
         <div v-else class="sentence-list">
           <article v-for="row in rows" :key="row.id" class="sentence-entry" :class="{ 'is-selected': selected.includes(row.id), 'is-learning': scope === 'learning' }">
             <label v-if="scope !== 'learning'" class="sentence-check"><input v-model="selected" type="checkbox" :value="row.id" /><span class="sr-only">选择句子</span></label>
@@ -73,17 +81,27 @@ onMounted(async () => { try { tags.value=await request<Tag[]>('GET','/sentence-p
         <div class="collection-pagination"><span>第 {{ offset / 50 + 1 }} 页</span><div><button type="button" :disabled="offset === 0 || busy" @click="offset = Math.max(0, offset - 50); load()"><ChevronLeft :size="16" aria-hidden="true" />上一页</button><button type="button" :disabled="rows.length < 50 || busy" @click="offset += 50; load()">下一页<ChevronRight :size="16" aria-hidden="true" /></button></div></div>
       </section>
 
-      <section v-if="detail" ref="detailPanel" class="detail-panel" aria-label="句子历史与笔记">
-        <div class="detail-heading"><div><span class="section-eyebrow">句子详情</span><h2>{{ detail.englishText }}</h2><p>{{ detail.referenceTranslation }}</p></div><button type="button" class="quiet-button" @click="detail = null"><X :size="16" aria-hidden="true" />关闭详情</button></div>
-        <div class="detail-history"><div class="detail-section-title"><h3>翻译历史</h3><span v-if="history.length">本页 {{ history.length }} 条</span></div><p v-if="!history.length" class="detail-empty">暂无翻译记录</p><ul v-else class="history-list"><li v-for="entry in history" :key="entry.id"><time>{{ entry.createdAt.replace('T', ' ') }}</time><p>{{ entry.translation }}</p></li></ul><div class="history-pages"><button :disabled="historyOffset === 0" @click="historyOffset = Math.max(0, historyOffset - 50); loadHistory()"><ChevronLeft :size="15" aria-hidden="true" />上一页</button><button :disabled="history.length < 50" @click="historyOffset += 50; loadHistory()">下一页<ChevronRight :size="15" aria-hidden="true" /></button></div></div>
-        <SentenceNotePanel :key="detail.id" :sentence-id="detail.id" />
-        <div v-if="access.canManage" class="detail-tags"><h3>句子标签</h3><div class="tag-choices"><label v-for="tag in tags" :key="tag.id"><input v-model="selectedTags" type="checkbox" :value="tag.id" />{{ tag.name }}</label></div><button class="btn btn-secondary" @click="saveTags">保存标签</button></div>
-      </section>
+      <AppDialog :model-value="!!detail" title="句子历史与笔记" panel-class="sentence-detail-dialog" @update:model-value="value => { if (!value) closeDetail(); }">
+        <div v-if="detail" class="detail-panel">
+          <div class="detail-heading"><div><span class="section-eyebrow">句子详情</span><h3>{{ detail.englishText }}</h3><p>{{ detail.referenceTranslation }}</p></div></div>
+          <p v-if="detailError" class="workbench-error" role="alert">{{ detailError }}</p>
+          <SentenceNotePanel :key="detail.id" ref="notePanel" :sentence-id="detail.id" />
+          <div class="detail-history"><div class="detail-section-title"><h3>翻译历史</h3><span v-if="history.length">本页 {{ history.length }} 条</span></div><p v-if="detailLoading" class="detail-empty" role="status">正在加载记录…</p><p v-else-if="!detailError && !history.length" class="detail-empty">暂无翻译记录</p><ul v-else-if="history.length" class="history-list"><li v-for="entry in history" :key="entry.id"><time>{{ entry.createdAt.replace('T', ' ') }}</time><p>{{ entry.translation }}</p></li></ul><div class="history-pages"><button :disabled="detailLoading || historyOffset === 0" @click="loadHistory(Math.max(0, historyOffset - 50))"><ChevronLeft :size="15" aria-hidden="true" />上一页</button><button :disabled="detailLoading || history.length < 50" @click="loadHistory(historyOffset + 50)">下一页<ChevronRight :size="15" aria-hidden="true" /></button></div></div>
+          <div v-if="access.canManage" class="detail-tags"><h3>句子标签</h3><div class="tag-choices"><label v-for="tag in tags" :key="tag.id"><input v-model="selectedTags" type="checkbox" :value="tag.id" :disabled="detailLoading || tagsSaving || !tagsReady" />{{ tag.name }}</label></div><button class="btn btn-secondary" :disabled="detailLoading || tagsSaving || !tagsReady" @click="saveTags">{{ tagsSaving ? '保存中…' : '保存标签' }}</button></div>
+        </div>
+      </AppDialog>
   </main>
 </template>
 
 <style scoped>
 .sentence-workbench { margin-top: 0; }
+.sentence-search { display: flex; flex: 1; align-items: center; gap: 10px; min-width: 0; max-width: 530px; }
+.sentence-search-field { display: flex; flex: 1; align-items: center; gap: 9px; min-width: 0; min-height: 40px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; color: var(--muted); background: var(--surface); }
+.sentence-search-field:focus-within { border-color: var(--accent); }
+.sentence-search-field svg { flex: none; }
+.sentence-search input { min-width: 0; width: 100%; padding: 0; border: 0; outline: none; box-shadow: none; color: var(--ink); background: transparent; font: inherit; }
+.sentence-library-page .sentence-search input:focus-visible { outline: none; border: 0; box-shadow: none; }
+.sentence-search button { flex: none; min-height: 40px; }
 .workbench-error { margin: 0 0 16px; padding: 12px 16px; border: 1px solid var(--line); border-radius: 10px; color: var(--danger, #b64a4a); background: var(--surface); }
 .workbench-controls { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 9px 16px; border: 1px solid var(--line); border-radius: 0 0 var(--radius-lg) var(--radius-lg); background: var(--surface); }
 .workbench-tabs, .workbench-shortcuts { display: flex; align-items: center; gap: 6px; min-width: 0; }
@@ -95,12 +113,8 @@ onMounted(async () => { try { tags.value=await request<Tag[]>('GET','/sentence-p
 .workbench-shortcuts .workbench-start:hover { color: var(--on-accent); background: var(--accent-strong); }
 .word-context { display: flex; justify-content: space-between; gap: 12px; margin-top: 18px; padding: 11px 16px; border-radius: 10px; background: var(--sage); color: var(--accent-strong); font-size: 14px; }
 .word-context a { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; }
-.sentence-collection, .detail-panel { margin-top: 22px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); }
+.sentence-collection { margin-top: 22px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); }
 .collection-toolbar { position: relative; z-index: 2; display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 24px 28px 20px; }
-.collection-heading { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.collection-icon { display: grid; flex: none; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--sage); color: var(--accent-strong); }
-.collection-heading h2 { margin: 0; color: var(--ink); font-size: 16px; font-weight: 650; line-height: 1.45; }
-.collection-heading p { margin: 3px 0 0; color: var(--muted); font-size: 12px; line-height: 1.4; }
 .tag-filter { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .tag-filter-label { display: inline-flex; flex: none; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; font-weight: 500; }
 .tag-filter-label svg { color: var(--accent-strong); }
@@ -149,11 +163,12 @@ onMounted(async () => { try { tags.value=await request<Tag[]>('GET','/sentence-p
 .collection-pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 62px; padding: 10px 28px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
 .collection-pagination > div, .history-pages { display: flex; align-items: center; gap: 4px; }
 .collection-pagination button:disabled, .history-pages button:disabled { opacity: .4; cursor: not-allowed; }
-.detail-panel { padding: 26px 28px; }
+.detail-panel { padding-top: 6px; }
+:global(.sentence-detail-dialog) { width: min(100%, 720px); }
 .detail-heading { display: flex; justify-content: space-between; gap: 16px; }
 .detail-heading > div { min-width: 0; }
 .section-eyebrow { color: var(--accent-strong); font-size: 12px; font-weight: 650; letter-spacing: .05em; }
-.detail-heading h2 { margin: 8px 0; font-size: 19px; line-height: 1.5; overflow-wrap: anywhere; }
+.detail-heading h3 { margin: 8px 0; font-size: 19px; line-height: 1.5; overflow-wrap: anywhere; }
 .detail-heading p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.7; }
 .detail-heading .quiet-button { align-self: flex-start; }
 .detail-history { margin-top: 26px; padding-top: 22px; border-top: 1px solid var(--line); }
@@ -186,12 +201,10 @@ onMounted(async () => { try { tags.value=await request<Tag[]>('GET','/sentence-p
   .sentence-list { padding: 0 18px; }
   .sentence-entry { gap: 10px; padding-block: 20px; }
   .collection-pagination { padding-inline: 18px; }
-  .detail-panel { padding: 22px 18px; }
-  .detail-heading { flex-direction: column-reverse; }
-  .detail-heading .quiet-button { align-self: flex-end; }
 }
 @media (max-width: 400px) {
   .collection-toolbar { align-items: flex-start; flex-direction: column; gap: 14px; }
+  .sentence-search { width: 100%; max-width: none; }
   .tag-filter { width: 100%; }
   .tag-filter :deep(.app-select) { flex: 1; width: auto; }
   .tag-filter :deep(.app-select-options) { width: 100%; max-width: none; }

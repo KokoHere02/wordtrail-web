@@ -17,9 +17,10 @@ test('sentence tag filter supports keyboard, rapid changes and mobile', async ({
       if (config.url === '/sentence-translation/management/access') return ok({ canManage: false });
       if (config.url === '/sentence-practice/sentences') {
         const tag = String(config.params?.tagId || '');
+        const keyword = String(config.params?.keyword || '');
         if (tag === '1') await new Promise(resolve => setTimeout(resolve, 350));
         if (tag === '2') await new Promise(resolve => setTimeout(resolve, 20));
-        return ok([{ id: 1, englishText: `Result ${tag || 'all'}`, referenceTranslation: '参考翻译', explanation: null, source: 'test', sourceReference: null, learning: false, favorite: false, available: true, tags: [tags[0], tags[8], tags[12]] }]);
+        return ok([{ id: 1, englishText: `Result ${tag || 'all'}${keyword ? ` search:${keyword}` : ''}`, referenceTranslation: '参考翻译', explanation: null, source: 'test', sourceReference: null, learning: false, favorite: false, available: true, tags: [tags[0], tags[8], tags[12]] }]);
       }
       return fallback(config);
     };
@@ -61,6 +62,14 @@ test('sentence tag filter supports keyboard, rapid changes and mobile', async ({
   await page.keyboard.press('Enter');
   await expect(filter).toContainText('全部标签');
   await expect(page.getByText('Result all')).toBeVisible();
+
+  const sentenceSearch = page.getByRole('searchbox', { name: '搜索句子' });
+  await sentenceSearch.fill('hello');
+  await sentenceSearch.press('Enter');
+  await expect(page.getByText('Result all search:hello')).toBeVisible();
+  await sentenceSearch.fill('');
+  await page.getByRole('button', { name: '搜索', exact: true }).click();
+  await expect(page.getByText('Result all', { exact: true })).toBeVisible();
 
   await page.setViewportSize({ width: 320, height: 720 });
   await filter.click();

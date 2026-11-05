@@ -5,7 +5,9 @@ import { sentenceErrorTags, type SentenceNote } from '../../types/sentenceLinks'
 import AppSelect from '../ui/AppSelect.vue';
 const props = defineProps<{ sentenceId: number; personalNote?: SentenceNote; attemptId?: number | null }>();
 const emit = defineEmits<{ saved: [value: SentenceNote] }>();
-const { note, form, editing, loading, loaded, needsReview, error, notice, draft, busy, locked, reload, edit, save } = useSentenceNote(props.sentenceId, props.personalNote, value => emit('saved', value));
+const { note, form, editing, loading, saving, loaded, needsReview, error, notice, draft, busy, locked, reload, edit, save } = useSentenceNote(props.sentenceId, props.personalNote, value => emit('saved', value));
+const hasUnsavedChanges = computed(() => needsReview.value || (loaded.value && !!note.value && (form.content !== note.value.content || form.attemptId !== note.value.attemptId || [...form.errorTags].sort().join('|') !== [...note.value.errorTags].sort().join('|'))));
+defineExpose({ hasUnsavedChanges, saving });
 onMounted(() => { if (!props.personalNote) void reload(); });
 watch(() => props.personalNote, value => { if (!editing.value && !busy.value) note.value = value; });
 const attempts = computed(() => [...new Set([note.value?.attemptId, props.attemptId].filter((value): value is number => typeof value === 'number'))]);
