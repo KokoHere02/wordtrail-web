@@ -97,7 +97,7 @@ const apiRoutes: RouteRecordRaw[] = [
       { path: "words/:wordId(\\d+)", component: () => import("../views/live/WordDetailView.vue") },
       { path: "weak-words", component: () => import("../views/live/WeakWordsView.vue") },
       { path: "settings", component: () => import("../views/live/SettingsView.vue") },
-      { path: "settings/security", component: () => import("../views/auth/AccountSecurityView.vue") },
+      { path: "settings/security", redirect: { path: '/settings', query: { section: 'security' } } },
       { path: "statistics", component: () => import("../views/live/StatisticsView.vue") },
       { path: "records", component: () => import("../views/live/RecordsView.vue") },
       { path: "records/dictation", component: () => import("../views/dictation/DictationRecordsView.vue") },

@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, onScopeDispose, ref } from 'vue';
-import { ArrowUpRight, ChevronRight, Database, Download, Minus, Plus, Target, Volume2 } from 'lucide-vue-next';
+import { computed, onMounted, onScopeDispose, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { ChevronRight, Database, Download, LayoutGrid, LockKeyhole, Monitor, Minus, Plus, Smartphone, Target, Volume2 } from 'lucide-vue-next';
 import PronunciationSettings from '../../components/learning/PronunciationSettings.vue';
+import AccountSecurityView from '../auth/AccountSecurityView.vue';
 import { exportLearningData } from '../../api/learningMedia';
 import { downloadBlob } from '../../utils/download';
 import { dailyApi } from '../../api/daily';
@@ -10,20 +12,36 @@ import { useResource } from '../../composables/useResource';
 import type { LearningSettings } from '../../types/daily';
 import StatePanel from '../../components/ui/StatePanel.vue';
 import AppButton from '../../components/ui/AppButton.vue';
-type SettingsSection = 'allocation' | 'pronunciation' | 'data';
-const section = ref<SettingsSection>('allocation');
+import { useAuthStore } from '../../stores/auth';
+type SettingsSection = 'overview' | 'allocation' | 'pronunciation' | 'data' | 'security' | 'devices';
+const route = useRoute(), router = useRouter(), auth = useAuthStore();
+const section = ref<SettingsSection>('overview');
 const sections = [
+  { id: 'overview', label: '设置总览', icon: LayoutGrid },
   { id: 'allocation', label: '每日配额', icon: Target },
   { id: 'pronunciation', label: '发音与播放', icon: Volume2 },
   { id: 'data', label: '数据管理', icon: Database },
+  { id: 'security', label: '账户安全', icon: LockKeyhole },
+  { id: 'devices', label: '登录设备', icon: Monitor },
 ] as const;
+function selectSection(value: SettingsSection) {
+  if (section.value === value) return;
+  void router.push({ path: '/settings', query: value === 'overview' ? {} : { section: value } });
+}
+function openSecurity(editor: 'password' | 'phone') {
+  void router.push({ path: '/settings', query: { section: 'security', editor } });
+}
+watch(() => route.query.section, value => {
+  section.value = sections.some(item => item.id === value) ? value as SettingsSection : 'overview';
+}, { immediate: true });
 function navigate(event: KeyboardEvent, index: number) {
   const offset = ['ArrowDown', 'ArrowRight'].includes(event.key) ? 1 : ['ArrowUp', 'ArrowLeft'].includes(event.key) ? -1 : 0;
   if (!offset && !['Home', 'End'].includes(event.key)) return;
   event.preventDefault();
   const next = event.key === 'Home' ? 0 : event.key === 'End' ? sections.length - 1 : (index + offset + sections.length) % sections.length;
-  section.value = sections[next]!.id;
-  document.getElementById(`settings-tab-${section.value}`)?.focus();
+  const target = sections[next]!.id;
+  selectSection(target);
+  document.getElementById(`settings-tab-${target}`)?.focus();
 }
 const { data, loading, error, load } = useResource<LearningSettings>();
 const newTarget = ref(''), reviewLimit = ref('');
@@ -75,12 +93,33 @@ onMounted(refresh);
 </script>
 <template>
   <div class="wordlist-page settings-page">
-    <header class="settings-heading"><h1>学习设置</h1><RouterLink to="/today" class="muted-link">返回今日<ChevronRight :size="15" aria-hidden="true" /></RouterLink></header>
+    <header class="settings-heading"><div><h1>设置</h1><p>管理学习偏好、账户与设备</p></div><RouterLink to="/today" class="muted-link">返回今日<ChevronRight :size="15" aria-hidden="true" /></RouterLink></header>
     <div class="settings-layout">
-      <nav class="settings-nav" role="tablist" aria-label="学习设置">
-        <button v-for="(entry, index) in sections" :id="`settings-tab-${entry.id}`" :key="entry.id" type="button" role="tab" :aria-selected="section === entry.id" :aria-controls="`settings-panel-${entry.id}`" :tabindex="section === entry.id ? 0 : -1" @click="section = entry.id" @keydown="navigate($event, index)"><component :is="entry.icon" :size="18" :stroke-width="1.7" aria-hidden="true" /><span>{{ entry.label }}</span></button>
+      <nav class="settings-nav" role="tablist" aria-label="设置分类">
+        <template v-for="(entry, index) in sections" :key="entry.id">
+          <p v-if="entry.id === 'allocation' || entry.id === 'security'" class="settings-nav-group" role="presentation">{{ entry.id === 'allocation' ? '学习' : '账户' }}</p>
+          <button :id="`settings-tab-${entry.id}`" type="button" role="tab" :aria-selected="section === entry.id" :aria-controls="entry.id === 'security' || entry.id === 'devices' ? 'settings-panel-account' : `settings-panel-${entry.id}`" :tabindex="section === entry.id ? 0 : -1" @click="selectSection(entry.id)" @keydown="navigate($event, index)"><component :is="entry.icon" :size="18" :stroke-width="1.7" aria-hidden="true" /><span>{{ entry.label }}</span></button>
+        </template>
       </nav>
       <div class="settings-content">
+        <section id="settings-panel-overview" v-show="section === 'overview'" role="tabpanel" aria-labelledby="settings-tab-overview" tabindex="0" class="settings-panel settings-overview">
+          <div class="settings-summary">
+            <h2>学习设置</h2>
+            <StatePanel :loading="loading" :error="error" @retry="refresh" />
+            <template v-if="data && !loading && !error">
+              <div class="settings-summary-row"><Target :size="20" aria-hidden="true" /><span>优先新词</span><strong>{{ data.newWordTarget == null ? '未设置' : `${data.newWordTarget} 词` }}</strong><button type="button" @click="selectSection('allocation')">调整 <ChevronRight :size="15" /></button></div>
+              <div class="settings-summary-row"><Target :size="20" aria-hidden="true" /><span>优先复习</span><strong>{{ data.reviewLimit == null ? '未设置' : `${data.reviewLimit} 词` }}</strong><button type="button" @click="selectSection('allocation')">调整 <ChevronRight :size="15" /></button></div>
+            </template>
+            <div class="settings-summary-row"><Volume2 :size="20" aria-hidden="true" /><span>发音与播放</span><strong class="settings-summary-description">口音、速度与播放方式</strong><button type="button" @click="selectSection('pronunciation')">管理 <ChevronRight :size="15" /></button></div>
+          </div>
+          <div class="settings-summary">
+            <h2>账户安全与设备</h2>
+            <div class="settings-summary-row"><Smartphone :size="20" aria-hidden="true" /><span>绑定手机号</span><strong>{{ auth.user?.phone ? auth.user.phone.replace(/^(\d{3})\d{4}(\d{4})$/, '$1****$2') : '未绑定' }}</strong><button type="button" @click="openSecurity('phone')">管理 <ChevronRight :size="15" /></button></div>
+            <div class="settings-summary-row"><LockKeyhole :size="20" aria-hidden="true" /><span>登录密码</span><strong class="settings-summary-description">通过手机号验证设置</strong><button type="button" @click="openSecurity('password')">修改 <ChevronRight :size="15" /></button></div>
+            <div class="settings-summary-row"><Monitor :size="20" aria-hidden="true" /><span>登录设备</span><strong class="settings-summary-description">查看并管理设备会话</strong><button type="button" @click="selectSection('devices')">管理设备 <ChevronRight :size="15" /></button></div>
+          </div>
+          <button class="settings-overview-export" type="button" @click="selectSection('data')"><Download :size="18" aria-hidden="true" />导出学习数据 <ChevronRight :size="15" aria-hidden="true" /></button>
+        </section>
         <section id="settings-panel-allocation" v-show="section === 'allocation'" role="tabpanel" aria-labelledby="settings-tab-allocation" tabindex="0" class="settings-panel">
           <header class="settings-section-heading"><h2>每轮优先分配</h2><p>新词与到期复习可互相补位，设为 0 也可补位；新设置仅对新建任务生效。</p></header>
           <StatePanel :loading="loading" :error="error" @retry="refresh" />
@@ -107,9 +146,9 @@ onMounted(refresh);
           <div class="settings-card settings-data-card">
             <div class="settings-data-row"><div class="settings-field-copy"><h3>个人学习数据</h3><p>导出计划、记录、收藏、笔记及引用词句，不支持自动恢复。</p></div><AppButton :busy="exporting" aria-label="下载个人学习数据 ZIP" @click="download"><Download :size="16" aria-hidden="true" />{{ exporting ? '正在导出…' : '导出 ZIP' }}</AppButton></div>
             <p v-if="exportError" class="inline-error" role="alert">{{ exportError }}</p><p v-if="exportNotice" class="live-notice" role="status">{{ exportNotice }}</p>
-            <div class="settings-data-row settings-security-row"><h3>账户安全与设备</h3><RouterLink to="/settings/security" class="muted-link">管理<ArrowUpRight :size="16" aria-hidden="true" /></RouterLink></div>
           </div>
         </section>
+        <section id="settings-panel-account" v-show="section === 'security' || section === 'devices'" role="tabpanel" :aria-labelledby="`settings-tab-${section === 'devices' ? 'devices' : 'security'}`" tabindex="0" class="settings-panel"><AccountSecurityView :view="section === 'devices' ? 'devices' : 'security'" :editor="route.query.editor === 'password' || route.query.editor === 'phone' ? route.query.editor : undefined" /></section>
       </div>
     </div>
   </div>

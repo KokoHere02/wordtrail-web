@@ -4,7 +4,7 @@ import { api } from "../api";
 import { ApiError, refreshIdentity, withCredentialMutation } from "../api/http";
 import { accountApi } from '../api/account';
 import { tokens } from "../api/tokens";
-import type { Credentials, User, TokenPair } from "../types/api";
+import type { User, TokenPair } from "../types/api";
 import { useBooksStore } from "./books";
 export const useAuthStore = defineStore("auth", () => {
   const user = ref<User | null>(null);
@@ -34,11 +34,9 @@ export const useAuthStore = defineStore("auth", () => {
       })();
     await restored;
   }
-  async function login(body: Credentials) {
+  async function loginPhone(operation: () => Promise<TokenPair>) {
     await runAccount(() => withCredentialMutation(async () => {
-      const pair = await api.login(body);
-      tokens.set(pair);
-      user.value = pair.user;
+      const pair = await operation(); tokens.set(pair); user.value = pair.user;
     }));
   }
   async function logout() {
@@ -60,8 +58,11 @@ export const useAuthStore = defineStore("auth", () => {
       throw value;
     }
   }
-  async function changePassword(currentPassword: string, newPassword: string) {
-    await secure(async () => { await accountApi.password(currentPassword, newPassword); clear(); });
+  async function changePasswordByCode(code: string, newPassword: string) {
+    await secure(async () => { await accountApi.passwordByCode(code, newPassword); clear(); });
+  }
+  async function changePhone(oldCode: string, newPhone: string, newCode: string) {
+    await secure(async () => { await accountApi.changePhone(oldCode, newPhone, newCode); clear(); });
   }
   async function logoutOthers(currentPassword: string) {
     await secure(async refresh => {
@@ -81,5 +82,5 @@ export const useAuthStore = defineStore("auth", () => {
   async function upgradeSession() {
     await secure(async refresh => { user.value = (await refresh()).user; });
   }
-  return { user, accountBusy, restore, login, logout, clear, changePassword, logoutOthers, revokeSession, upgradeSession };
+  return { user, accountBusy, restore, loginPhone, logout, clear, changePasswordByCode, changePhone, logoutOthers, revokeSession, upgradeSession };
 });

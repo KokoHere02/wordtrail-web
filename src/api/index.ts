@@ -7,18 +7,12 @@ import type {
   DictionaryQuery,
   DictionaryWord,
   BookWord,
-  Credentials,
   LearningStatus,
   Page,
   PageQuery,
-  Registration,
-  TokenPair,
   User,
 } from "../types/api";
 export const api = {
-  login: (body: Credentials) => request<TokenPair>("POST", "/auth/login", body),
-  register: (body: Registration) =>
-    request<User>("POST", "/auth/register", body),
   me: () => request<User>("GET", "/auth/me"),
   logout: (refreshToken: string) =>
     request<null>("POST", "/auth/logout", { refreshToken }),

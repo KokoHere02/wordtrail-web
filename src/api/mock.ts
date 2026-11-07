@@ -178,6 +178,14 @@ export const mockAdapter: AxiosAdapter = async (config) => {
         : config.data || {}
     ) as Record<string, unknown>;
     const query = new URLSearchParams(Object.entries((config.params || {}) as Record<string, unknown>).filter(([, value]) => value !== undefined && value !== null).map(([key, value]) => [key, String(value)]));
+    if (url === '/auth/phone/send' || url === '/auth/phone/send-auth') return response(null);
+    if (['/auth/phone/register', '/auth/phone/password-login', '/auth/phone/code-login'].includes(url)) {
+      if (url !== '/auth/phone/password-login' && body.code !== '123456') fail(400, 'INVALID_SMS_CODE', '验证码错误或已失效');
+      const phone = String(body.phone);
+      const account = { id: accountId(phone), username: phone, phone, nickname: null };
+      sessionStorage.setItem('wordtrail.mock.user', JSON.stringify(account));
+      return response({ accessToken: `mock-access-${Date.now()}`, refreshToken: `mock-refresh-${Date.now()}`, tokenType: 'Bearer', expiresIn: 1800, user: account });
+    }
     if (url === "/auth/register")
       return response(
         { id: accountId(String(body.username)), username: body.username, nickname: body.nickname || null },
@@ -207,6 +215,7 @@ export const mockAdapter: AxiosAdapter = async (config) => {
     }
     if (!user() || !config.headers.get("Authorization"))
       fail(401, "UNAUTHENTICATED", "请先登录");
+    if (url === '/auth/phone/password' || url === '/auth/phone/binding') return response(null);
     if (url === "/auth/me") return response(user());
     const state = db();
     const practiceItems = () => state.batches.flatMap(batch => batch.items.map(item => ({ batchId: batch.id, itemId: item.itemId, wordId: item.wordId, result: item.result, answerCount: item.answered ? 1 : 0 })));

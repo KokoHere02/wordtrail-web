@@ -17,14 +17,7 @@ export interface User {
   id: number;
   username: string;
   nickname: string | null;
-}
-export interface Credentials {
-  username: string;
-  password: string;
-  deviceName?: string;
-}
-export interface Registration extends Credentials {
-  nickname?: string;
+  phone?: string | null;
 }
 export interface TokenPair {
   accessToken: string;

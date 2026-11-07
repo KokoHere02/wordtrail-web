@@ -15,7 +15,7 @@ const auth = useAuthStore();
 const profileOpen = ref(false);
 const { isDark, toggleTheme } = useTheme();
 const signingOut = ref(false);
-const name = computed(() => auth.user?.nickname || auth.user?.username || '');
+const name = computed(() => auth.user?.nickname || (auth.user?.phone ? auth.user.phone.replace(/^(\d{3})\d{4}(\d{4})$/, '$1****$2') : auth.user?.username) || '');
 const nav = [
   { label: '今日', shortLabel: '今日', path: '/today' },
   { label: '学习', shortLabel: '学习', path: '/learn' },

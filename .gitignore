@@ -39,6 +39,7 @@ dist-ssr
 .qa-book-transfer-dist
 .qa-dictation-dist
 .qa-sentences-dist
+.qa-unified-settings-dist
 
 .qa-expansion-dist
 .qa-expansion-ui-dist
