@@ -14,6 +14,8 @@ async function setup(page: Page) {
     expect(request.headers()['authorization']).toBe('Bearer exam-access');
     if (path === '/auth/me') return json(user);
     if (path === '/auth/logout') return json(null);
+    if (path === '/learning/settings') return json({ pronunciation: { autoPlay: false, accent: 'US', playbackRate: 1, repeatCount: 1 } });
+    if (/^\/dictation\/batches\/\d+\/items\/\d+\/audio$/.test(path)) return route.fulfill({ status: 200, contentType: 'audio/mpeg', body: 'test audio' });
     const response = await server.handle(path, request.method().toLowerCase(), request.postDataJSON(), Object.fromEntries(url.searchParams));
     if (!response) throw new Error(`Unexpected API in independent exam: ${request.method()} ${path}`);
     if (response.networkError) return route.abort('failed');
@@ -67,6 +69,12 @@ for (const width of [1440, 390, 320]) for (const theme of ['light', 'dark']) {
     await expect(page.locator('.dictation-result .dictation-stats')).toBeVisible();
     await expect(page.locator('.dictation-stats dd')).toHaveText(['3', '3', '1', '2', '3', '33.3%']);
     await expect(page.locator('.dictation-result .dictation-word-row')).toHaveCount(3);
+    const results = page.locator('.dictation-result .dictation-word-row');
+    await expect(results.nth(0).locator('.dictation-input-value')).toHaveText('aple');
+    await expect(results.nth(0).locator('.dictation-result-badge')).toHaveText('错误');
+    await expect(results.nth(1).locator('.dictation-input-empty')).toHaveText('未作答');
+    await expect(results.nth(2).locator('.dictation-input-value')).toHaveText('abstract');
+    await expect(results.nth(2).locator('.dictation-result-badge')).toHaveText('正确');
     expect(await page.locator('.dictation-result').textContent()).not.toContain('已掌握');
     expect(await page.locator('html').evaluate(element => element.scrollWidth <= window.innerWidth)).toBe(true);
     await page.screenshot({ path: `test-results/dictation-exam-result-${theme}-${width}.png`, fullPage: true });
@@ -76,6 +84,12 @@ for (const width of [1440, 390, 320]) for (const theme of ['light', 'dark']) {
 test('exact retry survives real reload/cross-day; completed and legacy rounds never reopen; already answered restores next', async ({ page }) => {
   const server = await setup(page), state = server.addTask([1001, 1002, 1003]);
   await page.goto(`/dictation/${state.task.batchId}`); await expect(page.locator('#dictation-input')).toBeEnabled();
+  const audioResponse = page.waitForResponse(response => /\/dictation\/batches\/\d+\/items\/\d+\/audio/.test(response.url()));
+  const audioButton = page.getByRole('button', { name: '播放发音' });
+  await expect(audioButton).toHaveAttribute('aria-keyshortcuts', 'Alt+P');
+  expect(await audioButton.evaluate(el => !!(el.compareDocumentPosition(document.querySelector('.dictation-prompt')!) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
+  await page.locator('#dictation-input').press('Alt+p');
+  expect((await audioResponse).status()).toBe(200);
   server.loseAction = 'ANSWER'; await page.locator('#dictation-input').fill('  aple  '); await page.locator('#dictation-input').press('Enter');
   await expect(page.getByRole('button', { name: '重试原请求', exact: true })).toBeVisible();
   const original = structuredClone(server.calls.filter((call: { method: string }) => call.method === 'put')[0].body);

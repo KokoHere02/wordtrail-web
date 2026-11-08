@@ -1,13 +1,13 @@
 import { http, ApiError, responseError } from './http';
 
-// Restrict credential-bearing audio requests to this API's two documented audio resources.
+// Restrict credential-bearing audio requests to documented audio resources.
 export function audioPath(source: string, accent: 'US' | 'UK') {
   const base = new URL(http.defaults.baseURL || '/api', window.location.origin);
   const url = new URL(source, `${base.origin}/`);
   const prefix = base.pathname.replace(/\/$/, '');
   if (url.origin !== base.origin || !url.pathname.startsWith(`${prefix}/`)) throw new ApiError('音频地址不可用。', 'INVALID_AUDIO_URL');
   const path = url.pathname.slice(prefix.length);
-  if (!/^\/words\/\d+\/audio$/.test(path) && !/^\/learning-batches\/\d+\/training\/items\/\d+\/audio$/.test(path))
+  if (!/^\/words\/\d+\/audio$/.test(path) && !/^\/learning-batches\/\d+\/training\/items\/\d+\/audio$/.test(path) && !/^\/dictation\/batches\/\d+\/items\/\d+\/audio$/.test(path))
     throw new ApiError('音频地址不可用。', 'INVALID_AUDIO_URL');
   if ([...url.searchParams.keys()].some(key => !['accent', 'presentationId', 'modeVersion'].includes(key)))
     throw new ApiError('音频参数不可用。', 'INVALID_AUDIO_URL');

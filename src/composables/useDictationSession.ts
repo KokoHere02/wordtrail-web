@@ -1,6 +1,7 @@
 import { computed, nextTick, onScopeDispose, ref, shallowRef } from 'vue';
 import { useRouter } from 'vue-router';
 import { dictationApi } from '../api/dictation';
+import { createRequestId } from '../utils/requestId';
 import { ApiError, errorMessage } from '../api/http';
 import { useStudySurface } from './useStudySurface';
 import type { DictationTask, DictationQuestion, DictationAnswer, DictationAnswerBody } from '../types/dictation';
@@ -134,7 +135,7 @@ export function useDictationSession(userId: number, batchId: number) {
     if (!canAnswer.value || !question.value) return;
     validation.value = '';
     if (action === 'ANSWER' && (!input.value.trim() || input.value.length > 255)) { validation.value = '请输入 1～255 个字符的英文答案。'; return; }
-    const common = { attemptNo: 1 as const, presentationId: question.value.presentationId, requestId: crypto.randomUUID() };
+    const common = { attemptNo: 1 as const, presentationId: question.value.presentationId, requestId: createRequestId() };
     const body: DictationAnswerBody = action === 'ANSWER' ? { ...common, action, input: input.value } : { ...common, action };
     if (remember({ itemId: question.value.itemId, body })) await send();
   }

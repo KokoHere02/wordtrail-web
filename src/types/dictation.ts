@@ -17,6 +17,7 @@ export interface DictationTask {
 export interface DictationQuestion {
   itemId: number; prompt: string; promptGroups: TranslationGroup[];
   presentationId: string; nextAttemptNo: number; correctStreak: number; requiredCorrectStreak: number; attemptLimit: number;
+  audioUrl?: string;
 }
 export type DictationAnswerBody = { attemptNo: 1; presentationId: string; requestId: string } & (
   { action: 'ANSWER'; input: string } | { action: 'REVEAL'; input?: never }

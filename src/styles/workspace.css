@@ -71,8 +71,8 @@
 .study-workspace .learning-controls { max-width: 820px; margin-inline: auto; }
 .study-workspace .dictation-card { width: min(100%, 820px); margin-inline: auto; }
 .study-workspace .dictation-card > h1 { color: var(--muted); text-align: left; font: 400 var(--text-md)/1.7 var(--font-sans); }
-.study-workspace .dictation-prompt { text-align: left; margin-block: var(--s6) var(--s10); }
-.study-workspace .dictation-prompt .translation-meaning { font-size: var(--text-round); }
+.study-workspace .dictation-prompt { text-align: left; margin-block: var(--s3) var(--s10); }
+.study-workspace .dictation-prompt .translation-meaning, .study-workspace .dictation-prompt .translation-legacy { font-size: var(--text-lg); }
 .study-workspace .dictation-card > .subtle-copy { margin-top: var(--s2); }
 .study-workspace .dictation-answer-form { margin-top: var(--s10); }
 .study-workspace .dictation-answer-form .live-actions { justify-content: flex-end; margin-top: var(--s10); }
@@ -227,7 +227,7 @@
   .workspace-progress-track { flex: 1; min-width: 60px; max-width: 150px; }
   .workspace-panel { padding-top: var(--s5); }
   .study-workspace .learning-card { padding-top: var(--s5); }
-  .study-workspace .dictation-prompt .translation-meaning { font-size: var(--text-xl); }
+  .study-workspace .dictation-prompt .translation-meaning, .study-workspace .dictation-prompt .translation-legacy { font-size: var(--text-md); }
   .letter-slots { gap: var(--s2); }
   .letter-slot { flex-basis: 28px; min-height: 48px; font-size: 32px; }
   .workspace-answer-actions { align-items: stretch; margin-top: var(--s6); }

@@ -59,7 +59,7 @@ export function createDictationExamFixture() {
       if (control.failNext) { control.failNext = false; return reject('TEMPORARY', '题目暂不可用', 503); }
       if (!state.task.canContinue) return reject('DICTATION_NOT_IN_PROGRESS');
       const word = state.entries[state.index];
-      return ok({ itemId: word.itemId, prompt: '释义 [目标词]', promptGroups: groups('提示释义 [目标词]；' + '较长释义。'.repeat(10)), presentationId: `exam-${word.itemId}-${word.version}`, nextAttemptNo: 1, correctStreak: 0, requiredCorrectStreak: 1, attemptLimit: 1 });
+      return ok({ itemId: word.itemId, prompt: '释义 [目标词]', promptGroups: groups('提示释义 [目标词]；' + '较长释义。'.repeat(10)), presentationId: `exam-${word.itemId}-${word.version}`, audioUrl: `/api/dictation/batches/${state.task.batchId}/items/${word.itemId}/audio?presentationId=exam-${word.itemId}-${word.version}`, nextAttemptNo: 1, correctStreak: 0, requiredCorrectStreak: 1, attemptLimit: 1 });
     }
     if (control.answerGate) await control.answerGate;
     const cached = state.receipts.get(body.requestId);
