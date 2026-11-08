@@ -21,7 +21,7 @@ function change(selector, value) { const element = document.querySelector(select
 function button(text) { return [...document.querySelectorAll('button')].find(b => (b.textContent.trim() === text || b.getAttribute('aria-label') === text) && !b.closest('[style*="display: none"]')); }
 async function click(text) { await until(() => button(text) && !button(text).disabled, text); button(text).click(); }
 let pronunciation = { autoPlay: false, accent: 'US', playbackRate: 1, repeatCount: 1 };
-let allocation = { newWordTarget: 10, reviewLimit: 20 }, dailyCalls = 0, createLoss = true, revealed = false, eventNo = 1;
+let allocation = { newWordTarget: 10, reviewLimit: 20 }, dailyCalls = 0, createLoss = true, revealed = false, eventNo = 1, inProgress = true, autoEmpty = false;
 const task = { batchId: 90, taskType: 'PRACTICE', learningDate: null, dailyTarget: 0, studyMode: 'LISTEN_DICTATION', modeVersion: 0, status: 'IN_PROGRESS', totalCount: 1, completedCount: 0, skippedCount: 0, answerCount: 0, trainingCount: 0, unfamiliarCount: 0, newCount: 1, reviewCount: 0, nextItemId: 900 };
 const daily = { ...task, batchId: 50, taskType: 'DAILY', learningDate: '2026-10-27', dailyTarget: 15, newWordTarget: 5, reviewLimit: 10 };
 const issue = (id, reason = 'SPELLING_ERROR', category = 'ERROR') => ({ wordId: id, word: 'apple', reason, category, lastInput: 'aple', translation: '苹果', mode: 'DICTATION', trainingId: 10, batchId: 50, itemId: 500, lastOccurredAt: '2026-10-27T10:00:00', occurrenceCount: 3 });
@@ -42,8 +42,13 @@ http.defaults.adapter = async config => {
     assert.equal(config.params.category, 'ERROR');
     return ok(config, { page: config.params.page, size: 20, total: 21, records: config.params.page === 2 ? [issue(2)] : [issue(1), issue(1, 'ANSWER_REVEALED')] });
   }
+  if (config.url === '/learning/consolidation/automatic') {
+    if (autoEmpty) throw new AxiosError('empty', 'ERR_BAD_RESPONSE', config, null, { config, status: 409, headers: {}, data: { code: 'NO_CONSOLIDATION_WORDS', message: '没有待巩固的错词' } });
+    if (createLoss) { createLoss = false; throw new Error('lost response'); }
+    return ok(config, task);
+  }
   if (config.url === '/learning/consolidation/batches') {
-    if (config.method === 'get') return ok(config, page([task], config.params));
+    if (config.method === 'get') return ok(config, page(inProgress ? [task] : [], config.params));
     assert.equal('count' in body && 'wordIds' in body, false);
     if (!created.has(body.requestId)) created.set(body.requestId, clone(task));
     if (createLoss) { createLoss = false; throw new Error('lost create response'); }
@@ -52,7 +57,7 @@ http.defaults.adapter = async config => {
   if (config.url === '/learning/consolidation/batches/90') return ok(config, task);
   if (config.url.endsWith('/90/next') || config.url.endsWith('/50/daily/training/next')) {
     const progress = config.url.includes('/consolidation/') ? task : daily;
-    return ok(config, { itemId: 900, mode: progress.studyMode, modeVersion: progress.modeVersion, attemptNo: eventNo, presentationId: `display-${eventNo}`, phase: 'AWAITING_INPUT', answerRevealed: revealed, hintUsed: revealed,
+    return ok(config, { itemId: 900, mode: progress.studyMode, modeVersion: progress.modeVersion, attemptNo: eventNo, presentationId: `display-${eventNo}`, phase: progress.studyMode === 'RECOGNITION' ? (revealed ? 'AWAITING_SELF_ASSESSMENT' : 'QUESTION') : 'AWAITING_INPUT', answerRevealed: revealed, hintUsed: revealed,
       // Even an unexpected payload with semantic fields must not expose the initial listening answer.
       word: 'secretspelling', phonetic: 'secretphonetic', translation: '隐藏释义', wordId: 88, audioUrl: '/api/learning-batches/90/training/items/900/audio?presentationId=x&modeVersion=0', pronunciation, progress, itemStatus: 'PENDING', completionReason: null, extraTraining: false });
   }
@@ -68,39 +73,38 @@ http.defaults.adapter = async config => {
   return fallback(config);
 };
 await until(() => document.querySelector('#username'), 'login'); input('#username', 'fixture_reader'); input('#password', 'fixture123'); await click('登录'); await until(() => document.querySelector('.daily-equation'), 'home');
-await router.push('/consolidation'); await until(() => document.querySelectorAll('.consolidation-issue').length === 2, 'issue rows');
-assert.match(document.querySelector('.consolidation-issue').textContent, /aple.*单词默写.*发生 3 次/s); assert.equal(calls.filter(c => c.url.endsWith('/issues')).at(-1).params.category, 'ERROR');
-assert.equal(document.querySelector('.consolidation-page h1'), null);
-assert.ok(!document.querySelector('.consolidation-page').textContent.includes('待验证'));
-assert.equal(document.querySelectorAll('.consolidation-summary > div').length, 4);
-const reasonSelect = document.querySelector('.consolidation-reason-select [role=combobox]'); reasonSelect.click();
-await until(() => document.querySelectorAll('.consolidation-reason-select [role=option]').length === 5, 'four supported reasons');
-assert.ok(!document.querySelector('.consolidation-reason-select').textContent.includes('验证'));
-reasonSelect.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-const modeSelect = document.querySelector('.consolidation-controls [role=combobox]'); modeSelect.click();
-modeSelect.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'End', bubbles: true }));
-modeSelect.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-await until(() => modeSelect.textContent.includes('听音默写') && !document.querySelector('.consolidation-controls [role=listbox]'), 'keyboard mode selection');
-assert.equal(calls.filter(c => c.url.endsWith('/batches') && c.method === 'post').length, 0, 'selecting a mode never submits the form');
-const checks = [...document.querySelectorAll('.consolidation-issue input')]; checks[0].click(); checks[1].click(); await until(() => document.querySelector('.consolidation-controls').textContent.includes('已选 1 个不同单词'), 'word deduplication');
-document.querySelector('.consolidation-page section[aria-label="巩固词项"] button[aria-label="下一页"]').click(); await until(() => document.querySelectorAll('.consolidation-issue').length === 1, 'page two');
-assert.equal(calls.filter(c => c.url.endsWith('/issues')).at(-1).params.page, 2);
-document.querySelector('.consolidation-issue input').click(); await click('巩固所选单词');
-await until(() => button('重试原创建请求') && !button('重试原创建请求').disabled && document.querySelector('.consolidation-controls').textContent.includes('创建结果尚未确认'), 'uncertain create'); const firstCreate = calls.filter(c => c.url.endsWith('/batches') && c.method === 'post')[0]; assert.deepEqual(firstCreate.body.wordIds, [1, 2]);
-assert.ok(document.querySelector('.consolidation-controls fieldset').disabled); assert.ok(document.querySelector('.consolidation-reason-select [role=combobox]').disabled);
-await router.push('/today'); await router.push('/consolidation');
-await until(() => button('重试原创建请求') && document.querySelector('.consolidation-controls').textContent.includes('已选 2 个不同单词'), 'pending create restored');
-await click('重试原创建请求');
-await until(() => router.currentRoute.value.path === '/consolidation/batches/90' && document.querySelector('.daily-training-card'), 'shared practice page');
-assert.equal(created.size, 1); assert.deepEqual(calls.filter(c => c.url.endsWith('/batches') && c.method === 'post')[1].body, firstCreate.body);
+await router.push('/consolidation'); await until(() => button('重试') && !button('重试').disabled, 'automatic request retry');
+const firstAutomatic = calls.filter(c => c.url.endsWith('/automatic'))[0];
+await click('重试');
+await until(() => router.currentRoute.value.path === '/consolidation/study/90' && document.querySelector('.daily-training-card'), 'automatic practice');
+assert.deepEqual(calls.filter(c => c.url.endsWith('/automatic'))[1].body, firstAutomatic.body, 'retry preserves request identity');
+assert.deepEqual([...document.querySelectorAll('.workspace-shortcuts a')].map(link => link.textContent.trim()), ['每日单词', '独立默写专项', '错因与巩固']);
 const before = dailyCalls, card = document.querySelector('.daily-training-card');
 assert.equal(card.querySelector('.learning-word'), null); assert.equal(card.querySelector('.word-meaning'), null); assert.ok(!card.textContent.includes('secret')); assert.ok(!card.textContent.includes('隐藏释义')); assert.equal(document.querySelector('button[aria-label="显示中文释义"]').disabled, true);
 assert.equal(card.querySelectorAll('.letter-slot').length, 1, 'listening does not expose answer length');
 const reveal = [...document.querySelectorAll('button')].find(b => b.textContent.includes('不会／看答案')); reveal.click();
 await until(() => document.querySelector('.daily-assisted-note'), 'assisted listening'); assert.equal(document.querySelector('.learning-word').textContent, 'secretspelling');
 const writes = calls.filter(c => c.url.endsWith('/900/answer')).length;
-await router.push('/consolidation'); await router.push('/consolidation/batches/90'); await until(() => document.querySelector('.daily-assisted-note'), 'reentered reveal');
+await router.push('/consolidation'); await until(() => router.currentRoute.value.path === '/consolidation/study/90' && document.querySelector('.daily-assisted-note'), 'reentered reveal');
 assert.equal(calls.filter(c => c.url.endsWith('/900/answer')).length, writes); assert.equal(dailyCalls, before, 'practice never reads DAILY');
+await click('练习设置');
+document.querySelector('#word-mode-dictation').click(); await until(() => task.studyMode === 'DICTATION' && document.querySelector('#word-mode-dictation').checked, 'switch to dictation');
+document.querySelector('#word-mode-recognition').click(); await until(() => task.studyMode === 'RECOGNITION' && document.querySelector('.learning-word'), 'switch to recognition');
+await delay(20); assert.equal(document.querySelector('.daily-training-card .word-meaning'), null, 'switching back hides previously revealed meaning');
+await click('显示中文释义'); await until(() => document.querySelector('.daily-training-card .word-meaning'), 'show previously revealed meaning');
+assert.equal(calls.filter(c => c.url.endsWith('/900/answer')).length, writes, 'showing restored meaning does not submit a second reveal');
+await router.push('/consolidation/words'); await until(() => document.querySelectorAll('.consolidation-issue').length === 2, 'issue rows');
+assert.equal(document.querySelector('.main-nav a[aria-current=page]').textContent.trim(), '内容库');
+assert.match(document.querySelector('.consolidation-issue').textContent, /aple.*单词默写.*发生 3 次/s);
+assert.equal(document.querySelector('.consolidation-controls'), null, 'no manual batch creation');
+assert.equal(document.querySelectorAll('.consolidation-summary > div').length, 4);
+const reasonSelect = document.querySelector('.consolidation-reason-select [role=combobox]'); reasonSelect.click();
+await until(() => document.querySelectorAll('.consolidation-reason-select [role=option]').length === 5, 'four supported reasons');
+reasonSelect.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+document.querySelector('.consolidation-page section[aria-label="巩固词项"] button[aria-label="下一页"]').click(); await until(() => document.querySelectorAll('.consolidation-issue').length === 1, 'page two');
+assert.equal(calls.filter(c => c.url.endsWith('/issues')).at(-1).params.page, 2);
+autoEmpty = true; await router.push('/consolidation'); await until(() => document.querySelector('.learning-empty h1')?.textContent.includes('暂无待巩固的错词'), 'empty consolidation');
+assert.equal(button('重试'), undefined);
 await router.push('/settings'); await until(() => document.querySelector('#new-word-target'), 'allocation settings');
 assert.equal(document.querySelectorAll('.settings-nav [role=tab]').length, 3);
 await click('增加每日新词'); assert.equal(document.querySelector('#new-word-target').value, '11');
@@ -126,6 +130,6 @@ releaseExport(); await delay(20); assert.equal(downloads, 1, 'leaving settings c
 assert.doesNotMatch(document.querySelector('.today-hero').textContent, /每轮偏好|当前任务策略|未编入今日任务|逾期复习|逾期指/);
 assert.match(document.querySelector('.daily-assigned-counts').textContent, /新词 1 · 复习 0/); assert.equal(daily.newWordTarget, 5);
 app.unmount(); URL.createObjectURL = originalCreate; await window.happyDOM.close();
-console.log('PASS mounted Vue: four real issue reasons, pagination, recent input, deduplicated selection, exact lost-create retry');
+console.log('PASS mounted Vue: automatic practice, exact retry, empty state, issue details and pagination');
 console.log('PASS mounted Vue: shared PRACTICE isolation, listening answer/length masking, assisted refresh without repeat REVEAL');
 console.log('PASS mounted Vue: allocation validation/snapshot, actual pronunciation PUT body, ZIP auth failure and successful download');

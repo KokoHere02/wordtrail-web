@@ -32,6 +32,7 @@ export const consolidationApi = {
     requireIssueFilter(query);
     return request<Page<Issue>>('GET', '/learning/consolidation/issues', undefined, query);
   },
+  automatic: async (requestId: string) => requireTrainingTask(await request<TrainingTask>('POST', '/learning/consolidation/automatic', { requestId })),
   summary: () => request<{ reason: IssueReason; category: IssueCategory; wordCount: number }[]>('GET', '/learning/consolidation/summary'),
   create: async (body: CreateConsolidation) => {
     requireIssueFilter(body);

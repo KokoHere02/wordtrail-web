@@ -26,7 +26,7 @@ watch(() => props.batchId, () => { data.value = undefined; void load(1); }, { im
 watch(() => [props.revision, props.allowExtra], () => { void load(); });
 </script>
 <template>
-  <section class="training-items" aria-label="本组词项">
+  <section class="training-items" aria-label="练习词项">
     <StatePanel :loading="loading" :error="error" @retry="load()" />
     <template v-if="data && !loading && !error">
       <p v-if="!data.records.length" class="training-list-empty">暂无单词</p>

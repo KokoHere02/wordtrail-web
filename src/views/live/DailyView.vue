@@ -14,6 +14,7 @@ import { useAudioPlayer } from '../../composables/useAudioPlayer';
 import { usePronunciation } from '../../stores/pronunciation';
 import { ordinaryAudioUrl } from '../../api/learningMedia';
 import { wordsApi } from '../../api/words';
+import { consolidationApi } from '../../api/consolidation';
 import { errorMessage } from '../../api/http';
 import { useStudyPreferences } from '../../stores/studyPreferences';
 import LetterInput from '../../components/learning/LetterInput.vue';
@@ -34,6 +35,15 @@ const preferences = useStudyPreferences();
 const viewActive = ref(true);
 const { goal, refresh: refreshGoal } = useDailyGoal(() => today.value?.learningDate, () => task.value?.batchId);
 const needsWords = computed(() => today.value?.needsMoreWords || session.noWords.value);
+const outstanding = ref<boolean>(), outstandingError = ref(''), outstandingLoading = ref(false);
+let outstandingToken = 0;
+async function refreshOutstanding() {
+  const token = ++outstandingToken; outstandingLoading.value = true; outstandingError.value = '';
+  try { const result = await consolidationApi.issues({ page: 1, size: 1, category: 'ERROR' }); if (token === outstandingToken) outstanding.value = result.total > 0; }
+  catch (e) { if (token === outstandingToken) { outstanding.value = undefined; outstandingError.value = errorMessage(e); } }
+  finally { if (token === outstandingToken) outstandingLoading.value = false; }
+}
+watch([() => task.value?.status, () => task.value?.batchId], ([status]) => { if (props.scope === 'CONSOLIDATION' && status === 'COMPLETED') void refreshOutstanding(); }, { immediate: true });
 watch([() => today.value?.learningDate, () => task.value?.batchId, () => task.value?.completedCount, () => task.value?.status, busy, viewActive, () => surface?.active.value], () => {
   if ((!props.scope || props.scope === 'DAILY') && today.value && !busy.value && !historical.value && viewActive.value && surface?.active.value !== false) void refreshGoal();
 });
@@ -50,7 +60,10 @@ const audioSource = computed(() => {
 });
 const canPronounce = computed(() => viewActive.value && !!audioSource.value && !session.blocked.value && surface?.active.value !== false);
 const canToggleMeaning = computed(() => !!question.value && !listeningHidden.value && !showingFeedback.value && !session.blocked.value);
-const meaningVisible = computed(() => !listeningHidden.value && preferences.showChinese && !!question.value && (question.value.mode !== 'RECOGNITION' || !!definition.value));
+const recognitionMeaningHidden = ref(false);
+const meaningVisible = computed(() => !listeningHidden.value && preferences.showChinese && !!question.value && (question.value.mode !== 'RECOGNITION' || (!!definition.value && !recognitionMeaningHidden.value)));
+let recognitionItemId: number | undefined;
+watch(() => question.value?.itemId, id => { if (id !== undefined && id !== recognitionItemId) { recognitionItemId = id; recognitionMeaningHidden.value = false; } }, { flush: 'sync' });
 const field = ref<InstanceType<typeof LetterInput>>();
 const dictationNext = ref<HTMLButtonElement>();
 const recognitionNext = ref<HTMLButtonElement>();
@@ -97,11 +110,11 @@ async function sync() {
     await session.extra(itemId);
   }
 }
-function reveal() { preferences.showChinese = true; if (!showingFeedback.value && question.value && !question.value.answerRevealed) return session.action('REVEAL'); }
-useRevealShortcut(reveal, () => !session.blocked.value && !showingFeedback.value && !!question.value && !question.value.answerRevealed);
+function reveal() { preferences.showChinese = true; recognitionMeaningHidden.value = false; if (!showingFeedback.value && question.value && !question.value.answerRevealed) return session.action('REVEAL'); }
+useRevealShortcut(reveal, () => !session.blocked.value && !showingFeedback.value && !!question.value && (!question.value.answerRevealed || (question.value.mode === 'RECOGNITION' && recognitionMeaningHidden.value)));
 function toggleMeaning() {
   if (!canToggleMeaning.value) return;
-  if (question.value?.mode === 'RECOGNITION' && !definition.value) return reveal();
+  if (question.value?.mode === 'RECOGNITION' && (!definition.value || recognitionMeaningHidden.value)) return reveal();
   preferences.showChinese = !preferences.showChinese;
 }
 function next() { if (showingFeedback.value) session.continueTraining(); }
@@ -150,12 +163,12 @@ onActivated(() => { void nextTick(() => {
   if (busy.value) syncPending = true;
   else if (!pending.value) void sync();
 }); });
-defineExpose({ changeMode: async (value: DailyStudyMode) => { await initializing; await session.changeMode(value); }, toggleMeaning, pronounce, meaningVisible, canToggleMeaning, canPronounce, speaking });
+defineExpose({ changeMode: async (value: DailyStudyMode) => { await initializing; const switchingToRecognition = value === 'RECOGNITION' && mode.value !== value; await session.changeMode(value); if (switchingToRecognition && mode.value === value && question.value) recognitionMeaningHidden.value = true; }, toggleMeaning, pronounce, meaningVisible, canToggleMeaning, canPronounce, speaking });
 </script>
 <template>
   <div class="review-page learning-page unified-daily-page">
     <ReviewHeader :completed="task?.completedCount || 0" :total="task?.totalCount || 0" :skipped="task?.skippedCount || 0" :back-to="scope === 'CONSOLIDATION' ? '/consolidation' : '/today'" :label="scope === 'CONSOLIDATION' ? '集中巩固' : '每日单词'" />
-    <div class="daily-training-main"><p v-if="scope === 'CONSOLIDATION'" class="subtle-copy">独立巩固 · 本轮进度不计入每日目标，不改变长期复习安排。可跨日继续。</p>
+    <div class="daily-training-main">
       <p v-if="speechError" class="speech-error" role="status">{{ speechError }} <button class="muted-link" :disabled="!canPronounce || audioLoading" @click="pronounce">重试播放</button> · 可在练习设置中切换方式</p>
       <div v-if="session.legacyFollow.value && !historical" class="daily-follow-migration"><p>跟拼已移至独立练习。此每日任务的词单和进度已保留，请选择一种每日方式继续。</p><RouterLink to="/follow-typing" class="btn btn-primary">进入跟拼练习</RouterLink><RouterLink v-if="task" :to="`/records/${task.batchId}`" class="muted-link">查看原每日记录</RouterLink><div class="live-actions"><button v-for="entry in [{ mode: 'RECOGNITION' as const, label: '认识' }, { mode: 'DICTATION' as const, label: '单词默写' }, { mode: 'LISTEN_DICTATION' as const, label: '听音默写' }]" :key="entry.mode" class="btn btn-secondary" :disabled="busy || !!pending" @click="session.changeMode(entry.mode)">{{ entry.label }}</button></div></div>
       <StatePanel :loading="busy && !question && !receipt" />
@@ -191,7 +204,7 @@ defineExpose({ changeMode: async (value: DailyStudyMode) => { await initializing
         <p v-if="!incorrect && receipt.input !== null" class="daily-submitted">你的输入：<span lang="en">{{ receipt.input }}</span></p>
         <WordLearningDetails :translation="receipt.translation" :translation-groups="receipt.translationGroups" :word-id="receipt.wordId" :word="receipt.word" :word-key="receipt.trainingId" />
         <p v-if="receipt.extraTraining" class="subtle-copy">本次仅记录训练，不重复完成目标或改变复习安排。</p>
-        <p v-else-if="task?.status === 'COMPLETED'" class="subtle-copy">本组已结束。训练完成不代表已经掌握。</p>
+        <p v-else-if="task?.status === 'COMPLETED'" class="subtle-copy">练习完成不代表已经掌握。</p>
         <div v-if="canCorrect" class="daily-correction"><button class="muted-link" :aria-expanded="correction" @click="correction = !correction">记错了（R）</button><div v-if="correction" class="live-actions"><button class="btn btn-secondary" @click="saveCorrection(3)">改为不认识（1）</button><button class="btn btn-secondary" @click="saveCorrection(2)">改为模糊（2）</button></div></div>
         <AppButton :disabled="session.blocked.value" @click="next">{{ receipt.action === 'REVEAL' ? '继续输入' : receipt.extraTraining ? '再次训练此词' : question ? '下一个' : '查看完成状态' }} <span aria-hidden="true">→</span></AppButton>
       </section>
@@ -213,8 +226,8 @@ defineExpose({ changeMode: async (value: DailyStudyMode) => { await initializing
           <div class="workspace-answer-actions"><button type="button" class="btn btn-secondary" :disabled="session.blocked.value || question.answerRevealed" aria-keyshortcuts="F2" title="不会／看答案（F2）" @click="reveal">{{ question.answerRevealed ? '已查看答案' : '不会／看答案' }}<kbd v-if="!question.answerRevealed" aria-hidden="true">F2</kbd></button><AppButton type="submit" :disabled="session.blocked.value || !input.trim()" :busy="busy">提交 <kbd>Enter</kbd></AppButton></div>
         </form>
       </section>
-      <div v-else-if="!busy && !error && !pending && !session.promptUnavailable.value && (!session.legacyFollow.value || historical)" class="library-empty learning-empty"><h1>{{ historical ? '历史任务仅供回顾' : task?.status === 'COMPLETED' ? '本组训练已结束' : task?.status === 'ABANDONED' ? '本轮已放弃' : !task ? '任选一种方式，开始今日单词' : '暂无可作答单词' }}</h1><p v-if="task">完成 {{ task.completedCount }} / {{ task.totalCount }} 词 · 跳过 {{ task.skippedCount }} 词</p><p v-if="(!scope || scope === 'DAILY') && !historical && goal" class="daily-goal-status">{{ goal.reached ? '每日目标已达成' : `距每日目标还差 ${goal.remainingCount} 词` }}</p><p v-if="(!scope || scope === 'DAILY') && !historical && needsWords" class="daily-needs-words">添加单词到学习计划后可继续，收进词本还需点击“加入学习计划”。</p><RouterLink v-if="(!scope || scope === 'DAILY') && !historical && !expired && needsWords" to="/books" class="btn btn-primary">添加单词到学习计划</RouterLink><AppButton v-else-if="scope !== 'CONSOLIDATION' && !historical && !expired && (!task || today?.canAddMore)" :busy="busy" @click="session.start">{{ task ? '继续学习' : '开始今日学习' }}</AppButton><RouterLink v-if="task && scope !== 'CONSOLIDATION'" :to="`/records/${task.batchId}`" class="btn btn-secondary">查看本轮记录</RouterLink><RouterLink :to="scope === 'CONSOLIDATION' ? '/consolidation' : '/today'" class="muted-link">{{ scope === 'CONSOLIDATION' ? '返回错因清单' : '返回今日' }}</RouterLink></div>
-      <details v-if="task && scope === 'CONSOLIDATION'" class="workspace-notes workspace-items" :open="itemsOpen" @toggle="itemsOpen = ($event.target as HTMLDetailsElement).open"><summary>本组词项 · {{ task.completedCount }} / {{ task.totalCount }} 词完成</summary><TrainingItems v-if="itemsOpen" :batch-id="task.batchId" :scope="scope" :revision="itemsRevision" :allow-extra="!historical && !expired && !session.blocked.value" @extra="session.extra" /></details>
+      <div v-else-if="!busy && !error && !pending && !session.promptUnavailable.value && (!session.legacyFollow.value || historical)" class="library-empty learning-empty"><h1>{{ historical ? '历史任务仅供回顾' : task?.status === 'COMPLETED' ? (scope === 'CONSOLIDATION' ? (outstanding === false ? '暂无待巩固的错词' : '当前练习已完成') : '本组训练已结束') : task?.status === 'ABANDONED' ? '本轮已放弃' : !task ? '任选一种方式，开始今日单词' : '暂无可作答单词' }}</h1><p v-if="task">完成 {{ task.completedCount }} / {{ task.totalCount }} 词 · 跳过 {{ task.skippedCount }} 词</p><p v-if="scope === 'CONSOLIDATION' && task && outstanding">仍有待巩固的错词，可以继续练习。</p><p v-if="scope === 'CONSOLIDATION' && outstandingLoading">正在检查待巩固的错词…</p><p v-if="scope === 'CONSOLIDATION' && outstandingError" role="alert">{{ outstandingError }} <button class="muted-link" @click="refreshOutstanding">重试</button></p><RouterLink v-if="scope === 'CONSOLIDATION'" to="/consolidation/words" class="muted-link">查看错词与错因</RouterLink><p v-if="(!scope || scope === 'DAILY') && !historical && goal" class="daily-goal-status">{{ goal.reached ? '每日目标已达成' : `距每日目标还差 ${goal.remainingCount} 词` }}</p><p v-if="(!scope || scope === 'DAILY') && !historical && needsWords" class="daily-needs-words">添加单词到学习计划后可继续，收进词本还需点击“加入学习计划”。</p><RouterLink v-if="(!scope || scope === 'DAILY') && !historical && !expired && needsWords" to="/books" class="btn btn-primary">添加单词到学习计划</RouterLink><AppButton v-else-if="scope !== 'CONSOLIDATION' && !historical && !expired && (!task || today?.canAddMore)" :busy="busy" @click="session.start">{{ task ? '继续学习' : '开始今日学习' }}</AppButton><RouterLink v-if="task && scope !== 'CONSOLIDATION'" :to="`/records/${task.batchId}`" class="btn btn-secondary">查看本轮记录</RouterLink><RouterLink v-if="scope !== 'CONSOLIDATION' || outstanding" :to="scope === 'CONSOLIDATION' ? '/consolidation' : '/today'" class="muted-link">{{ scope === 'CONSOLIDATION' ? '继续巩固' : '返回今日' }}</RouterLink></div>
+      <details v-if="task && scope === 'CONSOLIDATION'" class="workspace-notes workspace-items" :open="itemsOpen" @toggle="itemsOpen = ($event.target as HTMLDetailsElement).open"><summary>已练词项 · {{ task.completedCount }} / {{ task.totalCount }} 词完成</summary><TrainingItems v-if="itemsOpen" :batch-id="task.batchId" :scope="scope" :revision="itemsRevision" :allow-extra="!historical && !expired && !session.blocked.value" @extra="session.extra" /></details>
     </div>
   </div>
 </template>

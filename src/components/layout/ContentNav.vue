@@ -9,6 +9,7 @@ const kinds = [
 const tools = [
   { path: '/plan', label: '学习计划', icon: ListChecks },
   { path: '/weak-words', label: '薄弱词', icon: CircleAlert },
+  { path: '/consolidation/words', label: '错词与错因', icon: CircleAlert },
 ];
 </script>
 <template>
