@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onScopeDispose, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ChevronRight, Database, Download, LayoutGrid, LockKeyhole, Monitor, Minus, Plus, Smartphone, Target, Volume2 } from 'lucide-vue-next';
+import { ChevronRight, Database, Download, LayoutGrid, LockKeyhole, Mail, Monitor, Minus, Plus, Smartphone, Target, Volume2 } from 'lucide-vue-next';
 import PronunciationSettings from '../../components/learning/PronunciationSettings.vue';
 import AccountSecurityView from '../auth/AccountSecurityView.vue';
 import { exportLearningData } from '../../api/learningMedia';
@@ -28,7 +28,7 @@ function selectSection(value: SettingsSection) {
   if (section.value === value) return;
   void router.push({ path: '/settings', query: value === 'overview' ? {} : { section: value } });
 }
-function openSecurity(editor: 'password' | 'phone') {
+function openSecurity(editor: 'password' | 'phone' | 'email') {
   void router.push({ path: '/settings', query: { section: 'security', editor } });
 }
 watch(() => route.query.section, value => {
@@ -115,7 +115,8 @@ onMounted(refresh);
           <div class="settings-summary">
             <h2>账户安全与设备</h2>
             <div class="settings-summary-row"><Smartphone :size="20" aria-hidden="true" /><span>绑定手机号</span><strong>{{ auth.user?.phone ? auth.user.phone.replace(/^(\d{3})\d{4}(\d{4})$/, '$1****$2') : '未绑定' }}</strong><button type="button" @click="openSecurity('phone')">管理 <ChevronRight :size="15" /></button></div>
-            <div class="settings-summary-row"><LockKeyhole :size="20" aria-hidden="true" /><span>登录密码</span><strong class="settings-summary-description">通过手机号验证设置</strong><button type="button" @click="openSecurity('password')">修改 <ChevronRight :size="15" /></button></div>
+            <div class="settings-summary-row"><Mail :size="20" aria-hidden="true" /><span>绑定邮箱</span><strong>{{ auth.user?.email || '未绑定' }}</strong><button type="button" @click="openSecurity('email')">管理 <ChevronRight :size="15" /></button></div>
+            <div class="settings-summary-row"><LockKeyhole :size="20" aria-hidden="true" /><span>登录密码</span><strong class="settings-summary-description">通过{{ auth.user?.phone ? '手机号' : '邮箱' }}验证设置</strong><button type="button" @click="openSecurity('password')">修改 <ChevronRight :size="15" /></button></div>
             <div class="settings-summary-row"><Monitor :size="20" aria-hidden="true" /><span>登录设备</span><strong class="settings-summary-description">查看并管理设备会话</strong><button type="button" @click="selectSection('devices')">管理设备 <ChevronRight :size="15" /></button></div>
           </div>
           <button class="settings-overview-export" type="button" @click="selectSection('data')"><Download :size="18" aria-hidden="true" />导出学习数据 <ChevronRight :size="15" aria-hidden="true" /></button>
@@ -148,7 +149,7 @@ onMounted(refresh);
             <p v-if="exportError" class="inline-error" role="alert">{{ exportError }}</p><p v-if="exportNotice" class="live-notice" role="status">{{ exportNotice }}</p>
           </div>
         </section>
-        <section id="settings-panel-account" v-show="section === 'security' || section === 'devices'" role="tabpanel" :aria-labelledby="`settings-tab-${section === 'devices' ? 'devices' : 'security'}`" tabindex="0" class="settings-panel"><AccountSecurityView :view="section === 'devices' ? 'devices' : 'security'" :editor="route.query.editor === 'password' || route.query.editor === 'phone' ? route.query.editor : undefined" /></section>
+        <section id="settings-panel-account" v-show="section === 'security' || section === 'devices'" role="tabpanel" :aria-labelledby="`settings-tab-${section === 'devices' ? 'devices' : 'security'}`" tabindex="0" class="settings-panel"><AccountSecurityView :view="section === 'devices' ? 'devices' : 'security'" :editor="route.query.editor === 'password' || route.query.editor === 'phone' || route.query.editor === 'email' ? route.query.editor : undefined" /></section>
       </div>
     </div>
   </div>

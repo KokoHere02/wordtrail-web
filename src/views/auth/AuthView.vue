@@ -11,7 +11,8 @@ const route = useRoute(), router = useRouter(), auth = useAuthStore();
 const { isDark, toggleTheme } = useTheme();
 const registering = computed(() => route.path === '/register');
 const mode = ref<'password' | 'code'>('password');
-const form = reactive({ phone: '', password: '', code: '' });
+const identity = ref<'phone' | 'email'>('phone');
+const form = reactive({ phone: '', email: '', password: '', code: '' });
 const busy = ref(false), sending = ref(false), remaining = ref(0), error = ref('');
 const notice = ref(sessionStorage.getItem('wordtrail.security-notice') || '');
 sessionStorage.removeItem('wordtrail.security-notice');
@@ -22,12 +23,14 @@ const redirect = computed(() => {
 });
 let timer: ReturnType<typeof setInterval> | undefined;
 onUnmounted(() => clearInterval(timer));
-watch([registering, mode], () => { form.password = ''; form.code = ''; error.value = ''; });
+watch([registering, mode, identity], () => { form.password = ''; form.code = ''; error.value = ''; });
+const validEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) && value.length <= 254;
 async function send() {
-  if (!/^1[3-9]\d{9}$/.test(form.phone)) { error.value = '请输入正确的中国大陆手机号。'; return; }
+  if (identity.value === 'phone' ? !/^1[3-9]\d{9}$/.test(form.phone) : !validEmail(form.email)) { error.value = identity.value === 'phone' ? '请输入正确的中国大陆手机号。' : '请输入有效的邮箱地址。'; return; }
   sending.value = true; error.value = '';
   try {
-    await accountApi.sendCode(form.phone, registering.value ? 'REGISTER' : 'LOGIN');
+    if (identity.value === 'email') await accountApi.sendEmailCode(form.email, registering.value ? 'REGISTER' : 'LOGIN');
+    else await accountApi.sendCode(form.phone, registering.value ? 'REGISTER' : 'LOGIN');
     notice.value = '验证码已发送，请注意查收。'; remaining.value = 60;
     clearInterval(timer); timer = setInterval(() => { if (--remaining.value <= 0) clearInterval(timer); }, 1000);
   } catch (value) { error.value = errorMessage(value); }
@@ -35,12 +38,14 @@ async function send() {
 }
 async function submit() {
   if (busy.value) return;
-  if (!/^1[3-9]\d{9}$/.test(form.phone)) { error.value = '请输入正确的中国大陆手机号。'; return; }
+  if (identity.value === 'phone' ? !/^1[3-9]\d{9}$/.test(form.phone) : !validEmail(form.email)) { error.value = identity.value === 'phone' ? '请输入正确的中国大陆手机号。' : '请输入有效的邮箱地址。'; return; }
   if ((registering.value || mode.value === 'password') && ([...form.password].length < 8 || [...form.password].length > 64)) { error.value = '密码须为 8～64 个字符。'; return; }
   if ((registering.value || mode.value === 'code') && !/^\d{6}$/.test(form.code)) { error.value = '请输入 6 位验证码。'; return; }
   busy.value = true; error.value = '';
   try {
-    await auth.loginPhone(() => registering.value ? accountApi.registerPhone(form.phone, form.code, form.password) : mode.value === 'password' ? accountApi.passwordLogin(form.phone, form.password) : accountApi.codeLogin(form.phone, form.code));
+    await auth.loginPhone(() => identity.value === 'email'
+      ? registering.value ? accountApi.registerEmail(form.email, form.code, form.password) : mode.value === 'password' ? accountApi.emailPasswordLogin(form.email, form.password) : accountApi.emailCodeLogin(form.email, form.code)
+      : registering.value ? accountApi.registerPhone(form.phone, form.code, form.password) : mode.value === 'password' ? accountApi.passwordLogin(form.phone, form.password) : accountApi.codeLogin(form.phone, form.code));
     form.password = ''; form.code = ''; await router.replace(redirect.value);
   } catch (value) { error.value = errorMessage(value); }
   finally { busy.value = false; }
@@ -79,14 +84,15 @@ async function submit() {
           <button type="button" role="tab" :aria-selected="mode === 'code'" :class="{ selected: mode === 'code' }" @click="mode = 'code'">验证码登录</button>
           <span class="auth-tab-indicator" :class="{ 'on-code': mode === 'code' }" aria-hidden="true"></span>
         </div>
-        <p v-if="!registering && mode === 'code'" class="auth-code-hint">未注册的手机号验证后将自动创建账户，可登录后在账户安全中设置密码。</p>
-        <p v-if="registering" class="auth-intro">用手机号开始你的学习旅程</p>
+        <p v-if="registering" class="auth-intro">开始你的学习旅程</p>
+        <div class="identity-switch" role="group" aria-label="账号类型"><button type="button" :class="{ selected: identity === 'phone' }" :aria-pressed="identity === 'phone'" @click="identity = 'phone'">手机号</button><button type="button" :class="{ selected: identity === 'email' }" :aria-pressed="identity === 'email'" @click="identity = 'email'">邮箱</button></div>
         <div v-if="notice" class="auth-notice" role="status">{{ notice }}</div>
         <form class="auth-form" novalidate @submit.prevent="submit">
-          <div class="auth-field"><label for="phone">手机号</label><input id="phone" v-model.trim="form.phone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="11" placeholder="请输入手机号" :disabled="busy" /></div>
+          <div v-if="identity === 'phone'" class="auth-field"><label for="phone">手机号</label><input id="phone" v-model.trim="form.phone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="11" placeholder="请输入手机号" :disabled="busy" /></div>
+          <div v-else class="auth-field"><label for="email">邮箱</label><input id="email" v-model.trim="form.email" type="email" autocomplete="email" maxlength="254" placeholder="请输入邮箱地址" :disabled="busy" /></div>
           <Transition name="credential-switch" mode="out-in">
             <div :key="registering ? 'register' : mode" class="auth-credential-fields">
-              <div v-if="registering || mode === 'code'" class="auth-field"><label for="code">短信验证码</label><div class="code-input"><input id="code" v-model.trim="form.code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="请输入 6 位验证码" :disabled="busy" /><button type="button" :disabled="busy || sending || remaining > 0" @click="send">{{ remaining ? `${remaining} 秒后重发` : sending ? '发送中…' : '获取验证码' }}</button></div></div>
+              <div v-if="registering || mode === 'code'" class="auth-field"><label for="code">{{ identity === 'email' ? '邮箱验证码' : '短信验证码' }}</label><div class="code-input"><input id="code" v-model.trim="form.code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="请输入 6 位验证码" :disabled="busy" /><button type="button" :disabled="busy || sending || remaining > 0" @click="send">{{ remaining ? `${remaining} 秒后重发` : sending ? '发送中…' : '获取验证码' }}</button></div></div>
               <div v-if="registering || mode === 'password'" class="auth-field"><label for="password">{{ registering ? '设置密码' : '密码' }}</label><input id="password" v-model="form.password" type="password" :autocomplete="registering ? 'new-password' : 'current-password'" :placeholder="registering ? '请输入 8～64 个字符' : '请输入密码'" :disabled="busy" /></div>
             </div>
           </Transition>
@@ -101,6 +107,9 @@ async function submit() {
 </template>
 
 <style scoped>
+.identity-switch { display: flex; gap: 8px; margin: 0 0 20px; }
+.identity-switch button { padding: 6px 14px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); background: transparent; cursor: pointer; }
+.identity-switch button.selected { color: var(--accent); border-color: var(--accent); background: var(--sage); }
 .auth-shell {
   position: relative;
   min-height: 100dvh;
@@ -159,7 +168,6 @@ async function submit() {
 .auth-tab-indicator { position: absolute; left: 0; bottom: -1px; width: 50%; height: 2px; background: var(--accent); transition: transform 240ms ease; }
 .auth-tab-indicator.on-code { transform: translateX(100%); }
 .auth-intro { text-align: center; color: var(--muted); margin: 0 0 30px; font-size: 14px; }
-.auth-code-hint { color: var(--muted); margin: -12px 0 22px; font-size: 13px; line-height: 1.6; }
 .auth-form { display: grid; gap: 22px; }
 .auth-credential-fields { display: grid; gap: 22px; }
 .credential-switch-enter-active, .credential-switch-leave-active { transition: opacity 150ms ease, transform 150ms ease; }

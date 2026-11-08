@@ -59,10 +59,16 @@ export const useAuthStore = defineStore("auth", () => {
     }
   }
   async function changePasswordByCode(code: string, newPassword: string) {
-    await secure(async () => { await accountApi.passwordByCode(code, newPassword); clear(); });
+    await secure(async () => { if (user.value?.phone) await accountApi.passwordByCode(code, newPassword); else await accountApi.emailPasswordByCode(code, newPassword); clear(); });
   }
   async function changePhone(oldCode: string, newPhone: string, newCode: string) {
     await secure(async () => { await accountApi.changePhone(oldCode, newPhone, newCode); clear(); });
+  }
+  async function bindEmail(email: string, code: string, phoneCode: string | null, password: string | null) {
+    await secure(async () => { user.value = await accountApi.bindEmail(email, code, phoneCode, password); });
+  }
+  async function changeEmail(oldCode: string, newEmail: string, newCode: string) {
+    await secure(async () => { await accountApi.changeEmail(oldCode, newEmail, newCode); clear(); });
   }
   async function logoutOthers(currentPassword: string) {
     await secure(async refresh => {
@@ -82,5 +88,5 @@ export const useAuthStore = defineStore("auth", () => {
   async function upgradeSession() {
     await secure(async refresh => { user.value = (await refresh()).user; });
   }
-  return { user, accountBusy, restore, loginPhone, logout, clear, changePasswordByCode, changePhone, logoutOthers, revokeSession, upgradeSession };
+  return { user, accountBusy, restore, loginPhone, logout, clear, changePasswordByCode, changePhone, bindEmail, changeEmail, logoutOthers, revokeSession, upgradeSession };
 });

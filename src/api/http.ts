@@ -40,7 +40,7 @@ export function setExpiredHandler(handler: () => void) {
 }
 let refreshing: Promise<TokenPair> | null = null;
 let credentialChange: Promise<void> | null = null;
-const publicAuth = new Set(['/auth/refresh', '/auth/logout', '/auth/phone/send', '/auth/phone/register', '/auth/phone/password-login', '/auth/phone/code-login']);
+const publicAuth = new Set(['/auth/refresh', '/auth/logout', '/auth/phone/send', '/auth/phone/register', '/auth/phone/password-login', '/auth/phone/code-login', '/auth/email/send', '/auth/email/register', '/auth/email/password-login', '/auth/email/code-login']);
 const protectedRequest = (url?: string) => !publicAuth.has(url || '');
 // Credential mutations wait for an existing refresh, then block unrelated protected requests.
 export async function withCredentialMutation<T>(operation: (refresh: () => Promise<TokenPair>) => Promise<T>): Promise<T> {

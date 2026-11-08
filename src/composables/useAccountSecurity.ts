@@ -18,6 +18,11 @@ export function useAccountSecurity(autoLoad = true) {
   const page = ref(1), size = 10;
   const currentPassword = ref(''), newPassword = ref(''), confirmation = ref(''), othersPassword = ref('');
   const passwordCode = ref(''), oldCode = ref(''), newPhone = ref(''), newCode = ref('');
+  const bindEmailAddress = ref(''), bindEmailCode = ref(''), bindPhoneCode = ref(''), bindPassword = ref('');
+  const bindMethod = ref<'phone' | 'password'>(auth.user?.phone ? 'phone' : 'password');
+  const bindEmailCooldown = ref(0), bindPhoneCooldown = ref(0);
+  const changeEmailAddress = ref(''), changeEmailOldCode = ref(''), changeEmailNewCode = ref('');
+  const changeEmailCooldown = reactive({ CHANGE_OLD: 0, CHANGE_NEW: 0 });
   const cooldown = reactive({ PASSWORD: 0, CHANGE_OLD: 0, CHANGE_NEW: 0 }), sending = ref(false);
   const timers: ReturnType<typeof setInterval>[] = [];
   onUnmounted(() => timers.forEach(clearInterval));
@@ -50,6 +55,12 @@ export function useAccountSecurity(autoLoad = true) {
   }
   const valid = (value: string) => [...value].length >= 8 && [...value].length <= 64;
   async function sendCode(purpose: 'PASSWORD' | 'CHANGE_OLD' | 'CHANGE_NEW') {
+    if (purpose === 'PASSWORD' && !auth.user?.phone && auth.user?.email) {
+      sending.value = true; error.value = ''; notice.value = '';
+      try { await accountApi.sendEmailPasswordCode(); notice.value = '邮箱验证码已发送，请注意查收。'; cooldown.PASSWORD = 60; const timer = setInterval(() => { if (--cooldown.PASSWORD <= 0) clearInterval(timer); }, 1000); timers.push(timer); }
+      catch (value) { error.value = message(value); } finally { sending.value = false; }
+      return;
+    }
     const phone = purpose === 'CHANGE_NEW' ? newPhone.value : auth.user?.phone;
     if (!phone || !/^1[3-9]\d{9}$/.test(phone)) { error.value = '请输入有效的手机号。'; return; }
     sending.value = true; error.value = ''; notice.value = '';
@@ -73,6 +84,45 @@ export function useAccountSecurity(autoLoad = true) {
     try { await run(() => auth.changePhone(oldCode.value, newPhone.value, newCode.value), '手机号已更换，请重新登录。'); }
     finally { oldCode.value = ''; newCode.value = ''; }
   }
+  async function sendBindingEmail() {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(bindEmailAddress.value) || bindEmailAddress.value.length > 254) { error.value = '请输入有效的邮箱地址。'; return; }
+    sending.value = true; error.value = ''; notice.value = '';
+    try { await accountApi.sendBindEmailCode(bindEmailAddress.value); notice.value = '邮箱验证码已发送，请注意查收。'; bindEmailCooldown.value = 60; const timer = setInterval(() => { if (--bindEmailCooldown.value <= 0) clearInterval(timer); }, 1000); timers.push(timer); }
+    catch (value) { error.value = message(value); } finally { sending.value = false; }
+  }
+  async function sendBindingPhone() {
+    if (!auth.user?.phone) { error.value = '当前账户未绑定手机号，请使用密码验证。'; return; }
+    sending.value = true; error.value = ''; notice.value = '';
+    try { await accountApi.sendProtectedCode(auth.user.phone, 'EMAIL_BIND'); notice.value = '短信验证码已发送，请注意查收。'; bindPhoneCooldown.value = 60; const timer = setInterval(() => { if (--bindPhoneCooldown.value <= 0) clearInterval(timer); }, 1000); timers.push(timer); }
+    catch (value) { error.value = message(value); } finally { sending.value = false; }
+  }
+  async function bindEmail() {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(bindEmailAddress.value) || !/^\d{6}$/.test(bindEmailCode.value) || (bindMethod.value === 'phone' ? !/^\d{6}$/.test(bindPhoneCode.value) : !valid(bindPassword.value))) { error.value = '请输入邮箱、验证码和有效的身份验证信息。'; return; }
+    try { await run(() => auth.bindEmail(bindEmailAddress.value, bindEmailCode.value, bindMethod.value === 'phone' ? bindPhoneCode.value : null, bindMethod.value === 'password' ? bindPassword.value : null), '邮箱已绑定。'); }
+    finally { bindEmailCode.value = ''; bindPhoneCode.value = ''; bindPassword.value = ''; }
+  }
+  async function sendChangeEmail(purpose: 'CHANGE_OLD' | 'CHANGE_NEW') {
+    if (!auth.user?.email) { error.value = '当前账户未绑定邮箱。'; return; }
+    const address = changeEmailAddress.value.trim();
+    if (purpose === 'CHANGE_NEW') {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address) || address.length > 254) { error.value = '请输入有效的新邮箱地址。'; return; }
+      if (address.toLowerCase() === auth.user.email.toLowerCase()) { error.value = '新邮箱不能与原邮箱相同。'; return; }
+    }
+    sending.value = true; error.value = ''; notice.value = '';
+    try {
+      await accountApi.sendChangeEmailCode(purpose, purpose === 'CHANGE_NEW' ? address : null);
+      notice.value = purpose === 'CHANGE_OLD' ? '验证码已发送至原邮箱。' : '验证码已发送至新邮箱。';
+      changeEmailCooldown[purpose] = 60;
+      const timer = setInterval(() => { if (--changeEmailCooldown[purpose] <= 0) clearInterval(timer); }, 1000); timers.push(timer);
+    } catch (value) { error.value = message(value); } finally { sending.value = false; }
+  }
+  async function changeEmail() {
+    const address = changeEmailAddress.value.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address) || address.length > 254 || !/^\d{6}$/.test(changeEmailOldCode.value) || !/^\d{6}$/.test(changeEmailNewCode.value)) { error.value = '请输入正确的新邮箱和两次验证码。'; return; }
+    if (address.toLowerCase() === auth.user?.email?.toLowerCase()) { error.value = '新邮箱不能与原邮箱相同。'; return; }
+    await run(() => auth.changeEmail(changeEmailOldCode.value, address, changeEmailNewCode.value), '邮箱已更换，请重新登录。');
+    if (!auth.user) { changeEmailOldCode.value = ''; changeEmailNewCode.value = ''; }
+  }
   async function logoutOthers() {
     if (auth.accountBusy) return;
     if (!valid(othersPassword.value)) { error.value = '请输入 8～64 个字符的当前密码。'; return; }
@@ -83,5 +133,5 @@ export function useAccountSecurity(autoLoad = true) {
   async function revoke(session: AuthSession) { await run(() => auth.revokeSession(session.sessionId, session.current), session.current ? '已退出此设备，请重新登录。' : '该设备会话已撤销。'); }
   async function upgrade() { await run(auth.upgradeSession, '登录凭证已升级。'); }
   if (autoLoad) onMounted(refresh);
-  return { auth, ...resource, page, size, currentPassword, newPassword, confirmation, othersPassword, passwordCode, oldCode, newPhone, newCode, cooldown, sending, formError: error, notice, needsUpgrade, refresh, password, changePhone, sendCode, logoutOthers, revoke, upgrade };
+  return { auth, ...resource, page, size, currentPassword, newPassword, confirmation, othersPassword, passwordCode, oldCode, newPhone, newCode, cooldown, sending, formError: error, notice, needsUpgrade, refresh, password, changePhone, sendCode, logoutOthers, revoke, upgrade, bindEmailAddress, bindEmailCode, bindPhoneCode, bindPassword, bindMethod, bindEmailCooldown, bindPhoneCooldown, sendBindingEmail, sendBindingPhone, bindEmail, changeEmailAddress, changeEmailOldCode, changeEmailNewCode, changeEmailCooldown, sendChangeEmail, changeEmail };
 }

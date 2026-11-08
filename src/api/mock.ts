@@ -179,6 +179,18 @@ export const mockAdapter: AxiosAdapter = async (config) => {
     ) as Record<string, unknown>;
     const query = new URLSearchParams(Object.entries((config.params || {}) as Record<string, unknown>).filter(([, value]) => value !== undefined && value !== null).map(([key, value]) => [key, String(value)]));
     if (url === '/auth/phone/send' || url === '/auth/phone/send-auth') return response(null);
+    if (url === '/auth/email/send') return response(null);
+    if (['/auth/email/register', '/auth/email/password-login', '/auth/email/code-login'].includes(url)) {
+      if (url !== '/auth/email/password-login' && body.code !== '123456') fail(400, 'INVALID_EMAIL_CODE', '验证码错误或已失效');
+      const email = String(body.email).toLowerCase();
+      const stored = sessionStorage.getItem(`wordtrail.mock.email.${email}`);
+      if (url !== '/auth/email/register' && !stored) fail(401, 'BAD_CREDENTIALS', '邮箱未注册或未绑定');
+      if (url === '/auth/email/register' && stored) fail(409, 'EMAIL_EXISTS', '该邮箱已被使用');
+      const account: User = stored ? JSON.parse(stored) : { id: accountId(email), username: email, email, nickname: null };
+      sessionStorage.setItem(`wordtrail.mock.email.${email}`, JSON.stringify(account));
+      sessionStorage.setItem('wordtrail.mock.user', JSON.stringify(account));
+      return response({ accessToken: `mock-access-${Date.now()}`, refreshToken: `mock-refresh-${Date.now()}`, tokenType: 'Bearer', expiresIn: 1800, user: account });
+    }
     if (['/auth/phone/register', '/auth/phone/password-login', '/auth/phone/code-login'].includes(url)) {
       if (url !== '/auth/phone/password-login' && body.code !== '123456') fail(400, 'INVALID_SMS_CODE', '验证码错误或已失效');
       const phone = String(body.phone);
@@ -215,6 +227,33 @@ export const mockAdapter: AxiosAdapter = async (config) => {
     }
     if (!user() || !config.headers.get("Authorization"))
       fail(401, "UNAUTHENTICATED", "请先登录");
+    if (url === '/auth/email/send-bind' || url === '/auth/email/send-password' || url === '/auth/email/send-change') return response(null);
+    if (url === '/auth/email/change') {
+      const account = user()!;
+      const newEmail = String(body.newEmail).toLowerCase();
+      if (!account.email) fail(409, 'EMAIL_NOT_BOUND', '当前账户未绑定邮箱');
+      if (account.email === newEmail) fail(409, 'EMAIL_UNCHANGED', '新邮箱不能与原邮箱相同');
+      if (body.oldCode !== '123456' || body.newCode !== '123456') fail(400, 'INVALID_EMAIL_CODE', '邮箱验证码错误或已失效');
+      if (sessionStorage.getItem(`wordtrail.mock.email.${newEmail}`)) fail(409, 'EMAIL_EXISTS', '该邮箱已被使用');
+      sessionStorage.removeItem(`wordtrail.mock.email.${account.email}`);
+      const changed = { ...account, email: newEmail };
+      sessionStorage.setItem(`wordtrail.mock.email.${newEmail}`, JSON.stringify(changed));
+      sessionStorage.removeItem('wordtrail.mock.user');
+      return response(null);
+    }
+    if (url === '/auth/email/password') {
+      if (body.code !== '123456') fail(400, 'INVALID_EMAIL_CODE', '验证码错误或已失效');
+      return response(null);
+    }
+    if (url === '/auth/email/binding') {
+      if (body.code !== '123456' || (body.phoneCode && body.phoneCode !== '123456')) fail(400, 'INVALID_EMAIL_CODE', '验证码错误或已失效');
+      const email = String(body.email).toLowerCase();
+      if (sessionStorage.getItem(`wordtrail.mock.email.${email}`)) fail(409, 'EMAIL_EXISTS', '该邮箱已被使用');
+      const account = { ...user()!, email };
+      sessionStorage.setItem('wordtrail.mock.user', JSON.stringify(account));
+      sessionStorage.setItem(`wordtrail.mock.email.${email}`, JSON.stringify(account));
+      return response(account);
+    }
     if (url === '/auth/phone/password' || url === '/auth/phone/binding') return response(null);
     if (url === "/auth/me") return response(user());
     const state = db();

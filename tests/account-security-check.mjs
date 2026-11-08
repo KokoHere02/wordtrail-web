@@ -16,7 +16,7 @@ setActivePinia(createPinia());
 const auth = useAuthStore();
 let expired = 0, serial = 0, refreshes = 0, actionCalls = 0;
 setExpiredHandler(() => { expired++; auth.clear(); });
-const user = { id: 10, username: 'synthetic_only', nickname: null };
+const user = { id: 10, username: 'synthetic_only', nickname: null, phone: '13800000000' };
 const pair = () => ({ accessToken: `synthetic-access-${++serial}`, refreshToken: `synthetic-refresh-${serial}`, tokenType: 'Bearer', expiresIn: 1800, user });
 const ok = (config, data) => ({ config, status: 200, headers: {}, data: { code: 'OK', message: '成功', data } });
 function reject(config, code, status = 401) { throw new AxiosError('synthetic failure', 'ERR_BAD_RESPONSE', config, undefined, { config, status, headers: {}, data: { code, message: code, data: null } }); }
@@ -32,7 +32,7 @@ http.defaults.adapter = async config => {
   return ok(config, null);
 };
 const initialRevision = tokens.revision();
-await assert.rejects(auth.changePassword(' synthetic old ', ' synthetic new '), error => error.code === 'BAD_CREDENTIALS');
+await assert.rejects(auth.changePasswordByCode('123456', ' synthetic new '), error => error.code === 'BAD_CREDENTIALS');
 assert.equal(refreshes, 0); assert.equal(expired, 0); assert.equal(tokens.revision(), initialRevision); assert.ok(auth.user);
 console.log('PASS BAD_CREDENTIALS is a password error with no refresh, retry or credential removal');
 
@@ -57,7 +57,7 @@ http.defaults.adapter = async config => {
 };
 const pendingRefresh = refreshIdentity(); await until(() => releaseRefresh);
 const mutation = auth.logoutOthers(' synthetic old '); const blockedRead = accountApi.sessions(1, 10);
-await assert.rejects(auth.changePassword(' synthetic old ', ' synthetic new '), error => error.code === 'AUTH_OPERATION_BUSY');
+await assert.rejects(auth.changePasswordByCode('123456', ' synthetic new '), error => error.code === 'AUTH_OPERATION_BUSY');
 await delay(20); assert.equal(actionCalls, 0); assert.equal(readCalls, 0);
 releaseRefresh(); await pendingRefresh; await until(() => releaseMutation);
 const rotatedRevision = tokens.revision(); assert.equal(readCalls, 0);
@@ -97,10 +97,10 @@ const expiredBefore = expired; releaseRetried(); await delay(10); assert.equal(e
 releaseRotation(); await rotation; assert.equal((await exhausted).code, 'UNAUTHENTICATED'); assert.equal(expired, expiredBefore); assert.ok(auth.user); assert.ok(tokens.access());
 let releasePassword, queuedReads = 0;
 http.defaults.adapter = async config => {
-  if (config.url === '/auth/password') return new Promise(resolve => { releasePassword = () => resolve(ok(config, null)); });
+  if (config.url === '/auth/phone/password') return new Promise(resolve => { releasePassword = () => resolve(ok(config, null)); });
   queuedReads++; return ok(config, user);
 };
-const changing = auth.changePassword(' synthetic old ', ' synthetic new '); await until(() => releasePassword);
+const changing = auth.changePasswordByCode('123456', ' synthetic new '); await until(() => releasePassword);
 const queued = api.me().then(() => null, error => error); await delay(10); releasePassword(); await changing;
 assert.equal((await queued).code, 'IDENTITY_CHANGED'); assert.equal(queuedReads, 0);
 console.log('PASS exhausted late 401 waits for credential rotation and queued requests cannot cross an identity change');
@@ -115,9 +115,19 @@ http.defaults.adapter = async config => {
 };
 await auth.revokeSession(sid, false); assert.ok(auth.user); await auth.revokeSession(sid, true); assert.equal(auth.user, null); assert.equal(tokens.access(), null); assert.equal(tokens.refresh(), null);
 signedIn();
-http.defaults.adapter = async config => { assert.equal(config.url, '/auth/password'); assert.deepEqual(JSON.parse(config.data), { currentPassword: ' synthetic old ', newPassword: ' synthetic new ' }); return ok(config, null); };
-await auth.changePassword(' synthetic old ', ' synthetic new '); assert.equal(auth.user, null); assert.equal(tokens.access(), null); assert.equal(tokens.refresh(), null);
+http.defaults.adapter = async config => { assert.equal(config.url, '/auth/phone/password'); assert.deepEqual(JSON.parse(config.data), { code: '123456', newPassword: ' synthetic new ' }); return ok(config, null); };
+await auth.changePasswordByCode('123456', ' synthetic new '); assert.equal(auth.user, null); assert.equal(tokens.access(), null); assert.equal(tokens.refresh(), null);
 console.log('PASS stale refresh cannot overwrite a new identity, opaque session IDs stay strings, current revoke/password success clear both tokens and passwords retain spaces');
+
+signedIn();
+http.defaults.adapter = async config => {
+  assert.equal(config.url, '/auth/email/binding');
+  assert.equal(config.headers.has('Authorization'), true);
+  return ok(config, { ...user, email: 'synthetic@example.com' });
+};
+await Promise.race([auth.bindEmail('synthetic@example.com', '123456', '123456', null), delay(3000).then(() => { throw new Error('Email binding did not settle'); })]);
+assert.equal(auth.user.email, 'synthetic@example.com'); assert.ok(tokens.access());
+console.log('PASS email binding updates the authenticated account without blocking credential mutation');
 
 signedIn(); let unknownCalls = 0;
 http.defaults.adapter = async config => { unknownCalls++; throw new AxiosError('unknown synthetic outcome', 'ECONNABORTED', config); };

@@ -18,6 +18,7 @@ export interface User {
   username: string;
   nickname: string | null;
   phone?: string | null;
+  email?: string | null;
 }
 export interface TokenPair {
   accessToken: string;
