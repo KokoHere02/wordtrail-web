@@ -6,11 +6,13 @@ import type { BookImportPreview, BookImportStatus } from '../../types/bookTransf
 import AppDialog from '../ui/AppDialog.vue';
 import AppButton from '../ui/AppButton.vue';
 import AppPagination from '../ui/AppPagination.vue';
+import AppSelect from '../ui/AppSelect.vue';
 import ImportCandidates from './ImportCandidates.vue';
 import WordMeaning from './WordMeaning.vue';
 const props = defineProps<{ modelValue: boolean; bookId: number }>();
 const emit = defineEmits<{ 'update:modelValue': [value: boolean]; imported: [result: BookWordsChange, skipped: number, duplicates: number]; unavailable: [] }>();
 const transfer = useBookImport(props.bookId);
+const formatOptions: { value: 'TXT' | 'CSV'; label: string }[] = [{ value: 'TXT', label: 'TXT · 每行一个单词或短语' }, { value: 'CSV', label: 'CSV · 含 word 表头' }];
 const { mode, format, text, file, preview, selections, skipConfirmed, previewing, saving, busy, error, saveError, blocked, unresolved, wordIds, canConfirm } = transfer;
 const page = ref(1);
 const size = 10;
@@ -38,7 +40,7 @@ async function confirm() {
       <form class="import-form" :aria-busy="previewing" @submit.prevent="transfer.runPreview">
         <fieldset class="import-mode" :disabled="busy || blocked"><legend class="sr-only">导入方式</legend><label><input v-model="mode" type="radio" value="TEXT" />粘贴内容</label><label><input v-model="mode" type="radio" value="FILE" />上传文件</label></fieldset>
         <template v-if="mode === 'TEXT'">
-          <label class="import-format" for="import-format">内容格式<select id="import-format" v-model="format" :disabled="busy || blocked"><option value="TXT">TXT · 每行一个单词或短语</option><option value="CSV">CSV · 含 word 表头</option></select></label>
+          <AppSelect v-model="format" class="import-format" label="内容格式" :options="formatOptions" :disabled="busy || blocked" animated />
           <label class="import-text-label" for="import-text">单词内容</label><textarea id="import-text" v-model="text" rows="6" :disabled="busy || blocked" spellcheck="false" :placeholder="format === 'TXT' ? 'apple\ntake off' : 'word,phonetic,translation\napple,,苹果'" aria-describedby="import-limits" />
         </template>
         <template v-else><label class="import-text-label" for="import-file">选择 UTF-8 文件</label><input id="import-file" type="file" accept=".txt,.csv" :disabled="busy || blocked" aria-describedby="import-limits" @change="upload" /><p v-if="file" class="subtle-copy">{{ file.name }}</p></template>

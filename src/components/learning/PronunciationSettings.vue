@@ -3,9 +3,11 @@ import { onMounted, reactive, ref, watch } from 'vue';
 import { usePronunciation } from '../../stores/pronunciation';
 import { errorMessage } from '../../api/http';
 import AppButton from '../ui/AppButton.vue';
+import AppSelect from '../ui/AppSelect.vue';
 defineProps<{ hideAccent?: boolean }>();
 const store = usePronunciation(), form = reactive({ ...store.value });
 const busy = ref(false), error = ref(''), notice = ref('');
+const accents: { value: 'US' | 'UK'; label: string }[] = [{ value: 'US', label: '美式 US' }, { value: 'UK', label: '英式 UK' }];
 watch(() => store.value, value => Object.assign(form, value));
 async function load() { try { await store.load(); } catch (e) { error.value = errorMessage(e); } }
 async function save() {
@@ -23,7 +25,7 @@ onMounted(load);
   <form class="pronunciation-form" novalidate @submit.prevent="save">
     <fieldset :disabled="busy"><legend>发音设置</legend>
       <label><span>自动播放</span><input v-model="form.autoPlay" type="checkbox" /></label>
-      <label v-if="!hideAccent"><span>发音口音</span><select v-model="form.accent"><option value="US">美式 US</option><option value="UK">英式 UK</option></select></label>
+      <AppSelect v-if="!hideAccent" v-model="form.accent" class="pronunciation-accent" label="发音口音" :options="accents" :disabled="busy" animated />
       <label><span>播放速度</span><input v-model.number="form.playbackRate" type="number" min="0.5" max="1.5" step="0.05" /></label>
       <label><span>重复次数</span><input v-model.number="form.repeatCount" type="number" min="1" max="5" step="1" /></label>
     </fieldset>

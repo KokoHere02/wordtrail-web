@@ -2,10 +2,10 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue';
 import { Check, ChevronDown } from 'lucide-vue-next';
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   modelValue: T; options: { value: T; label: string; group?: string }[]; label: string;
   disabled?: boolean; hideLabel?: boolean; animated?: boolean; searchable?: boolean;
-}>();
+}>(), { animated: true });
 const emit = defineEmits<{ 'update:modelValue': [value: T] }>();
 const id = useId(), root = ref<HTMLElement>(), trigger = ref<HTMLButtonElement>();
 const open = ref(false), active = ref(0), query = ref(''), searchInput = ref<HTMLInputElement>();

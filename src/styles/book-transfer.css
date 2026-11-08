@@ -5,6 +5,10 @@
 .import-mode label, .import-format, .import-skip { display: flex; align-items: center; gap: var(--s2); font-size: var(--text-base); }
 .import-mode label { min-height: var(--control); }
 .import-format { flex-wrap: wrap; }
+.import-form > .import-format { width: min(100%, 320px); display: grid; }
+.dictionary-search > .dictionary-match { display: flex; align-items: center; gap: var(--s3); }
+.dictionary-match > .app-select-trigger { width: 112px; }
+.dictionary-match > .app-select-options { left: auto; width: 112px; }
 .import-format select, .import-form textarea, .import-form input[type=file] { min-height: var(--control); max-width: 100%; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); padding: var(--s3); font: inherit; }
 .import-form textarea { display: block; width: 100%; resize: vertical; line-height: 1.7; }
 .import-text-label { font-size: var(--text-base); }

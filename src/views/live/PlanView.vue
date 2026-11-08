@@ -4,12 +4,14 @@ import { Plus, Search } from 'lucide-vue-next';
 import { usePlan } from '../../composables/usePlan';
 import type { PlanWord, PlanStatus, PlanLearningStatus } from '../../types/daily';
 import AppPagination from '../../components/ui/AppPagination.vue';
+import AppSelect from '../../components/ui/AppSelect.vue';
 import StatePanel from '../../components/ui/StatePanel.vue';
 import AppDialog from '../../components/ui/AppDialog.vue';
 import PlanWordRow from '../../components/learning/PlanWordRow.vue';
 import WordHistoryDialog from '../../components/learning/WordHistoryDialog.vue';
 const plan = usePlan();
 const { data, loading, error, totals, totalsError, selected, count, status, learningStatus, keyword, sortOptions, sort, page, size, busy, saveError, notice, pageIds, pageSelected } = plan;
+const sortChoices = sortOptions.map(({ value, label }) => ({ value, label }));
 const statuses: { value: PlanStatus; label: string }[] = [{ value: 'ACTIVE', label: '学习中' }, { value: 'PAUSED', label: '已暂停' }, { value: 'REMOVED', label: '已移出' }];
 const learningStatuses: { value: PlanLearningStatus; label: string }[] = [{ value: 'ALL', label: '全部单词' }, { value: 'DUE', label: '待复习' }, { value: 'NEW', label: '新加入' }, { value: 'LEARNED', label: '已开始' }];
 const historyWord = ref<PlanWord>();
@@ -26,7 +28,7 @@ function history(word: PlanWord) { historyWord.value = word; historyOpen.value =
     <header class="content-page-actions" aria-label="学习计划操作"><RouterLink to="/books" class="btn btn-primary"><Plus :size="20" />添加单词</RouterLink></header>
     <section class="plan-sheet" aria-label="学习计划单词">
       <div class="plan-topbar"><div class="plan-status-tabs" role="group" aria-label="计划状态"><button v-for="entry in statuses" :key="entry.value" :class="{ active: status === entry.value }" :aria-pressed="status === entry.value" :aria-label="entry.label" :disabled="busy" @click="status = entry.value"><span>{{ entry.label }}</span><span class="plan-tab-count">{{ totals?.[entry.value] ?? '—' }}</span></button></div><form class="plan-search" role="search" @submit.prevent="plan.search"><Search :size="19" /><input v-model="keyword" type="search" maxlength="255" placeholder="搜索英文前缀" aria-label="搜索计划单词" :disabled="busy" /><button type="submit" aria-label="搜索计划" :disabled="busy">搜索</button></form></div>
-      <div class="plan-filterbar"><div class="plan-learning-tabs" role="group" aria-label="学习状态"><button v-for="entry in learningStatuses" :key="entry.value" :class="{ active: learningStatus === entry.value }" :aria-pressed="learningStatus === entry.value" :disabled="busy" @click="learningStatus = entry.value">{{ entry.label }}</button></div><label class="plan-sort"><span class="sr-only">排序</span><select v-model="sort" aria-label="计划排序" :disabled="busy"><option v-for="entry in sortOptions" :key="entry.value" :value="entry.value">{{ entry.label }}</option></select></label></div>
+      <div class="plan-filterbar"><div class="plan-learning-tabs" role="group" aria-label="学习状态"><button v-for="entry in learningStatuses" :key="entry.value" :class="{ active: learningStatus === entry.value }" :aria-pressed="learningStatus === entry.value" :disabled="busy" @click="learningStatus = entry.value">{{ entry.label }}</button></div><AppSelect v-model="sort" class="plan-sort" label="计划排序" :options="sortChoices" :disabled="busy" hide-label animated /></div>
       <div v-if="count && status !== 'REMOVED'" class="plan-bulkbar" role="status"><span>已选 {{ count }} 词</span><button class="muted-link" :disabled="busy" @click="plan.clear">清空选择</button><div class="live-actions"><button v-if="status === 'ACTIVE'" class="violet-link" :disabled="busy || count > 100" @click="plan.change([...selected], 'PAUSED', true)">批量暂停</button><button v-if="status === 'PAUSED'" class="violet-link" :disabled="busy || count > 100" @click="plan.change([...selected], 'ACTIVE', true)">批量恢复</button><button class="muted-link" :disabled="busy || count > 100" @click="askRemove([...selected], true)">批量移出</button></div></div>
       <p v-if="count > 100" class="inline-error plan-message" role="alert">每批最多操作 100 词，请减少选择。</p>
       <div class="plan-table" role="table" aria-label="计划词表"><div class="plan-table-header" role="row"><div class="plan-check-cell" role="columnheader"><input type="checkbox" :checked="pageSelected" :indeterminate="!pageSelected && pageIds.some(id => selected.has(id))" :disabled="status === 'REMOVED' || busy || loading || !pageIds.length" aria-label="选择当前页计划单词" title="选择当前页" @change="plan.togglePage(pageIds, !pageSelected)" /></div><span role="columnheader">单词 / 释义</span><span role="columnheader">复习进度</span><span role="columnheader">下次复习</span><span class="plan-operation-heading" role="columnheader">操作</span></div>

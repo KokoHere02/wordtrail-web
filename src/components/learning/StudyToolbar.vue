@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { ChevronDown, Settings, Volume2 } from "lucide-vue-next";
+import { Settings, Volume2 } from "lucide-vue-next";
 import { ref, watch } from "vue";
 import { usePreviewStore } from "../../stores/preview";
+import AppSelect from '../ui/AppSelect.vue';
 defineProps<{ mode: "memory" | "dictation"; speaking?: boolean }>();
 const emit = defineEmits<{ speak: []; hint: [value: "none" | "first"] }>();
 const store = usePreviewStore();
 const hint = ref<"none" | "first">("none");
+const accents: { value: 'en-US' | 'en-GB'; label: string }[] = [{ value: 'en-US', label: '美音' }, { value: 'en-GB', label: '英音' }];
+const hints: { value: 'none' | 'first'; label: string }[] = [{ value: 'none', label: '隐藏全部' }, { value: 'first', label: '提示首字母' }];
 watch(hint, (value) => emit("hint", value));
 </script>
 <template>
@@ -20,19 +23,9 @@ watch(hint, (value) => emit("hint", value));
         >默写</RouterLink
       >
     </div>
-    <span class="toolbar-divider" /><label class="toolbar-select"
-      ><span class="sr-only">发音口音</span
-      ><select v-model="store.accent">
-        <option value="en-US">美音</option>
-        <option value="en-GB">英音</option></select
-      ><ChevronDown :size="14" /></label
-    ><template v-if="mode === 'dictation'"
-      ><span class="toolbar-divider" /><label class="toolbar-select hint-select"
-        ><span class="sr-only">默写提示</span
-        ><select v-model="hint">
-          <option value="none">隐藏全部</option>
-          <option value="first">提示首字母</option></select
-        ><ChevronDown :size="14" /></label></template
+    <span class="toolbar-divider" /><AppSelect v-model="store.accent" class="preview-toolbar-select" label="发音口音" :options="accents" hide-label animated
+    /><template v-if="mode === 'dictation'"
+      ><span class="toolbar-divider" /><AppSelect v-model="hint" class="preview-toolbar-select preview-hint-select" label="默写提示" :options="hints" hide-label animated /></template
     ><span class="toolbar-divider" v-if="mode === 'dictation'" /><button
       :class="['round-icon', { 'is-speaking': speaking }]"
       aria-label="播放发音"
@@ -49,3 +42,12 @@ watch(hint, (value) => emit("hint", value));
     </button>
   </div>
 </template>
+
+<style scoped>
+.preview-toolbar-select { flex: none; width: 74px; }
+.preview-hint-select { width: 108px; }
+.preview-toolbar-select :deep(.app-select-trigger) { min-height: 34px; padding: 5px 7px; border-color: transparent; background: transparent; font-size: 14px; }
+.preview-toolbar-select :deep(.app-select-trigger:hover) { background: var(--hover); }
+.preview-toolbar-select :deep(.app-select-options) { left: auto; width: max-content; min-width: 100%; }
+@media (max-width: 600px) { .preview-toolbar-select { width: 62px; } .preview-hint-select { width: 90px; } .preview-toolbar-select :deep(.app-select-trigger) { min-height: 30px; padding: 4px; font-size: 12px; } }
+</style>

@@ -30,7 +30,7 @@
 .plan-page-heading h1 { font-size: var(--plan-title-size); font-weight: 600; letter-spacing: -.04em; }
 .plan-intro { margin-top: var(--s2); color: var(--muted); font-size: var(--text-md); letter-spacing: .05em; }
 .plan-page-heading .btn { min-height: var(--control); border-radius: var(--radius-sm); padding-inline: var(--s5); box-shadow: none; }
-.plan-sheet { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); overflow: clip; }
+.plan-sheet { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); }
 .plan-topbar { min-height: calc(var(--s16) + var(--s1)); display: flex; align-items: center; justify-content: space-between; gap: var(--s6); padding: 0 var(--s5); border-bottom: 1px solid var(--line); }
 .plan-status-tabs { display: flex; align-self: stretch; gap: var(--s6); }
 .plan-status-tabs button { display: flex; align-items: center; gap: var(--s2); position: relative; background: transparent; border: 0; padding: var(--s4) var(--s1); color: var(--muted); font-size: var(--text-md); white-space: nowrap; }
@@ -46,7 +46,8 @@
 .plan-learning-tabs button { min-height: calc(var(--control) - var(--s2)); padding: var(--s2) var(--s5); border: 0; border-right: 1px solid var(--line); background: transparent; color: var(--control-text); font-size: var(--text-base); }
 .plan-learning-tabs button:last-child { border-right: 0; }
 .plan-learning-tabs button.active { background: var(--sage); color: var(--accent-strong); font-weight: 600; }
-.plan-sort select { min-height: calc(var(--control) - var(--s2)); padding: var(--s1) var(--s3); border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); color: var(--control-text); font-size: var(--text-base); }
+.plan-sort { width: 132px; flex-shrink: 0; }
+.plan-sort .app-select-trigger { min-height: calc(var(--control) - var(--s2)); padding: var(--s2) var(--s3); font-size: var(--text-base); }
 .plan-bulkbar { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s4); padding: var(--s3) var(--s5); color: var(--accent-strong); background: var(--sage); font-size: var(--text-base); border-bottom: 1px solid var(--line); }
 .plan-bulkbar > .live-actions { margin-left: auto; }
 .plan-message { margin: var(--s3) var(--s5); }
@@ -117,7 +118,7 @@
   .plan-learning-tabs { width: 100%; }
   .plan-learning-tabs button { flex: 1; min-width: 0; padding: var(--s2) var(--s1); font-size: var(--text-sm); min-height: var(--control); }
   .plan-sort { margin-left: auto; }
-  .plan-sort select { min-height: var(--control); }
+  .plan-sort .app-select-trigger { min-height: var(--control); }
   .plan-table-header, .plan-row-main { grid-template-columns: var(--s5) minmax(0, 1fr) calc(var(--s12) * 2); gap: var(--s3); padding-inline: var(--s3); }
   .plan-table-header > span:nth-of-type(2), .plan-table-header > span:nth-of-type(3), .plan-table-header > .plan-operation-heading { display: none; }
   .plan-table-header { font-size: var(--text-sm); }

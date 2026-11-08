@@ -130,8 +130,6 @@ onMounted(async () => { try { tags.value=await request<Tag[]>('GET','/sentence-p
 .tag-filter :deep(.app-select-group + li[role=option]), .tag-filter :deep(li[role=option] ~ li[role=option]) { padding-left: 18px; }
 .tag-filter :deep(.app-select-options > .app-select-empty) { color: var(--muted); cursor: default; }
 .tag-filter :deep(.app-select-options > li[aria-selected=true]) { color: var(--accent-strong); background: var(--sage); font-weight: 600; }
-.tag-filter :deep(.app-select-pop-enter-active), .tag-filter :deep(.app-select-pop-leave-active) { transition: opacity 160ms ease, transform 160ms ease; }
-.tag-filter :deep(.app-select-pop-enter-from), .tag-filter :deep(.app-select-pop-leave-to) { opacity: 0; transform: translateY(-5px) scale(.98); }
 .collection-actions { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 66px; padding: 12px 28px; border-block: 1px solid var(--line); background: var(--hover); }
 .selection-summary { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
 .selection-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); opacity: .7; }

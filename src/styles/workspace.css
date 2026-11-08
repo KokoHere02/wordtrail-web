@@ -245,6 +245,9 @@
 .pronunciation-form fieldset { border: 0; padding: 0; display: grid; gap: var(--s3); min-width: 0; }
 .pronunciation-form legend { font-weight: 600; margin-bottom: var(--s3); }
 .pronunciation-form label { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); }
+.pronunciation-form .pronunciation-accent { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); }
+.pronunciation-form .pronunciation-accent > .app-select-trigger { width: 136px; flex-shrink: 0; }
+.pronunciation-form .pronunciation-accent > .app-select-options { left: auto; width: 160px; }
 .pronunciation-form input:not([type=checkbox]), .pronunciation-form select, .consolidation-page select, .consolidation-controls input[type=number] { min-height: var(--control); border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); padding: var(--s2) var(--s3); max-width: 100%; }
 .pronunciation-form input[type=number] { width: 90px; }
 .training-play { margin-block: var(--s3) var(--s5); }
@@ -264,6 +267,10 @@
 .app-select-options > li[data-active=true] { background: var(--hover); }
 .app-select-options > li[aria-selected=true] { color: var(--accent); font-weight: 500; }
 .app-select-options > li > svg { flex-shrink: 0; }
+.app-select-pop-enter-active, .app-select-pop-leave-active { transition: opacity .16s ease, transform .16s ease; transform-origin: top center; }
+.app-select-pop-leave-active { pointer-events: none; }
+.app-select-pop-enter-from, .app-select-pop-leave-to { opacity: 0; transform: translateY(-6px) scale(.98); }
+@media (prefers-reduced-motion: reduce) { .app-select-pop-enter-active, .app-select-pop-leave-active { transition: none; } }
 .wordlist-page.consolidation-page { width: min(calc(100% - var(--s10) * 2), var(--workspace-width)); max-width: none; margin-inline: auto; padding-block: var(--s5) var(--s12); }
 .consolidation-topbar { display: flex; align-items: center; justify-content: space-between; gap: var(--s4); margin-bottom: var(--s6); padding-bottom: var(--s5); border-bottom: 1px solid var(--line); }
 .consolidation-back { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; color: var(--muted); font-size: var(--text-base); }

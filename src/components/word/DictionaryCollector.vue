@@ -6,11 +6,13 @@ import type { BookWordsChange } from '../../types/api';
 import AppDialog from '../ui/AppDialog.vue';
 import AppButton from '../ui/AppButton.vue';
 import AppPagination from '../ui/AppPagination.vue';
+import AppSelect from '../ui/AppSelect.vue';
 import StatePanel from '../ui/StatePanel.vue';
 import WordMeaning from './WordMeaning.vue';
 const props = defineProps<{ modelValue: boolean; bookId: number }>();
 const emit = defineEmits<{ 'update:modelValue': [value: boolean]; changed: [result: BookWordsChange]; unavailable: [] }>();
 const collection = useDictionaryCollection(props.bookId);
+const matchOptions: { value: 'PREFIX' | 'EXACT'; label: string }[] = [{ value: 'PREFIX', label: '前缀' }, { value: 'EXACT', label: '完整' }];
 const { data, loading, error, keyword, matchType, applied, page, size, pageIds, pageSelected, busy, validation, saveError, blocked, selection } = collection;
 watch(blocked, value => { if (value) emit('unavailable'); });
 function close(value: boolean) { if (!busy.value) emit('update:modelValue', value); }
@@ -24,7 +26,7 @@ async function collect() {
     <div class="dictionary-collector">
       <form class="dictionary-search" role="search" @submit.prevent="collection.search">
         <label class="library-search"><Search :size="18" /><input v-model="keyword" type="search" maxlength="255" aria-label="搜索全局词库" placeholder="输入英文单词" :disabled="busy || blocked" /></label>
-        <label class="live-filter">匹配<select v-model="matchType" :disabled="busy || blocked"><option value="PREFIX">前缀</option><option value="EXACT">完整</option></select></label>
+        <AppSelect v-model="matchType" class="dictionary-match" label="匹配方式" :options="matchOptions" :disabled="busy || blocked" animated />
         <AppButton type="submit" variant="secondary" :disabled="busy || blocked">搜索词库</AppButton>
       </form>
       <p v-if="validation" class="inline-error" role="alert">{{ validation }}</p>
