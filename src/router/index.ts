@@ -3,54 +3,12 @@ import {
   createWebHistory,
   type RouteRecordRaw,
 } from "vue-router";
-import { uiPreview } from "../config";
 import { useAuthStore } from "../stores/auth";
 import AppLayout from "../layouts/AppLayout.vue";
-import PreviewLayout from "../layouts/PreviewLayout.vue";
 
 const retiredPracticeRoutes: RouteRecordRaw[] = [
   { path: 'learning/:legacyPath(.*)*', component: () => import('../views/learning/RetiredPracticeView.vue') },
   { path: 'study/:legacyPath(.*)*', component: () => import('../views/learning/RetiredPracticeView.vue') },
-];
-const visualRoutes: RouteRecordRaw[] = [
-  {
-    path: "/",
-    component: PreviewLayout,
-    children: [
-      { path: "", redirect: "/today" },
-      {
-        path: "today",
-        component: () => import("../views/preview/TodayView.vue"),
-      },
-      {
-        path: "learn",
-        component: () => import("../views/preview/MemoryView.vue"),
-      },
-      {
-        path: "dictation",
-        component: () => import("../views/preview/DictationView.vue"),
-      },
-      {
-        path: "books",
-        component: () => import("../views/preview/LibraryView.vue"),
-      },
-      {
-        path: "books/:bookId(\\d+)",
-        component: () => import("../views/preview/WordListView.vue"),
-      },
-      {
-        path: "records",
-        component: () => import("../views/preview/RecordsView.vue"),
-      },
-      {
-        path: "records/:recordId(\\d+)",
-        component: () => import("../views/preview/PreviewResultView.vue"),
-      },
-      ...retiredPracticeRoutes,
-      { path: "login", redirect: "/today" },
-      { path: "register", redirect: "/today" },
-    ],
-  },
 ];
 const apiRoutes: RouteRecordRaw[] = [
   {
@@ -120,7 +78,7 @@ const apiRoutes: RouteRecordRaw[] = [
 export const router = createRouter({
   history: createWebHistory(),
   routes: [
-    ...(uiPreview ? visualRoutes : apiRoutes),
+    ...apiRoutes,
     {
       path: "/:pathMatch(.*)*",
       component: () => import("../views/NotFoundView.vue"),
@@ -130,7 +88,6 @@ export const router = createRouter({
   scrollBehavior: () => ({ top: 0 }),
 });
 router.beforeEach(async (to) => {
-  if (uiPreview) return;
   const auth = useAuthStore();
   await auth.restore();
   if (!to.meta.public && !auth.user)
