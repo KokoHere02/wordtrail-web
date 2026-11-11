@@ -8,7 +8,7 @@ for (const key of ['window', 'document', 'navigator', 'history', 'location', 'se
 globalThis.requestAnimationFrame = window.requestAnimationFrame.bind(window); globalThis.cancelAnimationFrame = window.cancelAnimationFrame.bind(window);
 window.document.body.innerHTML = '<div id="app"></div>';
 const { default: vue } = await import('@vitejs/plugin-vue');
-await build({ configFile: false, plugins: [vue()], mode: 'mock', define: { 'import.meta.env.VITE_UI_PREVIEW': '"false"' }, logLevel: 'error', build: { target: 'es2022', outDir: '.qa-follow-dist', emptyOutDir: true, minify: false, lib: { entry: 'tests/sentences-entry.ts', formats: ['es'], fileName: 'ui' }, rolldownOptions: { external: ['vue', 'vue-router', 'pinia', 'axios', 'lucide-vue-next'] } } });
+await build({ configFile: false, plugins: [vue()], mode: 'mock', logLevel: 'error', build: { target: 'es2022', outDir: '.qa-follow-dist', emptyOutDir: true, minify: false, lib: { entry: 'tests/sentences-entry.ts', formats: ['es'], fileName: 'ui' }, rolldownOptions: { external: ['vue', 'vue-router', 'pinia', 'axios', 'lucide-vue-next'] } } });
 const { app, router, http, tokens } = await import('../.qa-follow-dist/ui.js');
 const document = window.document, calls = [], tasks = new Map(), creations = new Map(), answers = new Map(), events = [];
 const fallback = http.defaults.adapter, clone = value => JSON.parse(JSON.stringify(value));

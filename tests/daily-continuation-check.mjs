@@ -8,7 +8,7 @@ for (const key of ['window', 'document', 'navigator', 'history', 'location', 'se
 globalThis.requestAnimationFrame = window.requestAnimationFrame.bind(window); globalThis.cancelAnimationFrame = window.cancelAnimationFrame.bind(window);
 window.document.body.innerHTML = '<div id="app"></div>';
 const { default: vue } = await import('@vitejs/plugin-vue');
-await build({ configFile: false, plugins: [vue()], mode: 'mock', define: { 'import.meta.env.VITE_UI_PREVIEW': '"false"' }, logLevel: 'error', build: { target: 'es2022', outDir: '.qa-continuation-dist', emptyOutDir: true, minify: false, lib: { entry: 'tests/app-entry.ts', formats: ['es'], fileName: 'ui' }, rolldownOptions: { external: ['vue', 'vue-router', 'pinia', 'axios', 'lucide-vue-next'] } } });
+await build({ configFile: false, plugins: [vue()], mode: 'mock', logLevel: 'error', build: { target: 'es2022', outDir: '.qa-continuation-dist', emptyOutDir: true, minify: false, lib: { entry: 'tests/app-entry.ts', formats: ['es'], fileName: 'ui' }, rolldownOptions: { external: ['vue', 'vue-router', 'pinia', 'axios', 'lucide-vue-next'] } } });
 const { app, router, http, api, dailyApi } = await import('../.qa-continuation-dist/ui.js');
 const document = window.document, fallback = http.defaults.adapter, calls = [];
 const day = '2026-10-28', clone = value => structuredClone(value);

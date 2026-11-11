@@ -10,7 +10,7 @@ globalThis.requestAnimationFrame = window.requestAnimationFrame.bind(window);
 globalThis.cancelAnimationFrame = window.cancelAnimationFrame.bind(window);
 window.document.body.innerHTML = '<div id="app"></div>';
 const { default: vue } = await import('@vitejs/plugin-vue');
-await build({ configFile: false, plugins: [vue()], mode: 'mock', define: { 'import.meta.env.VITE_UI_PREVIEW': '"false"' }, logLevel: 'warn', build: { target: 'es2022', outDir: '.qa-dictation-dist', emptyOutDir: true, minify: false, lib: { entry: 'tests/dictation-entry.ts', formats: ['es'], fileName: 'ui' }, rolldownOptions: { external: ['vue', 'vue-router', 'pinia', 'axios', 'lucide-vue-next'] } } });
+await build({ configFile: false, plugins: [vue()], mode: 'mock', logLevel: 'warn', build: { target: 'es2022', outDir: '.qa-dictation-dist', emptyOutDir: true, minify: false, lib: { entry: 'tests/dictation-entry.ts', formats: ['es'], fileName: 'ui' }, rolldownOptions: { external: ['vue', 'vue-router', 'pinia', 'axios', 'lucide-vue-next'] } } });
 const { router, http, api, dailyApi, dictationApi, DictationStats, app } = await import('../.qa-dictation-dist/ui.js');
 const document = window.document, fixture = createDictationExamFixture(), fallback = http.defaults.adapter;
 http.defaults.adapter = async config => {

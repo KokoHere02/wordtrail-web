@@ -11,7 +11,7 @@ globalThis.requestAnimationFrame = window.requestAnimationFrame.bind(window);
 globalThis.cancelAnimationFrame = window.cancelAnimationFrame.bind(window);
 window.document.body.innerHTML = '<div id="app"></div>';
 const { default: vue } = await import('@vitejs/plugin-vue');
-await build({ configFile: false, plugins: [vue()], mode: 'mock', define: { 'import.meta.env.VITE_UI_PREVIEW': '"false"' }, logLevel: 'warn', build: { target: 'es2022', outDir: '.qa-book-transfer-dist', emptyOutDir: true, minify: false, lib: { entry: 'tests/book-transfer-entry.ts', formats: ['es'], fileName: 'ui' }, rolldownOptions: { external: ['vue', 'vue-router', 'pinia', 'axios', 'lucide-vue-next'] } } });
+await build({ configFile: false, plugins: [vue()], mode: 'mock', logLevel: 'warn', build: { target: 'es2022', outDir: '.qa-book-transfer-dist', emptyOutDir: true, minify: false, lib: { entry: 'tests/book-transfer-entry.ts', formats: ['es'], fileName: 'ui' }, rolldownOptions: { external: ['vue', 'vue-router', 'pinia', 'axios', 'lucide-vue-next'] } } });
 const { router, http, api, dailyApi, bookTransferApi, app } = await import('../.qa-book-transfer-dist/ui.js');
 const document = window.document;
 async function until(predicate, label) {

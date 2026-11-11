@@ -1,4 +1,4 @@
-// Run with mock and preview development servers at 127.0.0.1:5189 and :5190.
+// Run with a mock development server at 127.0.0.1:5189.
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 
@@ -74,16 +74,6 @@ try {
   const rect = await option.boundingBox();
   assert.ok(rect && rect.x >= 0 && rect.x + rect.width <= 390, 'mobile dropdown stays in viewport');
   await page.screenshot({ path: '.qa-dist/pronunciation-select-mobile.png' });
-  const preview = await browser.newPage({ viewport: { width: 390, height: 844 } });
-  await preview.goto('http://127.0.0.1:5190/dictation');
-  const previewAccent = preview.getByRole('combobox', { name: /发音口音/ });
-  await previewAccent.click();
-  await preview.getByRole('option', { name: '英音' }).click();
-  assert.match(await previewAccent.innerText(), /英音/);
-  const hint = preview.getByRole('combobox', { name: /默写提示/ });
-  await hint.click();
-  await preview.getByRole('option', { name: '提示首字母' }).click();
-  assert.match(await hint.innerText(), /提示首字母/);
   console.log('PASS email verification controls and animated dropdowns on desktop and mobile');
 } finally {
   await browser.close();

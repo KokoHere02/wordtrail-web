@@ -38,7 +38,6 @@ await build({
   configFile: false,
   plugins: [vue()],
   mode: "mock",
-  define: { "import.meta.env.VITE_UI_PREVIEW": '"false"' },
   logLevel: "warn",
   build: {
     target: "es2022",
