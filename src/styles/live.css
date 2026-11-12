@@ -6,6 +6,14 @@
 .book-progress dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
 .wordlist-heading > .live-actions { flex: 0 1 auto; justify-content: flex-end; }
 .book-detail-copy { overflow-wrap: anywhere; }
+.book-wordlist-page { padding-top: 12px; }
+.book-wordlist-page .back-to-library { margin-bottom: 8px; }
+.book-wordlist-page .wordlist-heading { gap: 12px 20px; margin-bottom: 12px; }
+.book-wordlist-page .wordlist-heading .subtle-copy { margin-top: 0; }
+.book-wordlist-page .book-progress { margin-top: 4px; }
+.book-wordlist-page .wordlist-selection { flex-wrap: wrap; gap: 8px 20px; }
+.wordlist-plan-actions { display: flex; align-items: center; gap: var(--s3); }
+.wordlist-selection-hint { color: var(--muted); }
 .book-editor { display: flex; flex-direction: column; gap: var(--s3); }
 .book-editor input, .book-editor textarea { width: 100%; padding: var(--s3); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); }
 .book-editor textarea { resize: vertical; min-height: var(--s16); }
@@ -29,6 +37,7 @@
 .dictionary-word p { color: var(--muted); font-size: var(--text-sm); }
 .wordlist-tools .library-search .search-field { width: 100%; min-width: 0; padding: 0; border: 0; background: transparent; box-shadow: none; }
 @media (max-width: 640px) {
+  .wordlist-plan-actions { width: 100%; }
   .library-heading-actions { width: 100%; }
   .library-heading-actions .library-search { flex: 1; min-width: 0; }
   .wordlist-heading > .live-actions { flex-basis: 100%; justify-content: flex-start; }
