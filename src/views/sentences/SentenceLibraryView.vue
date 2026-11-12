@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import { ArrowRight, BookmarkPlus, Check, ChevronLeft, ChevronRight, History, Library, ListChecks, NotebookPen, Play, Search, SlidersHorizontal, Star } from 'lucide-vue-next';
+import { ArrowRight, BookmarkPlus, Check, ChevronLeft, ChevronRight, History, Library, ListChecks, NotebookPen, Play, Search, Shuffle, SlidersHorizontal, Star } from 'lucide-vue-next';
 import { request, errorMessage } from '../../api/http';
 import SentenceNotePanel from '../../components/learning/SentenceNotePanel.vue';
+import RandomSentencesDialog from '../../components/learning/RandomSentencesDialog.vue';
 import AppSelect from '../../components/ui/AppSelect.vue';
 import AppDialog from '../../components/ui/AppDialog.vue';
 import { useSentenceManagementAccess } from '../../stores/sentenceManagementAccess';
@@ -14,6 +15,8 @@ const route = useRoute(); const access = useSentenceManagementAccess();
 const rows = ref<Sentence[]>([]), tags = ref<Tag[]>([]), scope = ref(route.query.scope === 'favorites' ? 'favorites' : 'bank'), tagId = ref(''), offset = ref(0), busy = ref(false), error = ref('');
 const searchInput = ref(''), keyword = ref('');
 const selected = ref<number[]>([]);
+const randomOpen = ref(false), selectionNotice = ref('');
+const adding = ref(false);
 const detail = ref<Sentence | null>(null), history = ref<History[]>([]), historyOffset = ref(0), selectedTags = ref<number[]>([]);
 const notePanel = ref<InstanceType<typeof SentenceNotePanel> | null>(null);
 const detailLoading = ref(false), detailError = ref(''), tagsSaving = ref(false);
@@ -31,12 +34,25 @@ const tagOptions = computed(() => {
   return [{ value: '', label: '全部标签' }, ...Array.from(groups, ([group, items]) => items.map(tag => ({ value: String(tag.id), label: tag.name, group }))).flat()];
 });
 let loadRevision = 0;
-async function load() { const revision = ++loadRevision; busy.value = true; error.value = ''; try { const result = await request<Sentence[]>('GET','/sentence-practice/sentences',undefined,{ scope: scope.value, tagId: tagId.value || undefined, wordId: wordId.value, keyword: keyword.value || undefined, offset: offset.value, limit: 50 }); if (revision === loadRevision) { rows.value = result; selected.value = []; } } catch(e) { if (revision === loadRevision) error.value = errorMessage(e); } finally { if (revision === loadRevision) busy.value = false; } }
-function search() { keyword.value = searchInput.value.trim(); offset.value = 0; detail.value = null; void load(); }
-function selectTag(value: string) { if (tagId.value === value) return; tagId.value = value; offset.value = 0; void load(); }
-async function changeScope(value: string) { scope.value = value; offset.value = 0; await load(); }
+async function load() { const revision = ++loadRevision; busy.value = true; error.value = ''; try { const result = await request<Sentence[]>('GET','/sentence-practice/sentences',undefined,{ scope: scope.value, tagId: tagId.value || undefined, wordId: wordId.value, keyword: keyword.value || undefined, offset: offset.value, limit: 50 }); if (revision === loadRevision) rows.value = result; } catch(e) { if (revision === loadRevision) error.value = errorMessage(e); } finally { if (revision === loadRevision) busy.value = false; } }
+function clearSelection() { selected.value = []; selectionNotice.value = ''; }
+function search() { keyword.value = searchInput.value.trim(); offset.value = 0; detail.value = null; clearSelection(); void load(); }
+function selectTag(value: string) { if (tagId.value === value) return; tagId.value = value; offset.value = 0; clearSelection(); void load(); }
+async function changeScope(value: string) { if (scope.value === value) return; scope.value = value; offset.value = 0; clearSelection(); await load(); }
 async function learning(row: Sentence, add: boolean) { try { await request(add ? 'PUT' : 'DELETE', `/sentence-practice/learning/${row.id}`); row.learning = add; if (scope.value === 'learning' && !add) await load(); } catch(e) { error.value = errorMessage(e); } }
-async function addSelected() { busy.value=true; error.value=''; try { for(const id of selected.value) await request('PUT', `/sentence-practice/learning/${id}`); await load(); } catch(e) { const message=errorMessage(e); await load(); error.value=message; } finally { busy.value=false; } }
+async function addSelected() {
+  if (busy.value) return;
+  busy.value = true; adding.value = true; error.value = ''; selectionNotice.value = '';
+  let processed = 0, added = 0, failure = '';
+  while (selected.value.length) {
+    const batch = selected.value.slice(0, 100);
+    try { added += await request<number>('POST', '/sentence-practice/learning/batch', { sentenceIds: batch }); selected.value = selected.value.slice(batch.length); processed += batch.length; }
+    catch (e) { failure = errorMessage(e); break; }
+  }
+  await load(); adding.value = false;
+  if (failure) error.value = `已处理 ${processed} 句，剩余 ${selected.value.length} 句待处理：${failure}`;
+  else selectionNotice.value = `已处理 ${processed} 句，新增 ${added} 句到学习列表。`;
+}
 async function favorite(row: Sentence) { try { await request('PUT', `/sentence-practice/sentences/${row.id}/favorite`, { favorite: !row.favorite }); row.favorite = !row.favorite; if (scope.value === 'favorites' && !row.favorite) await load(); } catch(e) { error.value = errorMessage(e); } }
 async function loadHistory(nextOffset = historyOffset.value) { if(!detail.value) return; const revision = detailRevision, id = detail.value.id; detailLoading.value = true; detailError.value = ''; try { const result = await request<History[]>('GET',`/sentence-practice/sentences/${id}/history`,undefined,{offset:nextOffset,limit:50}); if (revision === detailRevision) { history.value = result; historyOffset.value = nextOffset; } } catch(e) { if (revision === detailRevision) detailError.value = errorMessage(e); } finally { if (revision === detailRevision) detailLoading.value = false; } }
 async function showDetail(row: Sentence) { const revision = ++detailRevision; detail.value=row; history.value=[]; historyOffset.value=0; selectedTags.value=[]; savedTagIds.value=[]; tagsReady.value=false; detailError.value=''; detailLoading.value=true; try { const [entries, rowTags] = await Promise.all([request<History[]>('GET',`/sentence-practice/sentences/${row.id}/history`,undefined,{offset:0,limit:50}), request<Tag[]>('GET',`/sentence-practice/sentences/${row.id}/tags`)]); if (revision === detailRevision) { history.value=entries; selectedTags.value=rowTags.map(t=>t.id); savedTagIds.value=[...selectedTags.value]; tagsReady.value=true; } } catch(e) { if (revision === detailRevision) detailError.value=errorMessage(e); } finally { if (revision === detailRevision) detailLoading.value=false; } }
@@ -65,11 +81,11 @@ onMounted(async () => { try { tags.value=await request<Tag[]>('GET','/sentence-p
           <div class="tag-filter"><span class="tag-filter-label"><SlidersHorizontal :size="15" aria-hidden="true" />标签</span><AppSelect :model-value="tagId" :options="tagOptions" label="筛选标签" hide-label animated searchable @update:model-value="selectTag" /></div>
         </div>
         <div class="collection-actions">
-          <div class="selection-summary"><span class="selection-dot" />{{ scope === 'learning' ? '开始练习后将依次展示学习列表中的句子' : selected.length ? `已选择 ${selected.length} 句` : '选择句子后可批量操作' }}</div>
-          <button v-if="scope !== 'learning'" class="btn btn-primary collection-primary" :disabled="!selected.length || busy" @click="addSelected"><BookmarkPlus :size="16" aria-hidden="true" />将所选句子加入学习列表（{{ selected.length }}）</button>
+          <div class="selection-summary" role="status"><span class="selection-dot" />{{ scope === 'learning' ? '开始练习后将依次展示学习列表中的句子' : selected.length ? `已选择 ${selected.length} 句，跨页保留` : selectionNotice || '选择句子后可批量操作' }}</div>
+          <div v-if="scope !== 'learning'" class="collection-buttons"><button type="button" class="btn btn-secondary collection-primary" :disabled="busy" @click="randomOpen = true"><Shuffle :size="16" aria-hidden="true" />随机选句</button><button v-if="selected.length" type="button" class="quiet-button" :disabled="busy" @click="clearSelection">清空选择</button><button class="btn btn-primary collection-primary" :disabled="!selected.length || busy" @click="addSelected"><BookmarkPlus :size="16" aria-hidden="true" />将所选句子加入学习列表（{{ selected.length }}）</button></div>
         </div>
 
-        <div v-if="busy" class="collection-empty" role="status">正在加载句子…</div>
+        <div v-if="busy" class="collection-empty" role="status">{{ adding ? '正在加入学习列表…' : '正在加载句子…' }}</div>
         <div v-else-if="!rows.length" class="collection-empty"><span class="empty-icon"><Library :size="22" aria-hidden="true" /></span><strong>{{ keyword ? '没有找到匹配的句子' : '暂无句子' }}</strong><span>{{ keyword ? '试试其他关键词或筛选条件' : scope === 'learning' ? '从句子库选择想学习的句子' : scope === 'favorites' ? '收藏喜欢的句子，方便以后查看' : '换个标签看看，或稍后再来' }}</span></div>
         <div v-else class="sentence-list">
           <article v-for="row in rows" :key="row.id" class="sentence-entry" :class="{ 'is-selected': selected.includes(row.id), 'is-learning': scope === 'learning' }">
@@ -81,6 +97,7 @@ onMounted(async () => { try { tags.value=await request<Tag[]>('GET','/sentence-p
         <div class="collection-pagination"><span>第 {{ offset / 50 + 1 }} 页</span><div><button type="button" :disabled="offset === 0 || busy" @click="offset = Math.max(0, offset - 50); load()"><ChevronLeft :size="16" aria-hidden="true" />上一页</button><button type="button" :disabled="rows.length < 50 || busy" @click="offset += 50; load()">下一页<ChevronRight :size="16" aria-hidden="true" /></button></div></div>
       </section>
 
+      <RandomSentencesDialog v-model="randomOpen" :scope="scope" :tag-id="tagId" :word-id="wordId" :keyword="keyword" :previous-count="selected.length" @selected="ids => { selected = ids; selectionNotice = ''; }" />
       <AppDialog :model-value="!!detail" title="句子历史与笔记" panel-class="sentence-detail-dialog" @update:model-value="value => { if (!value) closeDetail(); }">
         <div v-if="detail" class="detail-panel">
           <div class="detail-heading"><div><span class="section-eyebrow">句子详情</span><h3>{{ detail.englishText }}</h3><p>{{ detail.referenceTranslation }}</p></div></div>
@@ -134,6 +151,7 @@ onMounted(async () => { try { tags.value=await request<Tag[]>('GET','/sentence-p
 .selection-summary { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
 .selection-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); opacity: .7; }
 .collection-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; font-size: 13px; }
+.collection-buttons { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .sentence-list { padding: 0 28px; }
 .sentence-entry { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: start; gap: 14px; padding: 23px 0; border-bottom: 1px solid var(--line); }
 .sentence-entry:last-child { border-bottom: 0; }
