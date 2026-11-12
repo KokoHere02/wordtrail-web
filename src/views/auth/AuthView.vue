@@ -11,9 +11,12 @@ const route = useRoute(), router = useRouter(), auth = useAuthStore();
 const { isDark, toggleTheme } = useTheme();
 const registering = computed(() => route.path === '/register');
 const mode = ref<'password' | 'code'>('password');
+const recovering = ref(false), confirmation = ref('');
 const identity = ref<'phone' | 'email'>('phone');
-const form = reactive({ phone: '', email: '', password: '', code: '' });
-const busy = ref(false), sending = ref(false), remaining = ref(0), error = ref('');
+const form = reactive({ account: '', phone: '', email: '', password: '', code: '' });
+const busy = ref(false), sending = ref(false), error = ref('');
+const cooldowns = reactive<Record<string, number>>({});
+const now = ref(Date.now());
 const notice = ref(sessionStorage.getItem('wordtrail.security-notice') || '');
 sessionStorage.removeItem('wordtrail.security-notice');
 if (sessionStorage.getItem('wordtrail.logout-notice')) { notice.value = '本地已退出。服务端退出未能确认，请稍后重试。'; sessionStorage.removeItem('wordtrail.logout-notice'); }
@@ -23,29 +26,57 @@ const redirect = computed(() => {
 });
 let timer: ReturnType<typeof setInterval> | undefined;
 onUnmounted(() => clearInterval(timer));
-watch([registering, mode, identity], () => { form.password = ''; form.code = ''; error.value = ''; });
+watch([registering, mode, identity, recovering], () => { form.password = ''; form.code = ''; error.value = ''; });
 const validEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) && value.length <= 254;
+const target = computed(() => {
+  const value = (registering.value ? identity.value === 'phone' ? form.phone : form.email : form.account).trim();
+  if ((!registering.value || identity.value === 'phone') && /^1[3-9]\d{9}$/.test(value)) return { type: 'phone' as const, value, key: `phone:${value}` };
+  if ((!registering.value || identity.value === 'email') && validEmail(value)) return { type: 'email' as const, value, key: `email:${value.toLowerCase()}` };
+  return null;
+});
+const remaining = computed(() => target.value ? Math.max(0, Math.ceil(((cooldowns[target.value.key] || 0) - now.value) / 1000)) : 0);
+function validTarget() {
+  if (target.value) return target.value;
+  error.value = registering.value ? identity.value === 'phone' ? '请输入正确的中国大陆手机号。' : '请输入有效的邮箱地址。' : '请输入正确的手机号或邮箱地址。';
+  return null;
+}
+function startCooldown(key: string) {
+  now.value = Date.now(); cooldowns[key] = now.value + 60000;
+  clearInterval(timer);
+  timer = setInterval(() => {
+    now.value = Date.now();
+    if (Object.values(cooldowns).every(until => until <= now.value)) clearInterval(timer);
+  }, 1000);
+}
 async function send() {
-  if (identity.value === 'phone' ? !/^1[3-9]\d{9}$/.test(form.phone) : !validEmail(form.email)) { error.value = identity.value === 'phone' ? '请输入正确的中国大陆手机号。' : '请输入有效的邮箱地址。'; return; }
+  const current = validTarget();
+  if (!current || sending.value || busy.value || remaining.value > 0) return;
   sending.value = true; error.value = '';
   try {
-    if (identity.value === 'email') await accountApi.sendEmailCode(form.email, registering.value ? 'REGISTER' : 'LOGIN');
-    else await accountApi.sendCode(form.phone, registering.value ? 'REGISTER' : 'LOGIN');
-    notice.value = '验证码已发送，请注意查收。'; remaining.value = 60;
-    clearInterval(timer); timer = setInterval(() => { if (--remaining.value <= 0) clearInterval(timer); }, 1000);
+    if (current.type === 'email') await accountApi.sendEmailCode(current.value, registering.value ? 'REGISTER' : recovering.value ? 'RECOVERY' : 'LOGIN');
+    else await accountApi.sendCode(current.value, registering.value ? 'REGISTER' : recovering.value ? 'RECOVERY' : 'LOGIN');
+    notice.value = '验证码已发送，请注意查收。'; startCooldown(current.key);
   } catch (value) { error.value = errorMessage(value); }
   finally { sending.value = false; }
 }
 async function submit() {
-  if (busy.value) return;
-  if (identity.value === 'phone' ? !/^1[3-9]\d{9}$/.test(form.phone) : !validEmail(form.email)) { error.value = identity.value === 'phone' ? '请输入正确的中国大陆手机号。' : '请输入有效的邮箱地址。'; return; }
-  if ((registering.value || mode.value === 'password') && ([...form.password].length < 8 || [...form.password].length > 64)) { error.value = '密码须为 8～64 个字符。'; return; }
-  if ((registering.value || mode.value === 'code') && !/^\d{6}$/.test(form.code)) { error.value = '请输入 6 位验证码。'; return; }
+  if (busy.value || sending.value) return;
+  const current = validTarget();
+  if (!current) return;
+  if ((registering.value || recovering.value || mode.value === 'password') && ([...form.password].length < 8 || [...form.password].length > 64)) { error.value = '密码须为 8～64 个字符。'; return; }
+  if ((registering.value || recovering.value || mode.value === 'code') && !/^\d{6}$/.test(form.code)) { error.value = '请输入 6 位验证码。'; return; }
+  if (recovering.value && form.password !== confirmation.value) { error.value = '两次输入的密码不一致。'; return; }
   busy.value = true; error.value = '';
   try {
-    await auth.loginPhone(() => identity.value === 'email'
-      ? registering.value ? accountApi.registerEmail(form.email, form.code, form.password) : mode.value === 'password' ? accountApi.emailPasswordLogin(form.email, form.password) : accountApi.emailCodeLogin(form.email, form.code)
-      : registering.value ? accountApi.registerPhone(form.phone, form.code, form.password) : mode.value === 'password' ? accountApi.passwordLogin(form.phone, form.password) : accountApi.codeLogin(form.phone, form.code));
+    if (recovering.value) {
+      if (current.type === 'email') await accountApi.recoverEmail(current.value, form.code, form.password);
+      else await accountApi.recoverPhone(current.value, form.code, form.password);
+      form.password = ''; form.code = ''; confirmation.value = ''; recovering.value = false; mode.value = 'password';
+      notice.value = '密码已重置，请使用新密码登录。所有设备均需重新登录。'; return;
+    }
+    await auth.loginPhone(() => current.type === 'email'
+      ? registering.value ? accountApi.registerEmail(current.value, form.code, form.password) : mode.value === 'password' ? accountApi.emailPasswordLogin(current.value, form.password) : accountApi.emailCodeLogin(current.value, form.code)
+      : registering.value ? accountApi.registerPhone(current.value, form.code, form.password) : mode.value === 'password' ? accountApi.passwordLogin(current.value, form.password) : accountApi.codeLogin(current.value, form.code));
     form.password = ''; form.code = ''; await router.replace(redirect.value);
   } catch (value) { error.value = errorMessage(value); }
   finally { busy.value = false; }
@@ -79,27 +110,31 @@ async function submit() {
       </aside>
 
       <section class="auth-panel" :aria-label="registering ? '注册拾词' : '登录拾词'">
-        <div v-if="!registering" class="auth-tabs" role="tablist" aria-label="登录方式">
-          <button type="button" role="tab" :aria-selected="mode === 'password'" :class="{ selected: mode === 'password' }" @click="mode = 'password'">密码登录</button>
-          <button type="button" role="tab" :aria-selected="mode === 'code'" :class="{ selected: mode === 'code' }" @click="mode = 'code'">验证码登录</button>
+        <div v-if="!registering && !recovering" class="auth-tabs" role="tablist" aria-label="登录方式">
+          <button type="button" role="tab" :disabled="busy || sending" :aria-selected="mode === 'password'" :class="{ selected: mode === 'password' }" @click="mode = 'password'">密码登录</button>
+          <button type="button" role="tab" :disabled="busy || sending" :aria-selected="mode === 'code'" :class="{ selected: mode === 'code' }" @click="mode = 'code'">验证码登录</button>
           <span class="auth-tab-indicator" :class="{ 'on-code': mode === 'code' }" aria-hidden="true"></span>
         </div>
+        <p v-if="recovering" class="auth-intro">通过已绑定的手机号或邮箱重置密码</p>
         <p v-if="registering" class="auth-intro">开始你的学习旅程</p>
-        <div class="identity-switch" role="group" aria-label="账号类型"><button type="button" :class="{ selected: identity === 'phone' }" :aria-pressed="identity === 'phone'" @click="identity = 'phone'">手机号</button><button type="button" :class="{ selected: identity === 'email' }" :aria-pressed="identity === 'email'" @click="identity = 'email'">邮箱</button></div>
+        <div v-if="registering" class="identity-switch" role="group" aria-label="账号类型"><button type="button" :disabled="busy || sending" :class="{ selected: identity === 'phone' }" :aria-pressed="identity === 'phone'" @click="identity = 'phone'">手机号</button><button type="button" :disabled="busy || sending" :class="{ selected: identity === 'email' }" :aria-pressed="identity === 'email'" @click="identity = 'email'">邮箱</button></div>
         <div v-if="notice" class="auth-notice" role="status">{{ notice }}</div>
         <form class="auth-form" novalidate @submit.prevent="submit">
-          <div v-if="identity === 'phone'" class="auth-field"><label for="phone">手机号</label><input id="phone" v-model.trim="form.phone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="11" placeholder="请输入手机号" :disabled="busy" /></div>
-          <div v-else class="auth-field"><label for="email">邮箱</label><input id="email" v-model.trim="form.email" type="email" autocomplete="email" maxlength="254" placeholder="请输入邮箱地址" :disabled="busy" /></div>
+          <div v-if="!registering" class="auth-field"><label for="account">手机号或邮箱</label><input id="account" v-model.trim="form.account" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="254" placeholder="请输入手机号或邮箱" :disabled="busy || sending" /></div>
+          <div v-else-if="identity === 'phone'" class="auth-field"><label for="phone">手机号</label><input id="phone" v-model.trim="form.phone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="11" placeholder="请输入手机号" :disabled="busy || sending" /></div>
+          <div v-else class="auth-field"><label for="email">邮箱</label><input id="email" v-model.trim="form.email" type="email" autocomplete="email" maxlength="254" placeholder="请输入邮箱地址" :disabled="busy || sending" /></div>
           <Transition name="credential-switch" mode="out-in">
             <div :key="registering ? 'register' : mode" class="auth-credential-fields">
-              <div v-if="registering || mode === 'code'" class="auth-field"><label for="code">{{ identity === 'email' ? '邮箱验证码' : '短信验证码' }}</label><div class="code-input"><input id="code" v-model.trim="form.code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="请输入 6 位验证码" :disabled="busy" /><button type="button" :disabled="busy || sending || remaining > 0" @click="send">{{ remaining ? `${remaining} 秒后重发` : sending ? '发送中…' : '获取验证码' }}</button></div></div>
-              <div v-if="registering || mode === 'password'" class="auth-field"><label for="password">{{ registering ? '设置密码' : '密码' }}</label><input id="password" v-model="form.password" type="password" :autocomplete="registering ? 'new-password' : 'current-password'" :placeholder="registering ? '请输入 8～64 个字符' : '请输入密码'" :disabled="busy" /></div>
+              <div v-if="registering || recovering || mode === 'code'" class="auth-field"><label for="code">{{ registering ? identity === 'email' ? '邮箱验证码' : '短信验证码' : '验证码' }}</label><div class="code-input"><input id="code" v-model.trim="form.code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="请输入 6 位验证码" :disabled="busy || sending" /><button type="button" :disabled="busy || sending || remaining > 0" @click="send">{{ remaining ? `${remaining} 秒后重发` : sending ? '发送中…' : '获取验证码' }}</button></div></div>
+              <div v-if="registering || recovering || mode === 'password'" class="auth-field"><label for="password">{{ registering || recovering ? '设置密码' : '密码' }}</label><input id="password" v-model="form.password" type="password" :autocomplete="registering || recovering ? 'new-password' : 'current-password'" :placeholder="registering || recovering ? '请输入 8～64 个字符' : '请输入密码'" :disabled="busy" /></div>
+              <div v-if="recovering" class="auth-field"><label for="confirm-recovery">确认新密码</label><input id="confirm-recovery" v-model="confirmation" type="password" autocomplete="new-password" :disabled="busy" /></div>
             </div>
           </Transition>
           <p v-if="error" class="auth-error" role="alert">{{ error }}</p>
-          <AppButton type="submit" class="auth-action" :busy="busy">{{ registering ? '注册并登录' : '登录' }}</AppButton>
+          <AppButton type="submit" class="auth-action" :busy="busy" :disabled="sending">{{ registering ? '注册并登录' : recovering ? '重置密码' : '登录' }}</AppButton>
         </form>
-        <p class="auth-alternate">{{ registering ? '已有账户？' : '还没有账户？' }}<RouterLink :to="{ path: registering ? '/login' : '/register', query: route.query }">{{ registering ? '去登录' : '注册账户' }}</RouterLink></p>
+        <p v-if="!registering" class="auth-alternate"><button type="button" :disabled="busy || sending" @click="recovering = !recovering; notice = ''; confirmation = ''">{{ recovering ? '返回登录' : '忘记密码？' }}</button></p>
+        <p v-if="!recovering" class="auth-alternate">{{ registering ? '已有账户？' : '还没有账户？' }}<RouterLink :to="{ path: registering ? '/login' : '/register', query: route.query }">{{ registering ? '去登录' : '注册账户' }}</RouterLink></p>
         <p v-if="mockEnabled" class="auth-demo">当前为离线演示，验证码为 123456，请勿输入真实密码。</p>
       </section>
     </div>

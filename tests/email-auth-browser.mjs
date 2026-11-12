@@ -29,8 +29,7 @@ try {
   await page.getByRole('button', { name: '确认更换邮箱' }).click();
   await page.waitForURL('**/login');
   await page.getByText('邮箱已更换，请重新登录。').waitFor();
-  await page.getByRole('button', { name: '邮箱', exact: true }).click();
-  await page.locator('#email').fill('new@example.com');
+  await page.locator('#account').fill('new@example.com');
   await page.locator('#password').fill('password123');
   await page.getByRole('button', { name: '登录', exact: true }).click();
   await page.waitForURL('**/today');
