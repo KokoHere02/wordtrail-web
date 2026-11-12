@@ -112,6 +112,7 @@
 .letter-slot { position: relative; flex: 0 0 clamp(26px, 5.2vw, 72px); min-height: 64px; padding-bottom: var(--s2); border-bottom: 3px solid var(--answer-border); text-align: center; font: 400 44px/1.3 var(--font-serif); white-space: pre; }
 .letter-input:focus-within .letter-slot.is-caret { border-bottom-color: var(--accent); }
 .letter-input:focus-within .letter-slot.is-caret.is-empty::after { content: ''; position: absolute; width: 1px; height: 1em; left: 50%; top: 0; background: var(--ink); }
+.letter-slot.is-punctuation { border-bottom-color: transparent; flex-basis: 0.6em; }
 .letter-slot.is-extra { border-bottom-color: var(--error); }
 .letter-input-control > .letter-input-overlay { position: absolute; inset: 0; min-height: 100%; height: 100%; opacity: .01; color: transparent; caret-color: transparent; border: 0; padding: 0; font-size: 40px; }
 .letter-input-control > input:focus, .letter-input-control > input:focus-visible { outline: none; box-shadow: none; }

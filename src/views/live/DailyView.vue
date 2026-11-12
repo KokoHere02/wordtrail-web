@@ -220,7 +220,8 @@ defineExpose({ changeMode: async (value: DailyStudyMode) => { await initializing
         <form v-else class="daily-typing-form" @submit.prevent="session.action('ANSWER')">
           <WordMeaning v-if="meaningVisible" :translation="question.translation" :translation-groups="question.translationGroups" layout="study" :word-key="`${question.itemId}:${question.modeVersion}`" />
           <button v-else-if="!listeningHidden" type="button" class="daily-recall-prompt" @click="preferences.showChinese = true">显示释义</button>
-          <LetterInput id="daily-training-input" ref="field" v-model="input" :length="question.word && !listeningHidden ? Array.from(question.word).length : undefined" :disabled="session.blocked.value" @submit="session.action('ANSWER')" />
+          <LetterInput id="daily-training-input" ref="field" v-model="input" :length="question.word && !listeningHidden ? Array.from(question.word).length : undefined" :pattern="question.answerPattern" :disabled="session.blocked.value" @submit="session.action('ANSWER')" />
+          <p v-if="question.answerPattern && /[^_]/.test(question.answerPattern)" class="subtle-copy">请同时输入空格和标点。</p>
           <p v-if="['DICTATION', 'LISTEN_DICTATION'].includes(question.mode) && question.answerRevealed" class="subtle-copy daily-assisted-note" role="status">已查看答案 · 辅助输入</p>
           <p v-else-if="['DICTATION', 'LISTEN_DICTATION'].includes(question.mode) && question.hintUsed" class="subtle-copy">已使用提示</p>
           <div class="workspace-answer-actions"><button type="button" class="btn btn-secondary" :disabled="session.blocked.value || question.answerRevealed" aria-keyshortcuts="F2" title="不会／看答案（F2）" @click="reveal">{{ question.answerRevealed ? '已查看答案' : '不会／看答案' }}<kbd v-if="!question.answerRevealed" aria-hidden="true">F2</kbd></button><AppButton type="submit" :disabled="session.blocked.value || !input.trim()" :busy="busy">提交 <kbd>Enter</kbd></AppButton></div>

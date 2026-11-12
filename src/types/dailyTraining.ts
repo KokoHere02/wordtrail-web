@@ -19,7 +19,7 @@ export interface TrainingTask extends Omit<DailyTask, 'taskType' | 'learningDate
 }
 export interface TrainingQuestion extends TranslationFields, TrainingItemState {
   itemId: number; mode: DailyStudyMode; modeVersion: number; presentationId: string; attemptNo: number;
-  wordId?: number; word?: string; phonetic?: string | null;
+  wordId?: number; word?: string; phonetic?: string | null; answerPattern?: string;
   audioUrl?: string | null; pronunciation?: Pronunciation;
   phase: TrainingPhase; answerRevealed: boolean;
   hintUsed: boolean; extraTraining: boolean; progress: TrainingTask;
