@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onActivated, onDeactivated, ref, watch, watchEffect, nextTick } from 'vue';
-import { CircleX } from 'lucide-vue-next';
+import { CircleX, Volume2 } from 'lucide-vue-next';
 import { useAuthStore } from '../../stores/auth';
 import { useDailyTraining } from '../../composables/useDailyTraining';
 import { useLearningKeys } from '../../composables/useLearningKeys';
@@ -187,8 +187,7 @@ defineExpose({ changeMode: async (value: DailyStudyMode) => { await initializing
       </section>
       <section v-else-if="recognitionFeedback && receipt" class="daily-training-card learning-card daily-training-feedback recognition-feedback" aria-live="polite">
         <h1 class="learning-word" lang="en">{{ receipt.word }}</h1>
-        <p v-if="preferences.showPhonetic && recognitionPhonetic" class="daily-word-phonetic" lang="en">{{ recognitionPhonetic }}</p>
-        <div v-if="receipt.wordId"><button type="button" class="btn btn-secondary training-play" aria-keyshortcuts="Alt+P" title="播放发音（Alt + P）" :disabled="!canPronounce || audioLoading" @click="pronounce">{{ audioLoading ? '音频加载中…' : speaking ? '重新播放' : '播放发音' }} <kbd aria-hidden="true">Alt + P</kbd></button></div>
+        <div class="recognition-word-meta"><p v-if="preferences.showPhonetic && recognitionPhonetic" class="daily-word-phonetic" lang="en">{{ recognitionPhonetic }}</p><button v-if="receipt.wordId" type="button" class="recognition-audio" aria-label="播放发音" aria-keyshortcuts="Alt+P" title="播放发音（Alt + P）" :disabled="!canPronounce || audioLoading" @click="pronounce"><Volume2 :size="18" aria-hidden="true" /></button></div>
         <WordLearningDetails :translation="receipt.translation" :translation-groups="receipt.translationGroups" :word-id="receipt.wordId" :word="receipt.word" :word-key="receipt.trainingId" />
         <div class="recognition-feedback-actions"><div class="learning-rating daily-training-rating" role="group" aria-label="本次认读选择"><button v-for="entry in ratings" :key="entry.result" type="button" :class="['rating-button', { 'is-selected': receipt.selfAssessment === entry.result }]" :aria-pressed="receipt.selfAssessment === entry.result" :disabled="!canCorrect" @click="session.correct(entry.result)">{{ entry.label }}<kbd>{{ entry.key }}</kbd></button></div><button ref="recognitionNext" type="button" class="btn btn-primary recognition-next" :disabled="session.blocked.value" @click="next">下一个 <kbd>Enter</kbd></button></div>
         <p v-if="!receipt.reviewLogId || scope === 'CONSOLIDATION'" class="subtle-copy">本次练习暂不支持修改已保存的选择。</p>
@@ -209,8 +208,7 @@ defineExpose({ changeMode: async (value: DailyStudyMode) => { await initializing
         <AppButton :disabled="session.blocked.value" @click="next">{{ receipt.action === 'REVEAL' ? '继续输入' : receipt.extraTraining ? '再次训练此词' : question ? '下一个' : '查看完成状态' }} <span aria-hidden="true">→</span></AppButton>
       </section>
       <section v-else-if="question && !historical && !expired" class="daily-training-card learning-card" :data-mode="question.mode" :data-item-id="question.itemId">
-        <template v-if="!['DICTATION', 'LISTEN_DICTATION'].includes(question.mode) || question.answerRevealed"><h1 class="learning-word" lang="en">{{ question.word }}</h1><p v-if="preferences.showPhonetic && question.phonetic" class="daily-word-phonetic" lang="en">{{ question.phonetic }}</p></template>
-        <button v-if="question.audioUrl || canPronounce" type="button" class="btn btn-secondary training-play" aria-keyshortcuts="Alt+P" title="播放发音（Alt + P）" :disabled="!canPronounce || audioLoading" @click="pronounce">{{ audioLoading ? '音频加载中…' : speaking ? '重新播放' : '播放发音' }} <kbd aria-hidden="true">Alt + P</kbd></button>
+        <template v-if="!['DICTATION', 'LISTEN_DICTATION'].includes(question.mode) || question.answerRevealed"><h1 class="learning-word" lang="en">{{ question.word }}</h1><div v-if="question.mode === 'RECOGNITION'" class="recognition-word-meta"><p v-if="preferences.showPhonetic && question.phonetic" class="daily-word-phonetic" lang="en">{{ question.phonetic }}</p><button v-if="question.audioUrl || canPronounce" type="button" class="recognition-audio" aria-label="播放发音" aria-keyshortcuts="Alt+P" title="播放发音（Alt + P）" :disabled="!canPronounce || audioLoading" @click="pronounce"><Volume2 :size="18" aria-hidden="true" /></button></div><p v-else-if="preferences.showPhonetic && question.phonetic" class="daily-word-phonetic" lang="en">{{ question.phonetic }}</p></template>
         <p v-if="question.extraTraining" class="subtle-copy">追加练习 · {{ trainingStatusLabel(question) }}</p>
         <template v-if="question.mode === 'RECOGNITION'">
           <WordLearningDetails v-if="definition && meaningVisible" :translation="definition.translation" :translation-groups="definition.translationGroups" :word-id="definition.wordId" :word="definition.word" :word-key="question.itemId" />
@@ -218,12 +216,14 @@ defineExpose({ changeMode: async (value: DailyStudyMode) => { await initializing
           <div class="learning-rating daily-training-rating"><button v-for="entry in ratings" :key="entry.result" class="rating-button" :disabled="!canRate" @click="session.action('ANSWER', entry.result)">{{ entry.label }}<kbd>{{ entry.key }}</kbd></button></div>
         </template>
         <form v-else class="daily-typing-form" @submit.prevent="session.action('ANSWER')">
-          <WordMeaning v-if="meaningVisible" :translation="question.translation" :translation-groups="question.translationGroups" layout="study" :word-key="`${question.itemId}:${question.modeVersion}`" />
-          <button v-else-if="!listeningHidden" type="button" class="daily-recall-prompt" @click="preferences.showChinese = true">显示释义</button>
+          <button v-if="question.audioUrl || canPronounce" type="button" class="btn btn-secondary training-play daily-typing-audio" aria-keyshortcuts="Alt+P" title="播放发音（Alt + P）" :disabled="!canPronounce || audioLoading" @click="pronounce"><Volume2 :size="18" aria-hidden="true" />{{ audioLoading ? '音频加载中…' : speaking ? '重新播放' : '播放发音' }} <kbd aria-hidden="true">Alt + P</kbd></button>
+          <div v-if="meaningVisible || !listeningHidden" class="daily-typing-clues">
+            <WordMeaning v-if="meaningVisible" :translation="question.translation" :translation-groups="question.translationGroups" layout="study" :word-key="`${question.itemId}:${question.modeVersion}`" />
+            <button v-else type="button" class="daily-recall-prompt" @click="preferences.showChinese = true">显示释义</button>
+          </div>
           <LetterInput id="daily-training-input" ref="field" v-model="input" :length="question.word && !listeningHidden ? Array.from(question.word).length : undefined" :pattern="question.answerPattern" :disabled="session.blocked.value" @submit="session.action('ANSWER')" />
-          <p v-if="question.answerPattern && /[^_]/.test(question.answerPattern)" class="subtle-copy">请同时输入空格和标点。</p>
-          <p v-if="['DICTATION', 'LISTEN_DICTATION'].includes(question.mode) && question.answerRevealed" class="subtle-copy daily-assisted-note" role="status">已查看答案 · 辅助输入</p>
-          <p v-else-if="['DICTATION', 'LISTEN_DICTATION'].includes(question.mode) && question.hintUsed" class="subtle-copy">已使用提示</p>
+          <p v-if="question.answerPattern && /[^_]/.test(question.answerPattern)" class="subtle-copy daily-typing-note">请同时输入空格和标点。</p>
+          <p v-if="['DICTATION', 'LISTEN_DICTATION'].includes(question.mode) && question.answerRevealed" class="subtle-copy daily-assisted-note daily-typing-note" role="status">已查看答案 · 辅助输入</p>
           <div class="workspace-answer-actions"><button type="button" class="btn btn-secondary" :disabled="session.blocked.value || question.answerRevealed" aria-keyshortcuts="F2" title="不会／看答案（F2）" @click="reveal">{{ question.answerRevealed ? '已查看答案' : '不会／看答案' }}<kbd v-if="!question.answerRevealed" aria-hidden="true">F2</kbd></button><AppButton type="submit" :disabled="session.blocked.value || !input.trim()" :busy="busy">提交 <kbd>Enter</kbd></AppButton></div>
         </form>
       </section>

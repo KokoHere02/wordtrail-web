@@ -1,6 +1,7 @@
 /* Reference: the three supplied learning screens. Flat surfaces, shared tokens. */
 :root { --workspace-width: 1232px; --exercise-width: 820px; --spelling-error: #bd3030; --spelling-error-bg: #fff0ee; --spelling-error-border: #e8aaa5; }
 :root[data-theme="dark"] { --spelling-error: #ff928b; --spelling-error-bg: #382323; --spelling-error-border: #9e4c47; }
+:root[data-theme="light"] .wordory-app:has(.study-workspace) { --bg: #faf7f5; --surface: #faf7f5; --ink: #1d282c; --muted: #657079; --line: #dcdedb; --sage: #e7eee9; --accent: #205342; --accent-strong: #205342; --control-text: #253432; --button-start: #205342; --button-end: #205342; --progress-start: #205342; }
 .app-site-header { border-bottom: 1px solid var(--line); }
 .app-main-nav { width: clamp(340px, 32vw, 440px); background: transparent; border-color: transparent; box-shadow: none; border-radius: 0; }
 .app-main-nav .nav-indicator { height: 2px; top: auto; bottom: 0; background: var(--accent); border-radius: 0; }
@@ -126,6 +127,11 @@
 .daily-training-main:has(.word-learning-details) { max-width: 1100px; }
 .daily-training-main .learning-word { margin: var(--s5) 0 var(--s3); font: 400 clamp(42px, 6vw, 80px)/1.2 var(--font-serif); text-align: center; overflow-wrap: anywhere; }
 .daily-word-phonetic { color: var(--muted); text-align: center; font-size: var(--text-lg); margin-bottom: var(--s2); }
+.recognition-word-meta { display: flex; justify-content: center; align-items: center; gap: 12px; min-height: 40px; }
+.recognition-word-meta .daily-word-phonetic { margin: 0; }
+.recognition-audio { display: inline-grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; color: var(--accent-strong); background: var(--sage); cursor: pointer; }
+.recognition-audio:disabled { opacity: .5; cursor: wait; }
+.recognition-audio:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .daily-training-card .review-pronunciation { display: flex; flex-direction: column; align-items: center; margin-bottom: var(--s8); }
 .daily-training-main .word-meaning { margin-block: var(--s5); text-align: left; overflow-wrap: anywhere; }
 .daily-training-main .word-meaning--study { padding: var(--s6); border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
@@ -149,7 +155,21 @@
 .recognition-next { flex: none; min-width: 150px; justify-content: center; }
 @media (max-width: 600px) { .recognition-feedback-actions { flex-direction: column; gap: var(--s3); } .recognition-next { width: 100%; min-height: 48px; } }
 .daily-training-main kbd { padding: var(--s1) var(--s2); color: var(--key-text); background: var(--key-bg); border-radius: var(--radius-sm); font: inherit; font-size: var(--text-base); }
-.daily-typing-form .letter-input { margin-top: var(--s6); }
+.daily-typing-form { display: flex; flex-direction: column; align-items: center; width: min(100%, 820px); margin-inline: auto; text-align: center; }
+.daily-typing-form .daily-typing-audio { display: inline-flex; align-items: center; justify-content: center; gap: 10px; margin: 10px auto 26px; padding: 6px 14px; border-radius: 999px; }
+.daily-typing-clues { width: min(100%, 620px); padding-bottom: 24px; border-bottom: 1px solid var(--line); }
+.daily-training-main .daily-typing-clues .word-meaning--study { display: inline-block; width: auto; max-width: 100%; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; text-align: left; }
+.daily-typing-clues .translation-group.has-part-of-speech { grid-template-columns: 54px minmax(0, 1fr); align-items: baseline; gap: 14px; }
+.daily-typing-clues .translation-group + .translation-group { padding: 0; margin-top: 12px; border: 0; }
+.daily-typing-clues .translation-part-of-speech { padding: 4px 9px; color: var(--accent-strong); background: var(--sage); font-size: 15px; }
+.daily-typing-clues .translation-meaning, .daily-typing-clues .translation-legacy { font-size: 19px; line-height: 1.6; }
+.daily-typing-form .letter-input { margin-top: 42px; }
+.daily-typing-form .letter-input-label { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.daily-typing-form .letter-slots { gap: clamp(12px, 2vw, 24px); }
+.daily-typing-form .letter-slot { flex-basis: clamp(28px, 6vw, 70px); border-bottom-width: 2px; }
+.daily-typing-form .daily-typing-note { margin: 12px 0 0; text-align: center; }
+.daily-typing-form .workspace-answer-actions { width: min(100%, 620px); margin-top: 44px; }
+@media (max-width: 600px) { .daily-typing-form .daily-typing-audio { margin-bottom: 20px; } .daily-typing-clues { padding-bottom: 18px; } .daily-typing-form .letter-input { margin-top: 28px; } .daily-typing-form .letter-slots { gap: 12px; } .daily-typing-form .letter-slot { flex-basis: 30px; font-size: 36px; } .daily-typing-form .workspace-answer-actions { gap: 12px; margin-top: 32px; } }
 .daily-submitted { margin-block: var(--s3); white-space: pre-wrap; overflow-wrap: anywhere; }
 .daily-training-feedback .daily-feedback-error { padding: var(--s4); border: 1px solid var(--spelling-error-border); border-left: 4px solid var(--spelling-error); border-radius: var(--radius-sm); color: var(--spelling-error); background: var(--spelling-error-bg); }
 .daily-feedback-error-heading { display: flex; align-items: center; gap: var(--s3); font-size: var(--text-lg); font-weight: 600; }
