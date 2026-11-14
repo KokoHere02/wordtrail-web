@@ -81,7 +81,7 @@ watch(() => props.wordId, (wordId, _, onCleanup) => {
   confusablesLoading.value = !!wordId;
   if (!wordId) return;
   void request<Form[]>('GET', `/words/${wordId}/forms`).then(data => { if (current) forms.value = data; }).catch(() => { if (current) formsError.value = true; }).finally(() => { if (current) formsLoading.value = false; });
-  void request<Sentence[]>('GET', '/sentence-practice/sentences', undefined, { scope: 'bank', wordId, limit: 3 }).then(data => { if (current) sentences.value = data; }).catch(() => { if (current) sentencesError.value = true; }).finally(() => { if (current) sentencesLoading.value = false; });
+  void request<Sentence[]>('GET', '/sentence-practice/sentences', undefined, { scope: 'bank', wordId, maxEnglishLength: 180, limit: 3 }).then(data => { if (current) sentences.value = data; }).catch(() => { if (current) sentencesError.value = true; }).finally(() => { if (current) sentencesLoading.value = false; });
   void request<LookupWord[]>('GET', `/words/${wordId}/confusables`).then(data => { if (current) confusables.value = data; }).catch(() => { if (current) confusablesError.value = true; }).finally(() => { if (current) confusablesLoading.value = false; });
 }, { immediate: true });
 </script>
@@ -102,7 +102,7 @@ watch(() => props.wordId, (wordId, _, onCleanup) => {
     </section>
     <section class="word-learning-examples detail-row" aria-label="双语例句">
       <h2>双语例句</h2>
-      <p v-if="sentencesLoading" class="word-learning-empty">正在加载例句…</p><p v-else-if="sentencesError" class="word-learning-empty">例句暂时无法加载</p><p v-else-if="!sentences.length" class="word-learning-empty">暂无关联例句</p>
+      <p v-if="sentencesLoading" class="word-learning-empty">正在加载例句…</p><p v-else-if="sentencesError" class="word-learning-empty">例句暂时无法加载</p><p v-else-if="!sentences.length" class="word-learning-empty">暂无符合条件的例句</p>
       <ol v-else><li v-for="(sentence, index) in sentences" :key="sentence.id"><span class="example-number">{{ index + 1 }}</span><div class="example-content"><p lang="en" class="example-english"><template v-for="(part, partIndex) in segments(sentence.englishText)" :key="partIndex"><button v-if="part.word" type="button" :class="['example-word', { 'is-match': part.match, 'is-selected': selected?.sentenceId === sentence.id && selected.index === partIndex }]" :aria-label="`查询 ${part.text}`" :aria-expanded="selected?.sentenceId === sentence.id && selected.index === partIndex" @click="lookup(sentence.id, partIndex, part.text, $event)" @keydown.esc.stop="closeLookup">{{ part.text }}</button><template v-else>{{ part.text }}</template></template></p><p class="example-chinese">{{ sentence.referenceTranslation }}</p></div></li></ol>
     </section>
   </div>
