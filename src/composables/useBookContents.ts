@@ -23,7 +23,7 @@ export function useBookContents(id: number) {
   const saveError = ref('');
   const notice = ref('');
   const available = computed(() => !!metadata.data.value && !metadata.error.value && !blocked.value && !metadata.loading.value);
-  const editable = computed(() => available.value && metadata.data.value?.editable === true);
+  const editable = computed(() => (available.value || (busy.value && !blocked.value && !metadata.error.value)) && metadata.data.value?.editable === true);
   const pageIds = computed(() => words.data.value?.records.map(word => word.id) || []);
   const pageSelected = computed(() => pageIds.value.length > 0 && pageIds.value.every(wordId => selection.selected.value.has(wordId)));
   function handleError(e: unknown) {
