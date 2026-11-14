@@ -145,7 +145,7 @@ watch(() => props.wordId, (wordId, _, onCleanup) => {
 .example-word { display: inline; padding: 0; border: 0; border-radius: 3px; color: inherit; background: transparent; font: inherit; cursor: pointer; }
 .example-word:hover, .example-word:focus-visible, .example-word.is-selected { color: var(--accent-strong); text-decoration: underline; text-underline-offset: 3px; }
 .example-word:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
-.example-word.is-match { color: inherit; font-weight: 700; }
+.example-word.is-match { color: var(--selection-text); background: var(--selection-bg); box-shadow: 0 0 0 2px var(--selection-bg); font-weight: 700; }
 .example-lookup { position: fixed; z-index: 1000; box-sizing: border-box; width: min(300px, calc(100vw - 16px)); max-height: min(320px, calc(100vh - 16px)); overflow: auto; padding: 16px 38px 16px 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); box-shadow: 0 10px 30px rgb(0 0 0 / 18%); text-align: left; font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
 .example-lookup p { margin: 0; color: var(--muted); }
 .example-lookup-close { position: absolute; right: 9px; top: 6px; padding: 3px 6px; border: 0; background: transparent; color: var(--muted); font-size: 20px; cursor: pointer; }
