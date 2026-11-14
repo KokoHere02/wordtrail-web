@@ -134,6 +134,18 @@ await check('recognition correction uses the returned log ID and does not add a 
   assert.ok(calls.filter(c => c.url.endsWith('/correction')).every(c => c.body.logId === 200));
   assert.equal(s.task.value.trainingCount, n); s.continueTraining(); assert.equal(s.showingFeedback.value, false);
 });
+await check('returning to the previous answer preserves its meaning and corrects without another answer', async () => {
+  const { s } = session(); await s.open(); await s.action('ANSWER', 3);
+  s.continueTraining(); const nextPresentation = s.question.value.presentationId;
+  assert.equal(s.canReturnPrevious.value, true); s.previous();
+  assert.equal(s.showingFeedback.value, true); assert.equal(s.receipt.value.translation, '苹果');
+  assert.equal(s.receipt.value.selfAssessment, 3); await s.correct(2);
+  assert.equal(s.receipt.value.selfAssessment, 2); assert.equal(writes().length, 1);
+  assert.equal(calls.filter(c => c.url.endsWith('/correction')).at(-1).body.logId, 200);
+  s.continueTraining(); assert.equal(s.question.value.presentationId, nextPresentation);
+  await s.action('ANSWER', 1); s.continueTraining();
+  assert.equal(s.canReturnPrevious.value, true); s.previous(); assert.equal(s.receipt.value.selfAssessment, 1);
+});
 await check('recognition familiar feedback does not end reinforcement or deduplicate a reappearing item', async () => {
   const { s } = session(); await s.open(); await s.action('REVEAL'); await s.action('ANSWER', 3);
   assert.equal(s.task.value.completedCount, 0); s.continueTraining();

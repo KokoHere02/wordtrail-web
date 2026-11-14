@@ -68,8 +68,9 @@ const field = ref<InstanceType<typeof LetterInput>>();
 const dictationNext = ref<HTMLButtonElement>();
 const recognitionNext = ref<HTMLButtonElement>();
 const ratings = [{ result: 3 as const, label: '不认识', key: 1 }, { result: 2 as const, label: '模糊', key: 2 }, { result: 1 as const, label: '认识', key: 3 }];
-const recognitionPhonetic = ref('');
-watch(question, value => { if (value?.mode === 'RECOGNITION' && !showingFeedback.value) recognitionPhonetic.value = value.phonetic || ''; }, { flush: 'sync' });
+const recognitionPhonetics = ref<Record<number, string>>({});
+watch(question, value => { if (value?.mode === 'RECOGNITION' && value.wordId) recognitionPhonetics.value[value.wordId] = value.phonetic || ''; }, { flush: 'sync' });
+const recognitionPhonetic = computed(() => receipt.value?.wordId ? recognitionPhonetics.value[receipt.value.wordId] || '' : '');
 const incorrect = computed(() => receipt.value?.verdict === 'INCORRECT');
 const dictationFeedback = computed(() => showingFeedback.value && receipt.value?.mode === 'DICTATION' && receipt.value.input !== null);
 const recognitionFeedback = computed(() => showingFeedback.value && receipt.value?.mode === 'RECOGNITION');
@@ -140,7 +141,7 @@ watch([busy, receipt, showingFeedback, viewActive, () => surface?.active.value],
   spokenAnswer = key;
   void play(ordinaryAudioUrl(answer.wordId), { ...audioSettings.value, repeatCount: 1 });
 }, { flush: 'post' });
-useLearningKeys({ reveal, pronounce, rate: result => recognitionFeedback.value ? session.correct(result) : session.action('ANSWER', result), previous: () => {}, next,
+useLearningKeys({ reveal, pronounce, rate: result => recognitionFeedback.value ? session.correct(result) : session.action('ANSWER', result), previous: session.previous, next,
   correct: () => { if (canCorrect.value) correction.value = true; }, cancelCorrection: () => { correction.value = false; } });
 async function saveCorrection(result: 1 | 2 | 3) { if (result === 1) return; await session.correct(result); correction.value = false; }
 watch(mode, value => {
@@ -176,6 +177,7 @@ defineExpose({ changeMode: async (value: DailyStudyMode) => { await initializing
       <p v-if="busy && pending" class="subtle-copy" role="status">正在保存…</p>
       <div v-if="!busy && (error || pending)" class="live-error learning-error" role="alert"><p>{{ error || '有一次操作尚未确认，请重试原请求。' }}</p><button v-if="pending && !expired && !historical" class="muted-link" :disabled="busy" @click="session.retry">重试原请求</button><button v-else-if="!expired" class="muted-link" :disabled="busy" @click="sync">重新同步</button><RouterLink v-if="expired" to="/today" class="muted-link">进入今日任务</RouterLink></div>
       <p v-if="extraItemId" class="subtle-copy daily-extra-note">追加训练 · 不重复计入每日目标 <button class="muted-link" :disabled="busy || !!pending" @click="session.extra()">返回当前队列</button></p>
+      <div v-if="session.canReturnPrevious.value" class="learning-controls"><button type="button" class="muted-link" aria-keyshortcuts="ArrowLeft" @click="session.previous">← 上一个单词</button></div>
       <section v-if="dictationFeedback && receipt" :class="['daily-training-card', 'learning-card', 'daily-training-feedback', 'dictation-answer-feedback', { 'is-incorrect': incorrect }]" aria-live="polite">
         <div class="dictation-feedback-heading">
           <button type="button" class="btn btn-secondary training-play" aria-keyshortcuts="Alt+P" title="播放发音（Alt + P）" :disabled="!canPronounce || audioLoading" @click="pronounce">{{ audioLoading ? '音频加载中…' : speaking ? '重新播放' : '播放发音' }} <kbd aria-hidden="true">Alt + P</kbd></button>

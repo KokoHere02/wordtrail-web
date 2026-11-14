@@ -21,6 +21,7 @@ export function useDailyTraining(userId: number, scope: TrainingScope = 'DAILY')
   const readTask = follow ? followTypingApi.task : practice ? consolidationApi.task : dailyApi.task;
   const task = ref<TrainingTask>(), today = ref<TodayOverview>(), question = ref<TrainingQuestion>();
   const receipt = ref<TrainingAnswer>();
+  const previousReceipt = ref<TrainingAnswer>();
   const mode = ref<DailyStudyMode>('RECOGNITION');
   const busy = ref(false), error = ref(''), notice = ref(''), expired = ref(false), promptUnavailable = ref(false);
   const pending = ref<Pending>(), showingFeedback = ref(false), extraItemId = ref<number>();
@@ -42,6 +43,8 @@ export function useDailyTraining(userId: number, scope: TrainingScope = 'DAILY')
   const canCorrect = computed(() => !practice && !blocked.value && showingFeedback.value && receipt.value?.mode === 'RECOGNITION' &&
     task.value?.studyMode === 'RECOGNITION' && receipt.value.progress.modeVersion === task.value.modeVersion &&
     receipt.value.action === 'ANSWER' && !!receipt.value.reviewLogId);
+  const canReturnPrevious = computed(() => !practice && !blocked.value && !showingFeedback.value && mode.value === 'RECOGNITION' &&
+    !!previousReceipt.value?.reviewLogId && previousReceipt.value.progress.modeVersion === task.value?.modeVersion);
   function persist(value?: Pending) {
     const id = value?.batchId ?? pending.value?.batchId;
     // Persist before dispatch: an unknown response must survive refresh with the exact body.
@@ -152,7 +155,7 @@ export function useDailyTraining(userId: number, scope: TrainingScope = 'DAILY')
       notice.value = '本组训练已结束，可以查看记录或追加训练。'; return;
     }
     if (staleCodes.has(code)) {
-      showingFeedback.value = false; receipt.value = undefined;
+      showingFeedback.value = false; receipt.value = undefined; previousReceipt.value = undefined;
       if (code === 'PLAN_WORD_UNAVAILABLE' || code === 'CONSOLIDATION_WORD_UNAVAILABLE') extraItemId.value = undefined;
       notice.value = code === 'ANSWER_ALREADY_REVEALED' ? '答案已揭示，已恢复当前展示，请继续作答。' : code === 'PLAN_WORD_UNAVAILABLE' ? '计划已变化，正在同步可学单词。' : '题目或方式已更新，已丢弃旧提交，请核对当前题目后重新作答。';
       try { await resync(token); } catch (syncError) { await handleSyncError(syncError); }
@@ -170,7 +173,7 @@ export function useDailyTraining(userId: number, scope: TrainingScope = 'DAILY')
     if (busy.value || !alive) return;
     const token = ++generation; busy.value = true; error.value = ''; notice.value = ''; expired.value = false; promptUnavailable.value = false;
     noWords.value = false;
-    question.value = undefined; receipt.value = undefined; showingFeedback.value = false;
+    question.value = undefined; receipt.value = undefined; previousReceipt.value = undefined; showingFeedback.value = false;
     try {
       const overview = practice ? undefined : await dailyApi.today();
       if (!alive || token !== generation) return;
@@ -200,7 +203,7 @@ export function useDailyTraining(userId: number, scope: TrainingScope = 'DAILY')
     if (!task.value) { mode.value = nextMode; return; }
     if (mode.value === nextMode && question.value) return;
     const token = ++generation; busy.value = true; error.value = ''; notice.value = ''; promptUnavailable.value = false;
-    question.value = undefined; receipt.value = undefined; showingFeedback.value = false;
+    question.value = undefined; receipt.value = undefined; previousReceipt.value = undefined; showingFeedback.value = false;
     try {
       const updated = await api.mode(task.value.batchId, nextMode, task.value.modeVersion);
       if (!alive || token !== generation) return;
@@ -220,6 +223,7 @@ export function useDailyTraining(userId: number, scope: TrainingScope = 'DAILY')
         const result = await api.answer(value.batchId, value.itemId, value.body);
         if (!alive || token !== generation) return;
         update(result.progress); persist(); receipt.value = result;
+        if (result.action === 'ANSWER') previousReceipt.value = undefined;
         if (result.action === 'ANSWER' && (!follow || result.verdict === 'CORRECT')) delete drafts.value[`${value.itemId}:${result.mode}`];
         showingFeedback.value = !follow && result.action === 'ANSWER';
       } else {
@@ -268,7 +272,12 @@ export function useDailyTraining(userId: number, scope: TrainingScope = 'DAILY')
   }
   function continueTraining() {
     if (blocked.value) return;
+    if (canCorrect.value) previousReceipt.value = receipt.value;
     showingFeedback.value = false; receipt.value = undefined;
+  }
+  function previous() {
+    if (!canReturnPrevious.value) return;
+    receipt.value = previousReceipt.value; showingFeedback.value = true;
   }
   async function extra(itemId?: number) {
     if (busy.value || pending.value || expired.value || historical.value) return;
@@ -292,12 +301,12 @@ export function useDailyTraining(userId: number, scope: TrainingScope = 'DAILY')
         if (!alive || token !== generation) return;
         update(changed);
       }
-      showingFeedback.value = false; receipt.value = undefined;
+      showingFeedback.value = false; receipt.value = undefined; previousReceipt.value = undefined;
       await fetchQuestion(token);
     } catch (e) { await handle(e, token); }
     finally { if (alive && token === generation) busy.value = false; }
   }
   return { task, today, question, mode, busy, error, notice, pending, expired, historical, promptUnavailable, blocked, noWords,
-    input, definition, receipt, showingFeedback, canRate, canCorrect, extraItemId,
-    legacyFollow, open, changeMode, recoverPresentation: () => open(task.value?.batchId), action, retry, correct, continueTraining, extra, start };
+    input, definition, receipt, showingFeedback, canRate, canCorrect, canReturnPrevious, extraItemId,
+    legacyFollow, open, changeMode, recoverPresentation: () => open(task.value?.batchId), action, retry, correct, continueTraining, previous, extra, start };
 }
