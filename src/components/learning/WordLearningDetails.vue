@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, useId, watch } from 'vue';
 import { Volume2 } from 'lucide-vue-next';
 import { errorMessage, request } from '../../api/http';
 import { ordinaryAudioUrl } from '../../api/learningMedia';
@@ -7,12 +7,40 @@ import { useAudioPlayer } from '../../composables/useAudioPlayer';
 import { usePronunciation } from '../../stores/pronunciation';
 import WordMeaning from '../word/WordMeaning.vue';
 import type { TranslationFields } from '../../types/translation';
+import { parseLegacyMeaning, splitMeaningItems } from '../../utils/studyMeaning';
 
 const props = defineProps<TranslationFields & { wordId?: number; word?: string; wordKey: number | string }>();
 type Form = { form: string; formType: string };
 type Sentence = { id: number; englishText: string; referenceTranslation: string };
 const forms = ref<Form[]>([]), sentences = ref<Sentence[]>([]);
 const confusables = ref<LookupWord[]>([]), confusablesLoading = ref(false), confusablesError = ref(false);
+const relatedWords = ref<LookupWord[]>([]), relatedError = ref(false);
+const showAllRelated = ref(false);
+const relatedListId = useId();
+const visibleRelated = computed(() => showAllRelated.value ? relatedWords.value : relatedWords.value.slice(0, 5));
+function relatedPreview(translation: string | null) {
+  if (translation) {
+    const groups = parseLegacyMeaning(translation);
+    if (groups?.some(group => group.partOfSpeech)) {
+      const seen = new Set<string>();
+      const summaries: string[] = [];
+      for (const group of groups) {
+        const part = group.partOfSpeech?.trim();
+        if (!part || seen.has(part.toLowerCase())) continue;
+        const meanings = splitMeaningItems(group.meaning);
+        const first = meanings[0]?.replace(/[;；,，、\s]+$/u, '').trim();
+        if (!first) continue;
+        seen.add(part.toLowerCase());
+        const characters = Array.from(first);
+        summaries.push(`${part} ${characters.length > 48 ? `${characters.slice(0, 48).join('').trimEnd()}…` : first}`);
+      }
+      if (summaries.length) return summaries.join(' · ');
+    }
+  }
+  const text = (translation || '').replace(/\\r\\n|\\n|\\r|\r\n|\r|\n/g, ' · ').trim();
+  const characters = Array.from(text);
+  return characters.length > 48 ? `${characters.slice(0, 48).join('').trimEnd()}…` : text;
+}
 const formsLoading = ref(false), sentencesLoading = ref(false), formsError = ref(false), sentencesError = ref(false);
 type LookupWord = { id: number; word: string; phonetic: string | null; translation: string | null };
 const selected = ref<{ sentenceId: number; index: number; text: string } | null>(null);
@@ -76,13 +104,14 @@ async function lookup(sentenceId: number, index: number, text: string, event: Mo
 watch(() => props.wordId, (wordId, _, onCleanup) => {
   closeLookup();
   let current = true; onCleanup(() => { current = false; });
-  forms.value = []; sentences.value = []; confusables.value = []; formsError.value = false; sentencesError.value = false; confusablesError.value = false;
+  forms.value = []; sentences.value = []; confusables.value = []; relatedWords.value = []; showAllRelated.value = false; formsError.value = false; sentencesError.value = false; confusablesError.value = false; relatedError.value = false;
   formsLoading.value = !!wordId; sentencesLoading.value = !!wordId;
   confusablesLoading.value = !!wordId;
   if (!wordId) return;
   void request<Form[]>('GET', `/words/${wordId}/forms`).then(data => { if (current) forms.value = data; }).catch(() => { if (current) formsError.value = true; }).finally(() => { if (current) formsLoading.value = false; });
   void request<Sentence[]>('GET', '/sentence-practice/sentences', undefined, { scope: 'bank', wordId, maxEnglishLength: 180, limit: 3 }).then(data => { if (current) sentences.value = data; }).catch(() => { if (current) sentencesError.value = true; }).finally(() => { if (current) sentencesLoading.value = false; });
   void request<LookupWord[]>('GET', `/words/${wordId}/confusables`).then(data => { if (current) confusables.value = data; }).catch(() => { if (current) confusablesError.value = true; }).finally(() => { if (current) confusablesLoading.value = false; });
+  void request<LookupWord[]>('GET', `/words/${wordId}/related`).then(data => { if (current) relatedWords.value = data; }).catch(() => { if (current) relatedError.value = true; });
 }, { immediate: true });
 </script>
 <template>
@@ -95,10 +124,15 @@ watch(() => props.wordId, (wordId, _, onCleanup) => {
       <ul v-else><li v-for="item in forms" :key="`${item.formType}:${item.form}`"><span>{{ labels[item.formType] || item.formType }}</span><strong lang="en">{{ item.form }}</strong></li></ul>
     </section>
     </section>
+    <section v-if="relatedWords.length || relatedError" class="related-words detail-row" aria-label="关联单词">
+      <h2>关联单词</h2>
+      <p v-if="relatedError" class="detail-state">关联单词暂时无法加载</p>
+      <div v-else class="related-content"><ul :id="relatedListId"><li v-for="item in visibleRelated" :key="item.id"><div class="related-word-heading"><div class="word-row-main"><RouterLink :to="`/words/${item.id}`" class="related-word-name" lang="en">{{ item.word }}</RouterLink><button type="button" class="example-lookup-audio" :aria-label="`朗读 ${item.word}`" :title="audioWordId === item.id && speaking ? '正在朗读' : '播放单词发音'" :aria-pressed="audioWordId === item.id && speaking" :disabled="audioWordId === item.id && audioLoading" @click="pronounce(item.id)"><Volume2 :size="16" aria-hidden="true" /></button></div><span class="word-row-phonetic">{{ item.phonetic || '' }}</span></div><WordMeaning :translation="relatedPreview(item.translation)" /></li></ul><p v-if="audioError && relatedWords.some(item => item.id === audioWordId)" class="example-audio-error" role="status">{{ audioError }}</p><button v-if="relatedWords.length > 5" type="button" class="related-expand related-show-all" :aria-expanded="showAllRelated" :aria-controls="relatedListId" @click="showAllRelated = !showAllRelated">{{ showAllRelated ? '收起关联单词' : `展开其他 ${relatedWords.length - 5} 个关联单词` }}</button><p v-if="showAllRelated && relatedWords.length === 50" class="subtle-copy">最多展示前 50 个关联单词。</p></div>
+    </section>
     <section v-if="confusablesLoading || confusablesError || confusables.length" class="confusable-words detail-row" aria-label="形近词">
       <h2>形近词</h2>
       <p v-if="confusablesLoading" class="detail-state">正在加载形近词…</p><p v-else-if="confusablesError" class="detail-state">形近词暂时无法加载</p>
-      <div v-else class="confusable-content"><ul><li v-for="item in confusables" :key="item.id"><div class="confusable-heading"><strong lang="en">{{ item.word }}</strong><button type="button" class="example-lookup-audio" :aria-label="`朗读 ${item.word}`" :aria-pressed="audioWordId === item.id && speaking" :disabled="audioWordId === item.id && audioLoading" @click="pronounce(item.id)"><Volume2 :size="16" aria-hidden="true" /></button><span v-if="item.phonetic">{{ item.phonetic }}</span></div><WordMeaning :translation="item.translation" /></li></ul><p v-if="audioError && confusables.some(item => item.id === audioWordId)" class="example-audio-error" role="status">{{ audioError }}</p></div>
+      <div v-else class="confusable-content"><ul><li v-for="item in confusables" :key="item.id"><div class="confusable-heading"><div class="word-row-main"><strong lang="en">{{ item.word }}</strong><button type="button" class="example-lookup-audio" :aria-label="`朗读 ${item.word}`" :aria-pressed="audioWordId === item.id && speaking" :disabled="audioWordId === item.id && audioLoading" @click="pronounce(item.id)"><Volume2 :size="16" aria-hidden="true" /></button></div><span class="word-row-phonetic">{{ item.phonetic || '' }}</span></div><WordMeaning :translation="item.translation" /></li></ul><p v-if="audioError && confusables.some(item => item.id === audioWordId)" class="example-audio-error" role="status">{{ audioError }}</p></div>
     </section>
     <section class="word-learning-examples detail-row" aria-label="双语例句">
       <h2>双语例句</h2>
@@ -123,17 +157,38 @@ watch(() => props.wordId, (wordId, _, onCleanup) => {
 .detail-row { display: grid; grid-template-columns: 156px minmax(0, 1fr); gap: 16px; align-items: start; min-width: 0; padding: 20px 0; border-top: 1px solid var(--line); }
 .detail-row h2 { justify-self: start; margin: 0; padding: 5px 16px; border-radius: 20px; background: var(--sage); color: var(--accent-strong); font-size: 15px; line-height: 1.4; white-space: nowrap; }
 .detail-state, .word-learning-empty { margin: 0; color: var(--muted); font-size: 14px; line-height: 30px; }
-.word-learning-forms ul, .confusable-words ul { display: flex; flex-wrap: wrap; gap: 12px 0; min-width: 0; padding: 0; margin: 0; list-style: none; }
+.word-learning-forms ul { display: flex; flex-wrap: wrap; gap: 12px 0; min-width: 0; padding: 0; margin: 0; list-style: none; }
 .word-learning-forms li { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 8px; padding: 3px 20px; border-left: 1px solid var(--line); }
-.word-learning-forms li:first-child, .confusable-words li:first-child { padding-left: 0; border-left: 0; }
+.word-learning-forms li:first-child { padding-left: 0; border-left: 0; }
 .word-learning-forms li span { color: var(--muted); font-size: 13px; }
 .word-learning-forms li strong { color: var(--ink); font: 500 20px/1.4 var(--font-serif); overflow-wrap: anywhere; }
 .confusable-content { min-width: 0; }
-.confusable-words li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; min-width: 0; max-width: 400px; padding: 0 20px; border-left: 1px solid var(--line); overflow-wrap: anywhere; }
-.confusable-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
-.confusable-heading strong { color: var(--ink); font: 500 20px/1.4 var(--font-serif); }
-.confusable-heading span { color: var(--muted); font-size: 13px; }
-.confusable-words li > .word-meaning { margin: 0; font-size: 15px; }
+.confusable-words ul { min-width: 0; padding: 0; margin: 0; list-style: none; }
+.confusable-words li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 4px 24px; min-width: 0; padding: 4px 0; overflow-wrap: anywhere; }
+.confusable-words li + li { border-top: 1px solid var(--line); }
+.confusable-words li:first-child { padding-top: 0; }
+.confusable-words li:last-child { padding-bottom: 0; }
+.confusable-heading, .related-word-heading { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .8fr); align-items: center; gap: 8px; min-width: 0; }
+.word-row-main { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.word-row-main .example-lookup-audio { flex: none; width: 28px; height: 28px; }
+.confusable-heading { display: flex; flex-wrap: wrap; gap: 4px 6px; }
+.confusable-heading .word-row-main { gap: 14px; }
+.confusable-heading strong { min-width: 0; overflow-wrap: anywhere; color: var(--ink); font: 700 20px/1.3 var(--font-serif); }
+.word-row-phonetic { min-width: 0; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+.confusable-words li > .word-meaning { min-width: 0; margin: 0; color: var(--ink); font: 400 15px/1.5 var(--font-sans); }
+.related-content { min-width: 0; }
+.related-words ul { min-width: 0; padding: 0; margin: 0; list-style: none; }
+.related-words li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 4px 24px; min-width: 0; padding: 4px 0; overflow-wrap: anywhere; }
+.related-words li + li { border-top: 1px solid var(--line); }
+.related-words li:first-child { padding-top: 0; }
+.related-words li:last-child { padding-bottom: 0; }
+.related-word-name { min-width: 0; overflow-wrap: anywhere; color: var(--ink); font: 700 20px/1.3 var(--font-serif); }
+.related-word-name:hover { color: var(--accent-strong); text-decoration: underline; }
+.related-words li > .word-meaning { min-width: 0; margin: 0; font-size: 14px; }
+.related-expand { padding: 2px 0; border: 0; background: transparent; color: var(--accent-strong); font-size: 13px; cursor: pointer; }
+.related-expand:hover { text-decoration: underline; }
+.related-expand:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
+.related-show-all { margin-top: 10px; }
 .word-learning-examples ol { margin: 0; padding: 0; list-style: none; }
 .word-learning-examples li { display: flex; gap: 14px; padding: 2px 0 8px; }
 .word-learning-examples li:last-child { padding-bottom: 0; }
@@ -158,5 +213,5 @@ watch(() => props.wordId, (wordId, _, onCleanup) => {
 .example-lookup-audio:disabled { opacity: .55; cursor: wait; }
 .example-lookup .example-audio-error { margin-top: 6px; color: var(--error); }
 .example-chinese { margin-top: 2px; color: var(--muted); font-size: 15px; line-height: 1.45; }
-@media (max-width: 600px) { .detail-row { grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 16px 0; } .word-learning-forms ul, .confusable-words ul { gap: 12px 18px; } .word-learning-forms li, .confusable-words li { padding: 2px 0; border-left: 0; } }
+@media (max-width: 600px) { .detail-row { grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 16px 0; } .word-learning-forms ul { gap: 12px 18px; } .word-learning-forms li { padding: 2px 0; border-left: 0; } .confusable-words li, .related-words li { grid-template-columns: minmax(0, 1fr); gap: 2px; padding: 7px 0; } .related-word-heading { display: flex; flex-wrap: wrap; gap: 4px 10px; } }
 </style>
