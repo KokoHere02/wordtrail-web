@@ -404,7 +404,78 @@
 .word-practice-round-settings > button { min-height: 44px; color: var(--spelling-error); }
 .is-word-practice .workspace-meta { min-height: 0; padding-block: var(--s4); gap: var(--s3) var(--s5); }
 .is-word-practice .workspace-meta small { display: none; }
-.workspace-meta.is-follow-meta { justify-content: flex-end; }
+.study-workspace .workspace-status-meta { flex-direction: column; align-items: flex-end; gap: var(--s1); min-height: 0; padding-block: var(--s4); border-bottom: 0; text-align: right; }
+.workspace-status-meta .workspace-source, .workspace-status-meta .workspace-progress { flex: 0 1 auto; max-width: 100%; }
+.workspace-status-meta .workspace-progress { order: 0; }
+.workspace-status-meta .workspace-progress > div { justify-content: flex-end; gap: var(--s2); }
+.consolidation-workspace .workspace-navigation { justify-content: flex-end; }
+
+/* Keep the exercise status alongside the prompt when there is room for all three. */
+.workspace-exercise { position: relative; min-width: 0; container-type: inline-size; }
+.workspace-exercise > .workspace-meta { min-height: 0; padding-block: var(--s4); border-bottom: 0; }
+@media (min-width: 1100px) {
+  .workspace-exercise.has-aligned-prompt > .workspace-meta {
+    position: absolute; top: var(--exercise-meta-top, 0px); left: 0; right: 0; z-index: 1; padding: 0; pointer-events: none;
+  }
+  .workspace-exercise.has-aligned-prompt > .workspace-meta .workspace-source,
+  .workspace-exercise.has-aligned-prompt > .workspace-meta .workspace-progress { flex: 0 1 auto; max-width: 26%; min-width: 0; }
+  .workspace-exercise > .workspace-meta .workspace-progress-track { width: 80px; flex: 0 1 80px; }
+  .workspace-exercise.has-aligned-prompt:is(.is-daily, .is-follow) #mode-panel-words { padding-top: var(--s2); }
+  .workspace-exercise.has-aligned-prompt:is(.is-daily, .is-follow) .daily-training-card > .learning-word { width: 50%; max-width: 46cqw; margin-top: 0; margin-inline: auto; }
+  .workspace-exercise.has-aligned-prompt.is-follow .follow-exercise { padding-top: var(--s2); }
+  .workspace-exercise.has-aligned-prompt.is-sentences .sentence-prompt { width: min(65%, 46cqw); margin-inline: auto; }
+}
+
+.study-directory-layout { display: grid; grid-template-columns: 176px minmax(0, 1fr); gap: 24px; align-items: start; transition: grid-template-columns 220ms ease, gap 220ms ease; }
+.study-directory-layout.is-collapsed { grid-template-columns: 56px minmax(0, 1fr); gap: 18px; }
+.study-directory-main { min-width: 0; }
+.study-directory { min-width: 0; min-height: 240px; padding-right: 16px; border-right: 1px solid var(--line); font-family: var(--font-sans); }
+.study-directory-heading { display: flex; align-items: center; justify-content: flex-end; min-height: 36px; margin-bottom: 8px; }
+.study-directory-toggle { display: inline-grid; place-items: center; flex: none; width: 32px; height: 32px; padding: 0; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--muted); }
+.study-directory-chevron { flex: none; margin-left: auto; transition: transform 180ms ease; }
+.study-directory-primary[aria-expanded="false"] .study-directory-chevron { transform: rotate(-90deg); }
+.study-directory-toggle:hover, .study-directory-primary:hover:not(:disabled), .study-directory-children a:hover { color: var(--accent); background: var(--hover); }
+.study-directory-list { display: flex; flex-direction: column; gap: 3px; }
+.study-directory-group { display: flex; align-items: center; min-width: 0; }
+.study-directory-primary, .study-directory-children a { display: flex; align-items: center; gap: 9px; min-width: 0; min-height: 40px; padding: 8px 10px; border: 0; border-radius: var(--radius-sm); color: var(--muted); background: transparent; text-align: left; line-height: 1.4; transition: color 160ms ease, background-color 160ms ease; }
+.study-directory-primary { flex: 1; width: 100%; font-size: 15px; font-weight: 500; }
+.study-directory-primary[aria-selected="true"] { color: var(--accent-strong); }
+.study-directory-primary:disabled { opacity: .5; cursor: not-allowed; }
+.study-directory-children { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 200ms ease; }
+.study-directory-children.is-open { grid-template-rows: 1fr; }
+.study-directory-children-inner { display: flex; flex-direction: column; gap: 3px; min-height: 0; overflow: hidden; margin-left: 16px; padding-left: 8px; border-left: 1px solid var(--line); }
+.study-directory-children.is-open .study-directory-children-inner { overflow: visible; padding-bottom: 7px; }
+.study-directory-children a { font-size: 14px; text-decoration: none; }
+.study-directory-children a.is-active { color: var(--accent-strong); background: var(--sage); font-weight: 500; }
+.study-directory-primary > .study-directory-icon, .study-directory-children a > svg { display: none; flex: none; }
+.study-directory-text { overflow: hidden; white-space: nowrap; max-width: 160px; opacity: 1; transition: max-width 200ms ease, opacity 140ms ease; }
+.study-directory.is-collapsed { padding-right: 8px; }
+.study-directory.is-collapsed .study-directory-heading { justify-content: center; }
+.study-directory.is-collapsed .study-directory-primary, .study-directory.is-collapsed .study-directory-children a { justify-content: center; padding-inline: 0; }
+.study-directory.is-collapsed .study-directory-primary > .study-directory-icon, .study-directory.is-collapsed .study-directory-children a > svg { display: block; }
+.study-directory.is-collapsed .study-directory-chevron { display: none; }
+.study-directory.is-collapsed .study-directory-text { max-width: 0; opacity: 0; }
+.study-directory.is-collapsed .study-directory-children-inner { margin-left: 0; padding-left: 0; border: 0; }
+.study-directory [data-tooltip] { position: relative; }
+.study-directory [data-tooltip]::after { content: attr(data-tooltip); position: absolute; left: calc(100% + 8px); top: 50%; z-index: 50; transform: translateY(-50%); width: max-content; max-width: 200px; padding: 6px 10px; border: 1px solid var(--line); border-radius: var(--radius-sm); color: var(--ink); background: var(--surface); box-shadow: 0 5px 18px #0003; font-size: 13px; font-weight: 400; line-height: 1.4; pointer-events: none; opacity: 0; visibility: hidden; transition: opacity 120ms ease, visibility 120ms ease; }
+.study-directory [data-tooltip]:is(:hover, :focus-visible)::after { opacity: 1; visibility: visible; }
+.study-directory :is(button, a):focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.study-directory-toolbar { min-height: 52px; justify-content: flex-end; }
+.is-daily-practice .study-directory-toolbar { border-bottom: 0; }
+@media (max-width: 800px) {
+  .study-directory-layout, .study-directory-layout.is-collapsed { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .study-directory, .study-directory.is-collapsed { min-height: 0; padding: 0 0 8px; border-right: 0; border-bottom: 1px solid var(--line); }
+  .study-directory-heading, .study-directory.is-collapsed .study-directory-heading { justify-content: flex-end; min-height: 32px; margin: 0; }
+  .study-directory-list { flex-direction: row; align-items: center; flex-wrap: wrap; gap: 3px; }
+  .study-directory-group { flex: none; }
+  .study-directory-primary { width: auto; }
+  .study-directory-children-inner { flex-direction: row; flex-wrap: wrap; margin-left: 0; padding-left: 5px; }
+  .study-directory [data-tooltip]::after { top: calc(100% + 6px); left: auto; right: 0; transform: none; }
+  .study-directory.is-collapsed .study-directory-primary, .study-directory.is-collapsed .study-directory-children a { min-width: 38px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .study-directory-layout, .study-directory-text, .study-directory-primary, .study-directory-children, .study-directory-children a, .study-directory-chevron, .study-directory [data-tooltip]::after { transition: none; }
+}
 .follow-next-round { display: flex; align-items: center; gap: var(--s3); margin-top: var(--s3); }
 .follow-next-round .app-select { width: 108px; }
 .follow-next-round .app-select-trigger, .follow-next-round > .btn { min-height: 46px; }

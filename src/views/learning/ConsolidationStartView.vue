@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onScopeDispose, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { BookOpen, PencilLine } from 'lucide-vue-next';
+import StudyNavigation from '../../components/learning/StudyNavigation.vue';
 import { consolidationApi, isIssueFilter, type CreateConsolidation } from '../../api/consolidation';
 import { ApiError, errorMessage } from '../../api/http';
 import { useAuthStore } from '../../stores/auth';
@@ -9,6 +9,7 @@ import { createRequestId } from '../../utils/requestId';
 import AppButton from '../../components/ui/AppButton.vue';
 
 const router = useRouter(), userId = useAuthStore().user!.id;
+const navigationCollapsed = ref(false);
 const key = `wordtrail.consolidation.automatic.${userId}`, oldKey = `wordtrail.consolidation.create.${userId}`;
 const busy = ref(false), message = ref(''), empty = ref(false), oldPending = ref<CreateConsolidation>();
 let alive = true;
@@ -54,7 +55,9 @@ onMounted(() => { void start(); });
 </script>
 <template>
   <div class="study-workspace consolidation-workspace">
-    <nav class="workspace-shortcuts" aria-label="学习入口"><RouterLink to="/learn"><BookOpen :size="16" :stroke-width="1.7" aria-hidden="true" /><span>每日单词</span></RouterLink><RouterLink to="/dictation"><PencilLine :size="16" :stroke-width="1.7" aria-hidden="true" /><span>独立默写专项</span></RouterLink><RouterLink to="/consolidation" class="is-active" aria-current="page"><BookOpen :size="16" aria-hidden="true" /><span>错因与巩固</span></RouterLink></nav>
+    <div class="study-directory-layout" :class="{ 'is-collapsed': navigationCollapsed }">
+    <StudyNavigation active="words" lane="consolidation" @select="$event === 'sentences' && router.push('/learn?mode=sentences')" @collapse="navigationCollapsed = $event" />
+    <div class="study-directory-main">
     <div class="library-empty learning-empty" aria-live="polite">
       <h1>{{ busy ? '正在准备错词巩固' : empty ? '暂无待巩固的错词' : '错词巩固' }}</h1>
       <p v-if="busy">正在准备需要巩固的单词…</p>
@@ -62,6 +65,8 @@ onMounted(() => { void start(); });
       <AppButton v-if="oldPending && !busy" @click="retryOld">重试原请求</AppButton>
       <AppButton v-else-if="message && !busy && !message.includes('无法读取')" @click="start">重试</AppButton>
       <RouterLink to="/consolidation/words" class="muted-link">查看错词与错因</RouterLink>
+    </div>
+    </div>
     </div>
   </div>
 </template>

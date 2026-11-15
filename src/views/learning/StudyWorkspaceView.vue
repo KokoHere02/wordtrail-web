@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch, nextTick } from 'vue';
+import { computed, reactive, ref, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { BookOpen, PencilLine, Settings2 } from 'lucide-vue-next';
 import { useStudyWorkspace } from '../../stores/studyWorkspace';
 import { useAuthStore } from '../../stores/auth';
 import type { StudyMode, StudySurfaceState } from '../../composables/useStudySurface';
 import type { DailyStudyMode } from '../../types/dailyTraining';
 import StudyModeHost from '../../components/learning/StudyModeHost.vue';
+import StudyNavigation from '../../components/learning/StudyNavigation.vue';
 import WordPracticeToolbar from '../../components/learning/WordPracticeToolbar.vue';
 import UnifiedDailyView from '../live/DailyView.vue';
 import DictationModeView from './modes/DictationModeView.vue';
@@ -19,8 +19,9 @@ defineOptions({ name: 'StudyWorkspaceView' });
 const route = useRoute(), router = useRouter(), workspace = useStudyWorkspace(), auth = useAuthStore();
 const dailyView = ref<InstanceType<typeof UnifiedDailyView>>(), dailyBlocked = ref(false);
 const followView = ref<InstanceType<typeof FollowTypingView>>(), preferences = useStudyPreferences();
-const tabs = [{ id: 'words', label: '单词练习' }, { id: 'sentences', label: '句子翻译' }] as const;
+const navigationCollapsed = ref(false);
 const wordToolbar = ref<InstanceType<typeof WordPracticeToolbar>>();
+const exercise = ref<HTMLElement>();
 const followCount = computed({ get: () => String(followView.value?.count ?? 20), set: value => { followView.value?.setCount(Number(value)); } });
 const following = computed(() => workspace.lane === 'follow');
 const lastWordMode = ref<StudyMode>('recognition');
@@ -69,26 +70,78 @@ async function select(mode: StudyMode) {
   if (dailyView.value) await dailyView.value.changeMode(backendMode[mode]);
   else workspace.mode = lastDailyMode;
 }
-function keyboard(event: KeyboardEvent, index: number) {
-  const offset = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
-  if (!offset && !['Home', 'End'].includes(event.key)) return;
-  event.preventDefault(); const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (index + offset + tabs.length) % tabs.length;
-  void selectTab(tabs[next]!.id); document.getElementById(`mode-tab-${tabs[next]!.id}`)?.focus();
-}
 function selectTab(id: 'words' | 'sentences') {
   if (id === activeTab.value) return;
+  if (id === 'words') {
+    const lastRoute = sessionStorage.getItem('wordtrail.study.navigation.lastWordRoute');
+    if (lastRoute?.startsWith('/dictation') || lastRoute?.startsWith('/consolidation')) return router.push(lastRoute);
+  }
   return select(id === 'sentences' ? 'sentences' : lastWordMode.value);
 }
+
+// The status belongs beside the visible prompt, including when notices change its position.
+let layoutFrame = 0;
+let layoutResize: ResizeObserver | undefined;
+let layoutMutations: MutationObserver | undefined;
+let observedPrompt: Element | null = null;
+let observedMeta: Element | null = null;
+function scheduleExerciseLayout() {
+  if (layoutFrame) return;
+  layoutFrame = requestAnimationFrame(() => {
+    layoutFrame = 0;
+    const root = exercise.value;
+    const meta = root?.querySelector<HTMLElement>(':scope > .workspace-meta');
+    if (!root || !meta) return;
+    if (observedMeta !== meta) {
+      if (observedMeta) layoutResize?.unobserve(observedMeta);
+      observedMeta = meta;
+      layoutResize?.observe(meta);
+    }
+    const selector = workspace.lane === 'daily'
+      ? '#mode-panel-daily .daily-training-card[data-mode="RECOGNITION"] > .learning-word, #mode-panel-daily .recognition-feedback > .learning-word'
+      : workspace.lane === 'follow' ? '#mode-panel-follow .follow-exercise > .learning-word'
+      : workspace.lane === 'sentences' ? '#mode-panel-sentences .sentence-workspace-card h1' : '';
+    const prompt = window.innerWidth >= 1100 && selector ? root.querySelector<HTMLElement>(selector) : null;
+    const visiblePrompt = prompt?.getClientRects().length ? prompt : null;
+    if (observedPrompt !== visiblePrompt) {
+      if (observedPrompt) layoutResize?.unobserve(observedPrompt);
+      observedPrompt = visiblePrompt;
+      if (visiblePrompt) layoutResize?.observe(visiblePrompt);
+    }
+    root.classList.toggle('has-aligned-prompt', !!visiblePrompt);
+    if (!visiblePrompt) {
+      root.style.removeProperty('--exercise-meta-top');
+      return;
+    }
+    const heading = visiblePrompt.getBoundingClientRect();
+    const top = heading.top - root.getBoundingClientRect().top + (heading.height - meta.getBoundingClientRect().height) / 2;
+    const value = `${Math.max(0, top)}px`;
+    if (root.style.getPropertyValue('--exercise-meta-top') !== value) root.style.setProperty('--exercise-meta-top', value);
+  });
+}
+watch(exercise, (root, _previous, onCleanup) => {
+  if (!root) return;
+  layoutResize = new ResizeObserver(scheduleExerciseLayout);
+  layoutResize.observe(root);
+  layoutMutations = new MutationObserver(scheduleExerciseLayout);
+  layoutMutations.observe(root, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['class', 'style', 'hidden'] });
+  scheduleExerciseLayout();
+  onCleanup(() => { layoutResize?.disconnect(); layoutMutations?.disconnect(); observedPrompt = null; observedMeta = null; });
+}, { flush: 'post' });
+onMounted(() => window.addEventListener('resize', scheduleExerciseLayout));
+onUnmounted(() => {
+  cancelAnimationFrame(layoutFrame);
+  layoutResize?.disconnect();
+  layoutMutations?.disconnect();
+  window.removeEventListener('resize', scheduleExerciseLayout);
+});
 </script>
 <template>
-  <div v-if="auth.user" class="study-workspace" :class="{ 'is-word-practice': workspace.lane === 'daily' || following }">
-    <nav class="workspace-shortcuts" aria-label="学习入口">
-      <RouterLink to="/learn" :class="{ 'is-active': ['daily', 'follow'].includes(workspace.lane) }" :aria-current="['daily', 'follow'].includes(workspace.lane) ? 'page' : undefined"><BookOpen :size="16" :stroke-width="1.7" aria-hidden="true" /><span>每日单词</span></RouterLink>
-      <RouterLink to="/dictation" :class="{ 'is-active': workspace.lane === 'independent' }" :aria-current="workspace.lane === 'independent' ? 'page' : undefined"><PencilLine :size="16" :stroke-width="1.7" aria-hidden="true" /><span>独立默写专项</span></RouterLink>
-      <RouterLink to="/consolidation"><BookOpen :size="16" aria-hidden="true" /><span>错因与巩固</span></RouterLink>
-    </nav>
-    <div v-if="workspace.lane !== 'independent'" class="workspace-navigation">
-      <div class="workspace-tabs" role="tablist" aria-label="学习内容"><button v-for="(entry, index) in tabs" :id="`mode-tab-${entry.id}`" :key="entry.id" role="tab" :aria-selected="activeTab === entry.id" :aria-controls="entry.id === 'sentences' ? 'mode-panel-sentences' : 'mode-panel-words'" :tabindex="activeTab === entry.id ? 0 : -1" :disabled="workspace.lane === 'daily' && dailyBlocked" @click="selectTab(entry.id)" @keydown="keyboard($event, index)">{{ entry.label }}</button></div>
+  <div v-if="auth.user" class="study-workspace" :class="{ 'is-word-practice': workspace.lane === 'daily' || following, 'is-daily-practice': workspace.lane === 'daily' }">
+    <div class="study-directory-layout" :class="{ 'is-collapsed': navigationCollapsed }">
+    <StudyNavigation :active="activeTab" :lane="workspace.lane === 'independent' ? 'independent' : 'daily'" :blocked="workspace.lane === 'daily' && dailyBlocked" controls @select="selectTab" @collapse="navigationCollapsed = $event" />
+    <div class="study-directory-main">
+    <div v-if="workspace.lane === 'daily' || following" class="workspace-navigation study-directory-toolbar">
       <WordPracticeToolbar v-if="workspace.lane === 'daily' || following" ref="wordToolbar" :mode="workspace.mode" :blocked="!following && dailyBlocked" allow-follow independent-follow
         :word-visible="following ? preferences.showFollowWord : undefined" :can-toggle-word="following"
         :meaning-visible="following ? preferences.showFollowChinese : dailyView?.meaningVisible" :can-toggle-meaning="following || dailyView?.canToggleMeaning"
@@ -99,14 +152,17 @@ function selectTab(id: 'words' | 'sentences') {
           <button v-if="followView?.task?.status === 'IN_PROGRESS'" class="muted-link" @click="wordToolbar?.closeSettings(); followView?.requestAbandon()">放弃本轮</button>
         </div></template>
       </WordPracticeToolbar>
-      <button v-else-if="workspace.lane !== 'sentences'" class="workspace-settings" :aria-expanded="current.settings" @click="current.settings = !current.settings"><Settings2 :size="19" />练习设置</button>
     </div>
-    <div v-if="workspace.lane !== 'independent' || (workspace.dictationId && !current.settings)" class="workspace-meta" :class="{ 'is-follow-meta': following }"><div v-if="!following" class="workspace-source"><small>SOURCE</small><span>{{ current.source }}</span></div><div class="workspace-progress"><small>PROGRESS</small><div><span>{{ current.completed }} / {{ current.total || '—' }} {{ current.noun }} · 剩余 {{ current.remaining }} {{ current.noun }}</span><div class="workspace-progress-track" role="progressbar" aria-label="当前任务完成进度" :aria-valuenow="current.completed" :aria-valuemax="current.total || 1"><span :style="{ width: `${current.total ? Math.min(100, current.completed / current.total * 100) : 0}%` }" /></div></div></div></div>
+    <div ref="exercise" class="workspace-exercise" :class="`is-${workspace.lane}`">
+    <div v-if="workspace.lane !== 'independent' || (workspace.dictationId && !current.settings)" class="workspace-meta workspace-status-meta"><div class="workspace-progress"><div><span>{{ current.completed }} / {{ current.total || '—' }} {{ current.noun }} · 剩余 {{ current.remaining }} {{ current.noun }}</span><div class="workspace-progress-track" role="progressbar" aria-label="当前任务完成进度" :aria-valuenow="current.completed" :aria-valuemax="current.total || 1"><span :style="{ width: `${current.total ? Math.min(100, current.completed / current.total * 100) : 0}%` }" /></div></div></div><div v-if="workspace.lane !== 'daily' && !following" class="workspace-source"><span>{{ current.source }}</span></div></div>
     <section id="mode-panel-words" v-show="activeTab === 'words' && workspace.lane !== 'independent'" role="tabpanel" tabindex="-1" aria-labelledby="mode-tab-words" class="workspace-panel">
       <div id="mode-panel-daily" v-show="workspace.lane === 'daily'"><StudyModeHost v-if="visited.has('daily')" :active="workspace.lane === 'daily'" :state="states.daily!"><UnifiedDailyView ref="dailyView" :requested-batch-id="workspace.dailyId" @mode="confirmedMode" @blocked="dailyBlocked = $event" /></StudyModeHost></div>
       <div id="mode-panel-follow" v-show="following"><StudyModeHost v-if="visited.has('follow')" :active="following" :state="states.follow!"><FollowTypingView ref="followView" :requested-batch-id="workspace.followId" @batch="workspace.followId = $event" /></StudyModeHost></div>
     </section>
     <section id="mode-panel-independent" v-show="workspace.lane === 'independent'" role="region" aria-label="独立默写专项" class="workspace-panel"><StudyModeHost v-if="visited.has('independent')" :active="workspace.lane === 'independent'" :state="states.independent!"><DictationModeView /></StudyModeHost></section>
     <section id="mode-panel-sentences" v-show="workspace.lane === 'sentences'" role="tabpanel" tabindex="-1" aria-labelledby="mode-tab-sentences" class="workspace-panel"><StudyModeHost v-if="visited.has('sentences')" :active="workspace.lane === 'sentences'" :state="states.sentences!"><SentenceModeView /></StudyModeHost></section>
+    </div>
+    </div>
+    </div>
   </div>
 </template>
