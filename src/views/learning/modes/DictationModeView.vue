@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { ArrowLeft, BookOpen, ListRestart, RotateCcw } from 'lucide-vue-next';
+import { useRoute, useRouter } from 'vue-router';
+import { ArrowLeft, BookOpen, RotateCcw } from 'lucide-vue-next';
+import { dictationApi } from '../../../api/dictation';
 import { useStudyWorkspace } from '../../../stores/studyWorkspace';
 import { useStudySurface } from '../../../composables/useStudySurface';
 import DictationStudyView from '../../dictation/DictationStudyView.vue';
@@ -8,6 +10,21 @@ import DictationHomeView from '../../dictation/DictationHomeView.vue';
 import DictationTasks from '../../../components/learning/DictationTasks.vue';
 import DictationMistakesView from '../../dictation/DictationMistakesView.vue';
 const workspace = useStudyWorkspace(), surface = useStudySurface()!;
+const route = useRoute(), router = useRouter();
+const restoreError = ref('');
+let restoring = false;
+async function restoreActive() {
+  if (restoring || !surface.active.value || route.path !== '/dictation') return;
+  restoring = true; restoreError.value = '';
+  try {
+    const page = await dictationApi.tasks({ page: 1, size: 100, status: 'IN_PROGRESS' });
+    const task = page.records.find(item => item.singleAttempt && item.canContinue);
+    if (task && surface.active.value && route.path === '/dictation') await router.replace(`/dictation/${task.batchId}`);
+    else if (!task && surface.active.value && route.path === '/dictation') workspace.dictationId = undefined;
+  } catch { restoreError.value = '无法检查进行中的默写，请重试。'; }
+  finally { restoring = false; }
+}
+watch([() => route.path, surface.active], () => { void restoreActive(); }, { immediate: true });
 const settingsVisited = ref(false);
 const source = ref<'PLAN' | 'MISTAKES'>('PLAN');
 const mistakesVisited = ref(false);
@@ -21,6 +38,7 @@ watch(() => workspace.dictationId, value => { if (value) surface.state.settings 
 <template>
   <div class="workspace-dictation-mode">
     <section v-if="settingsVisited || !workspace.dictationId" v-show="choosing" class="dictation-picker">
+      <p v-if="restoreError" role="alert">{{ restoreError }} <button class="muted-link" @click="restoreActive">重试</button></p>
       <div class="dictation-picker-heading">
         <div class="dictation-source-switch" role="group" aria-label="内容范围">
           <button type="button" :aria-pressed="source === 'PLAN'" @click="source = 'PLAN'"><BookOpen :size="17" aria-hidden="true" />计划单词</button>
@@ -32,7 +50,6 @@ watch(() => workspace.dictationId, value => { if (value) surface.state.settings 
       <DictationMistakesView v-if="mistakesVisited" v-show="source === 'MISTAKES'" :active="choosing && source === 'MISTAKES' && surface.active.value" embedded />
       <DictationTasks resume-only :active="choosing && surface.active.value" />
     </section>
-    <div v-if="!choosing" class="dictation-active-actions"><button type="button" class="dictation-quiet-button" @click="surface.state.settings = true"><ListRestart :size="17" aria-hidden="true" />重新选词</button></div>
     <DictationStudyView v-if="workspace.dictationId && openedBatch === workspace.dictationId" v-show="!choosing" :key="workspace.dictationId" :requested-batch-id="workspace.dictationId" :active="!choosing" />
   </div>
 </template>

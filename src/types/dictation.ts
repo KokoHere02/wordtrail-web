@@ -13,6 +13,7 @@ export interface DictationTask {
   totalCount: number; completedCount: number; passedCount: number | null; needsPracticeCount: number | null; attemptCount: number;
   singleAttempt: boolean; canContinue: boolean; accuracy: number | null;
   nextItemId: number | null; attemptLimit: number; createdAt: string; completedAt: string | null;
+  deadlineAt: string | null; remainingSeconds: number;
 }
 export interface DictationQuestion {
   itemId: number; prompt: string; promptGroups: TranslationGroup[];
@@ -28,9 +29,9 @@ export interface DictationAnswer extends TranslationFields {
   completionReason?: DictationCompletion; answeredAt: string; affectsSchedule: false; progress: DictationTask;
 }
 export interface DictationWord extends TranslationFields {
-  itemId: number; wordId: number; word: string; lastVerdict: DictationVerdict; lastInput: string | null;
+  itemId: number; wordId: number; word: string; lastVerdict: DictationVerdict | null; lastInput: string | null;
   attemptCount: number; correctStreak: number; learningStatus: DictationItemStatus; completionReason: DictationCompletion;
-  learningDate: string; answeredAt: string;
+  learningDate: string | null; answeredAt: string | null;
 }
 export interface DictationHistory {
   logId: number; batchId: number; itemId: number; learningDate: string; answeredAt: string;

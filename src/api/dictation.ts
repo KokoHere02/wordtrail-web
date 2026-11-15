@@ -6,6 +6,7 @@ export const dictationApi = {
   create: (body: CreateDictation) => request<DictationTask>('POST', '/dictation/batches', body),
   tasks: (query: { page: number; size: number; status: Status }) => request<Page<DictationTask>>('GET', '/dictation/batches', undefined, query),
   task: (id: number) => request<DictationTask>('GET', taskPath(id)),
+  abandon: (id: number) => request<DictationTask>('POST', `${taskPath(id)}/abandon`),
   next: (id: number) => request<DictationQuestion>('POST', `${taskPath(id)}/next`),
   answer: (id: number, itemId: number, body: DictationAnswerBody) => request<DictationAnswer>('PUT', `${taskPath(id)}/items/${itemId}/answer`, body),
   resultWords: (id: number, query: { page: number; size: number }) => request<Page<DictationWord>>('GET', `${taskPath(id)}/result/words`, undefined, query),

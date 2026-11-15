@@ -56,6 +56,7 @@
 .professional-toggle svg { transition: transform var(--motion-normal) var(--ease); }
 .professional-toggle svg.expanded { transform: rotate(180deg); }
 .translation-professional .translation-body { padding-top: var(--s2); }
+.translation-professional.is-full .translation-body { padding-top: 0; }
 .translation-expand { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: var(--s2); width: 100%; min-height: var(--control); margin-top: var(--s4); padding: var(--s3) 0 0; border: 0; border-top: 1px solid var(--line); color: var(--accent-strong); background: transparent; font-size: var(--text-md); }
 .translation-expand:hover { color: var(--accent-strong); text-decoration: underline; text-underline-offset: var(--s1); }
 .translation-expand svg { transition: transform var(--motion-normal) var(--ease); }

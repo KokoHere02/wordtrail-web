@@ -77,7 +77,7 @@
 .study-workspace .dictation-card > .subtle-copy { margin-top: var(--s2); }
 .study-workspace .dictation-answer-form { margin-top: var(--s10); }
 .study-workspace .dictation-answer-form .live-actions { justify-content: flex-end; margin-top: var(--s10); }
-.study-workspace .dictation-scope-note, .study-workspace .sentence-scope-note { text-align: left; margin: var(--s6) 0 0; padding-top: var(--s5); border-top: 1px solid var(--line); }
+.study-workspace .sentence-scope-note { text-align: left; margin: var(--s6) 0 0; padding-top: var(--s5); border-top: 1px solid var(--line); }
 .study-workspace .dictation-home { width: 100%; padding: 0; }
 .study-workspace #mode-panel-independent { padding-top: var(--s3); }
 .study-workspace .dictation-home > .library-heading { display: none; }

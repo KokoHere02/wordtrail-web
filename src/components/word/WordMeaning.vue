@@ -30,7 +30,7 @@ watch(() => [props.translationGroups, props.translation, props.wordKey], () => {
     <p v-if="layout === 'study'" class="translation-heading" aria-hidden="true">MEANINGS</p>
     <template v-if="source !== undefined">
       <div :id="contentId">
-        <div v-for="(group, index) in groups" :key="index" :class="['translation-group', { 'has-part-of-speech': group.partOfSpeech !== null, 'translation-professional': group.professional }]">
+        <div v-for="(group, index) in groups" :key="index" :class="['translation-group', { 'has-part-of-speech': group.partOfSpeech !== null || (group.professional && full), 'translation-professional': group.professional, 'is-full': full }]">
           <button v-if="group.professional && !full" type="button" class="professional-toggle" :aria-expanded="openProfessional.has(index)" :aria-controls="`${contentId}-${index}`" @click="toggleProfessional(index)"><span>{{ group.professional.label }} 专业释义</span><ChevronDown :size="18" :class="{ expanded: openProfessional.has(index) }" /></button>
           <span v-else-if="group.professional" class="translation-part-of-speech">{{ group.professional.label }}</span>
           <span v-else-if="group.partOfSpeech !== null" class="translation-part-of-speech">{{ group.label }}</span>
