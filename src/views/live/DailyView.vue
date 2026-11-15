@@ -21,6 +21,7 @@ import LetterInput from '../../components/learning/LetterInput.vue';
 import TrainingItems from '../../components/learning/TrainingItems.vue';
 import { trainingStatusLabel } from '../../utils/trainingStatus';
 import StatePanel from '../../components/ui/StatePanel.vue';
+import AppAlert from '../../components/ui/AppAlert.vue';
 import AppButton from '../../components/ui/AppButton.vue';
 import { useStudyWorkspace } from '../../stores/studyWorkspace';
 import { useDailyGoal } from '../../composables/useDailyGoal';
@@ -175,7 +176,7 @@ defineExpose({ changeMode: async (value: DailyStudyMode) => { await initializing
       <StatePanel :loading="busy && !question && !receipt" />
       <p v-if="notice" class="learning-notice" role="status">{{ notice }}</p>
       <p v-if="busy && pending" class="subtle-copy" role="status">正在保存…</p>
-      <div v-if="!busy && (error || pending)" class="live-error learning-error" role="alert"><p>{{ error || '有一次操作尚未确认，请重试原请求。' }}</p><button v-if="pending && !expired && !historical" class="muted-link" :disabled="busy" @click="session.retry">重试原请求</button><button v-else-if="!expired" class="muted-link" :disabled="busy" @click="sync">重新同步</button><RouterLink v-if="expired" to="/today" class="muted-link">进入今日任务</RouterLink></div>
+      <AppAlert v-if="!busy && (error || pending)" class="learning-error" :message="error || '有一次操作尚未确认，请重试原请求。'"><template #actions><button v-if="pending && !expired && !historical" class="muted-link" :disabled="busy" @click="session.retry">重试原请求</button><button v-else-if="!expired" class="muted-link" :disabled="busy" @click="sync">重新同步</button><RouterLink v-if="expired" to="/today" class="muted-link">进入今日任务</RouterLink></template></AppAlert>
       <p v-if="extraItemId" class="subtle-copy daily-extra-note">追加训练 · 不重复计入每日目标 <button class="muted-link" :disabled="busy || !!pending" @click="session.extra()">返回当前队列</button></p>
       <div v-if="session.canReturnPrevious.value" class="learning-controls"><button type="button" class="muted-link" aria-keyshortcuts="ArrowLeft" @click="session.previous">← 上一个单词</button></div>
       <section v-if="dictationFeedback && receipt" :class="['daily-training-card', 'learning-card', 'daily-training-feedback', 'dictation-answer-feedback', { 'is-incorrect': incorrect }]" aria-live="polite">

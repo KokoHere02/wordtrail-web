@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue';
 import { ChevronDown, KeyRound, LockKeyhole, Mail, MessageSquareText, Smartphone } from 'lucide-vue-next';
 import { useAccountSecurity, sessionLocalTime } from '../../composables/useAccountSecurity';
 import StatePanel from '../../components/ui/StatePanel.vue';
+import AppAlert from '../../components/ui/AppAlert.vue';
 import AppPagination from '../../components/ui/AppPagination.vue';
 const props = defineProps<{ view: 'security' | 'devices'; editor?: 'password' | 'phone' | 'email' }>();
 const security = useAccountSecurity(false);
@@ -22,7 +23,7 @@ function toggleEditor(value: 'password' | 'phone' | 'email') {
 <template>
   <div class="account-security">
     <header class="security-heading"><div><p class="security-eyebrow">{{ view === 'security' ? 'ACCOUNT SECURITY' : 'DEVICE SESSIONS' }}</p><h2>{{ view === 'security' ? '账户安全' : '登录设备' }}</h2><p>{{ view === 'security' ? '管理你的登录方式与绑定信息。' : '查看和管理账户的设备会话。' }}</p></div></header>
-    <p v-if="formError" class="security-feedback security-feedback-error" role="alert">{{ formError }}</p><p v-if="notice" class="security-feedback" role="status">{{ notice }}</p>
+    <AppAlert v-if="formError" :message="formError" /><p v-if="notice" class="security-feedback" role="status">{{ notice }}</p>
     <div v-show="view === 'security'" class="security-settings">
       <section class="security-item" aria-labelledby="email-title">
         <div class="security-item-heading"><span class="security-icon"><Mail :size="20" aria-hidden="true" /></span><div class="security-item-copy"><h3 id="email-title">绑定邮箱</h3><p>{{ auth.user?.email || '尚未绑定邮箱' }}</p></div><button class="security-expand" type="button" :disabled="auth.accountBusy || sending" :aria-expanded="activeEditor === 'email'" aria-controls="email-editor" @click="toggleEditor('email')">{{ activeEditor === 'email' ? '收起' : auth.user?.email ? '更换邮箱' : '绑定邮箱' }}<ChevronDown :size="16" :class="{ expanded: activeEditor === 'email' }" aria-hidden="true" /></button></div>
@@ -97,7 +98,6 @@ function toggleEditor(value: 'password' | 'phone' | 'email') {
 .security-code button:disabled { color: var(--muted); cursor: not-allowed; }
 .security-submit { justify-self: start; margin-top: 4px; }
 .security-feedback { margin: 0 0 18px; padding: 12px 16px; border: 1px solid var(--notice-border); border-radius: 9px; color: var(--ink); background: var(--sage); font-size: 14px; }
-.security-feedback-error { color: var(--error); border-color: var(--error-border); background: var(--error-bg); }
 @media (max-width: 600px) {
   .security-heading { margin-bottom: 22px; }
   .security-item-heading { flex-wrap: wrap; gap: 12px; min-height: 0; padding: 20px; }

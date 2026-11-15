@@ -7,6 +7,7 @@ import SentenceNotePanel from '../../components/learning/SentenceNotePanel.vue';
 import RandomSentencesDialog from '../../components/learning/RandomSentencesDialog.vue';
 import AppSelect from '../../components/ui/AppSelect.vue';
 import AppDialog from '../../components/ui/AppDialog.vue';
+import AppAlert from '../../components/ui/AppAlert.vue';
 import { useSentenceManagementAccess } from '../../stores/sentenceManagementAccess';
 type Tag = { id: number; category: string; name: string };
 type Sentence = { id: number; englishText: string; referenceTranslation: string; explanation: string | null; source: string; sourceReference: string | null; learning: boolean; favorite: boolean; available: boolean; tags?: Tag[] };
@@ -62,7 +63,7 @@ onMounted(async () => { try { tags.value=await request<Tag[]>('GET','/sentence-p
 </script>
 <template>
   <main class="sentence-library-page sentence-workbench">
-    <p v-if="error" role="alert" class="workbench-error">{{ error }}</p>
+    <AppAlert v-if="error" class="workbench-error" :message="error" />
 
       <div class="workbench-controls">
         <nav class="workbench-tabs" aria-label="句子范围">
@@ -101,7 +102,7 @@ onMounted(async () => { try { tags.value=await request<Tag[]>('GET','/sentence-p
       <AppDialog :model-value="!!detail" title="句子历史与笔记" panel-class="sentence-detail-dialog" @update:model-value="value => { if (!value) closeDetail(); }">
         <div v-if="detail" class="detail-panel">
           <div class="detail-heading"><div><span class="section-eyebrow">句子详情</span><h3>{{ detail.englishText }}</h3><p>{{ detail.referenceTranslation }}</p></div></div>
-          <p v-if="detailError" class="workbench-error" role="alert">{{ detailError }}</p>
+          <AppAlert v-if="detailError" class="workbench-error" :message="detailError" />
           <SentenceNotePanel :key="detail.id" ref="notePanel" :sentence-id="detail.id" />
           <div class="detail-history"><div class="detail-section-title"><h3>翻译历史</h3><span v-if="history.length">本页 {{ history.length }} 条</span></div><p v-if="detailLoading" class="detail-empty" role="status">正在加载记录…</p><p v-else-if="!detailError && !history.length" class="detail-empty">暂无翻译记录</p><ul v-else-if="history.length" class="history-list"><li v-for="entry in history" :key="entry.id"><time>{{ entry.createdAt.replace('T', ' ') }}</time><p>{{ entry.translation }}</p></li></ul><div class="history-pages"><button :disabled="detailLoading || historyOffset === 0" @click="loadHistory(Math.max(0, historyOffset - 50))"><ChevronLeft :size="15" aria-hidden="true" />上一页</button><button :disabled="detailLoading || history.length < 50" @click="loadHistory(historyOffset + 50)">下一页<ChevronRight :size="15" aria-hidden="true" /></button></div></div>
           <div v-if="access.canManage" class="detail-tags"><h3>句子标签</h3><div class="tag-choices"><label v-for="tag in tags" :key="tag.id"><input v-model="selectedTags" type="checkbox" :value="tag.id" :disabled="detailLoading || tagsSaving || !tagsReady" />{{ tag.name }}</label></div><button class="btn btn-secondary" :disabled="detailLoading || tagsSaving || !tagsReady" @click="saveTags">{{ tagsSaving ? '保存中…' : '保存标签' }}</button></div>
@@ -119,7 +120,6 @@ onMounted(async () => { try { tags.value=await request<Tag[]>('GET','/sentence-p
 .sentence-search input { min-width: 0; width: 100%; padding: 0; border: 0; outline: none; box-shadow: none; color: var(--ink); background: transparent; font: inherit; }
 .sentence-library-page .sentence-search input:focus-visible { outline: none; border: 0; box-shadow: none; }
 .sentence-search button { flex: none; min-height: 40px; }
-.workbench-error { margin: 0 0 16px; padding: 12px 16px; border: 1px solid var(--line); border-radius: 10px; color: var(--danger, #b64a4a); background: var(--surface); }
 .workbench-controls { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 9px 16px; border: 1px solid var(--line); border-radius: 0 0 var(--radius-lg) var(--radius-lg); background: var(--surface); }
 .workbench-tabs, .workbench-shortcuts { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .workbench-tabs button, .workbench-shortcuts a { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; padding: 9px 14px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); font: inherit; font-size: 14px; white-space: nowrap; }

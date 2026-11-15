@@ -4,6 +4,7 @@ import { ArrowRight, BookOpen, RotateCcw } from 'lucide-vue-next';
 import { request, errorMessage } from '../../../api/http';
 import { useStudySurface } from '../../../composables/useStudySurface';
 import { createRequestId } from '../../../utils/requestId';
+import AppAlert from '../../../components/ui/AppAlert.vue';
 
 type Sentence = { id: number; englishText: string; available: boolean };
 type Feedback = { referenceTranslation: string; explanation: string | null };
@@ -88,7 +89,7 @@ watch([queue, index, loaded], () => {
 <template>
   <div class="sentence-workspace">
     <p v-if="loading" role="status" class="sentence-workspace-state">正在读取学习列表…</p>
-    <div v-else-if="error && !current" class="sentence-workspace-state" role="alert"><p>{{ error }}</p><button class="btn btn-secondary" @click="load"><RotateCcw :size="16" aria-hidden="true" />重试</button></div>
+    <AppAlert v-else-if="error && !current" :message="error"><template #actions><button class="btn btn-secondary" @click="load"><RotateCcw :size="16" aria-hidden="true" />重试</button></template></AppAlert>
     <div v-else-if="completed" class="sentence-workspace-state"><h2>本轮已浏览完</h2><p v-if="skipped">跳过的 {{ skipped }} 句仍在学习列表中。</p><p v-else>本轮句子已完成翻译。</p><div class="sentence-workspace-actions"><button class="btn btn-primary" @click="load">继续练习</button><RouterLink to="/sentences" class="btn btn-secondary">管理学习列表</RouterLink></div></div>
     <div v-else-if="loaded && !current" class="sentence-workspace-state"><h2>学习列表暂时没有句子</h2><p>从句子库选择想学习的句子，加入后就能在这里练习。</p><RouterLink to="/sentences" class="btn btn-primary"><BookOpen :size="16" aria-hidden="true" />去句子库选句</RouterLink></div>
     <section v-else-if="current" class="sentence-workspace-card" aria-label="句子翻译练习">
@@ -100,7 +101,7 @@ watch([queue, index, loaded], () => {
         <label for="workspace-sentence-answer">你的翻译</label>
         <textarea ref="answerInput" :key="current.id" id="workspace-sentence-answer" v-model="answer" maxlength="2000" rows="1" placeholder="写下你对这句话的理解…" aria-describedby="sentence-shortcuts" @input="resizeAnswer" @keydown="handleAnswerShortcut" />
         <p id="sentence-shortcuts" class="sentence-shortcuts">Ctrl / ⌘ + Enter 提交 <span aria-hidden="true">·</span> Ctrl / ⌘ + Shift + Enter 跳过</p>
-        <p v-if="error" class="sentence-workspace-error" role="alert">{{ error }}</p>
+        <AppAlert v-if="error" :message="error" />
         <div class="sentence-workspace-actions"><button type="submit" class="btn btn-primary" :disabled="submitting || !answer.trim()">{{ submitting ? '提交中…' : '提交翻译' }} <ArrowRight :size="16" aria-hidden="true" /></button><button type="button" class="sentence-skip" :disabled="submitting" @click="next(true)">跳过这句 <ArrowRight :size="16" aria-hidden="true" /></button></div>
       </form>
       <div v-else class="sentence-answer-feedback"><div><span>你的翻译</span><p>{{ answer }}</p></div><div class="sentence-reference-answer"><span>参考翻译</span><p>{{ feedback.referenceTranslation }}</p></div><p v-if="feedback.explanation" class="sentence-feedback-explanation">{{ feedback.explanation }}</p><button ref="nextButton" class="btn btn-primary" @click="next()">下一句 <ArrowRight :size="16" aria-hidden="true" /></button><p class="sentence-next-hint">按 Enter 继续</p></div>
@@ -128,7 +129,6 @@ watch([queue, index, loaded], () => {
 .sentence-skip { display: inline-flex; align-items: center; gap: 8px; padding: 10px 0; border: 0; background: transparent; color: var(--accent-strong); font: inherit; cursor: pointer; }
 .sentence-skip:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 4px; }
 .sentence-skip:disabled { opacity: .5; cursor: not-allowed; }
-.sentence-workspace-error { margin: 12px 0 0; color: var(--error); font-size: 14px; }
 .sentence-answer-feedback { display: grid; gap: 0; padding-top: 32px; }
 .sentence-answer-feedback > div { padding: 0 0 24px; }
 .sentence-answer-feedback > .sentence-reference-answer { padding-top: 24px; border-top: 1px solid var(--line); }

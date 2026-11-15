@@ -1,0 +1,38 @@
+import assert from 'node:assert/strict';
+import { Window } from 'happy-dom';
+import { build } from 'vite';
+
+const window = new Window({ url: 'http://localhost/' });
+for (const key of ['window', 'document', 'navigator', 'Element', 'HTMLElement', 'SVGElement', 'Node', 'Event', 'MouseEvent'])
+  Object.defineProperty(globalThis, key, { value: key === 'window' ? window : window[key], configurable: true, writable: true });
+window.document.body.innerHTML = '<div id="app"></div>';
+const { default: vue } = await import('@vitejs/plugin-vue');
+await build({ configFile: false, plugins: [vue()], logLevel: 'warn', build: { target: 'es2022', outDir: '.qa-alert-dist', emptyOutDir: true, minify: false, lib: { entry: 'tests/alert-entry.ts', formats: ['es'], fileName: 'ui' }, rolldownOptions: { external: ['vue', 'lucide-vue-next'] } } });
+const { AppAlert, StatePanel } = await import('../.qa-alert-dist/ui.js');
+const { createApp, h, ref, nextTick } = await import('vue');
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+const message = ref('第一次错误');
+const root = window.document.querySelector('#app');
+const app = createApp({ setup: () => () => h(AppAlert, { message: message.value, duration: 60 }, { actions: () => h('button', '重试') }) });
+app.mount(root);
+assert.equal(root.querySelector('[role="alert"]').textContent, '第一次错误');
+root.querySelector('.app-alert').dispatchEvent(new window.MouseEvent('mouseenter'));
+await delay(90);
+assert.ok(root.querySelector('[role="alert"]'), 'hover keeps the message visible');
+root.querySelector('.app-alert').dispatchEvent(new window.MouseEvent('mouseleave'));
+await delay(90); await nextTick();
+assert.equal(root.querySelector('[role="alert"]'), null, 'message disappears after the delay');
+assert.equal(root.querySelector('.app-alert-actions').textContent, '重试', 'recovery action remains available');
+message.value = '新的错误'; await nextTick();
+assert.equal(root.querySelector('[role="alert"]').textContent, '新的错误');
+root.querySelector('[aria-label="关闭提示"]').click(); await nextTick();
+assert.equal(root.querySelector('[role="alert"]'), null, 'manual dismissal works');
+app.unmount();
+let retries = 0;
+const panel = createApp({ setup: () => () => h(StatePanel, { error: '加载失败', onRetry: () => retries++ }) });
+panel.mount(root);
+root.querySelector('[aria-label="关闭提示"]').click(); await nextTick();
+root.querySelector('button').click();
+assert.equal(retries, 1, 'data-loading recovery remains available after dismissal');
+panel.unmount();
+console.log('PASS alert timeout, pause, dismissal, new messages and recovery actions');

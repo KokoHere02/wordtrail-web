@@ -5,6 +5,7 @@ import { dictationApi } from '../../api/dictation';
 import { errorMessage } from '../../api/http';
 import { useStudyWorkspace } from '../../stores/studyWorkspace';
 import AppDialog from '../../components/ui/AppDialog.vue';
+import AppAlert from '../../components/ui/AppAlert.vue';
 import { useAuthStore } from '../../stores/auth';
 import { useDictationSession } from '../../composables/useDictationSession';
 import { useRevealShortcut } from '../../composables/useRevealShortcut';
@@ -79,7 +80,7 @@ watchEffect(() => { if (surface) surface.state.source = progress.value ? `默写
       <div v-if="progress?.status === 'COMPLETED' && !question && !answer && !readOnly && !pending" class="workspace-start"><h2>本轮已完成</h2><RouterLink :to="`/dictation/${progress.batchId}/result`" class="btn btn-secondary">查看结果</RouterLink></div>
       <div v-if="readOnly" class="workspace-start dictation-readonly"><h2>旧版默写记录</h2><p class="subtle-copy">仅供回顾，请新建测验。</p><div class="live-actions"><RouterLink :to="`/dictation/${progress?.batchId ?? requestedBatchId}/result`" class="btn btn-secondary">查看历史记录</RouterLink><RouterLink to="/dictation" class="btn btn-primary">新建测验</RouterLink></div></div>
       <p v-if="notice && !readOnly" class="dictation-submit-notice" role="status">{{ notice }}</p>
-      <div v-if="error && !readOnly" class="learning-error dictation-error" role="alert"><p>{{ error }}</p><button v-if="pending && !blocked" class="violet-link" :disabled="busy" @click="session.retry">重试原请求</button><button v-else-if="recoverable && !blocked" class="violet-link" :disabled="busy" @click="session.load">重新获取题目</button><RouterLink to="/dictation" class="violet-link">返回默写记录</RouterLink></div>
+      <AppAlert v-if="error && !readOnly" class="learning-error dictation-error" :message="error"><template #actions><button v-if="pending && !blocked" class="violet-link" :disabled="busy" @click="session.retry">重试原请求</button><button v-else-if="recoverable && !blocked" class="violet-link" :disabled="busy" @click="session.load">重新获取题目</button><RouterLink to="/dictation" class="violet-link">返回默写记录</RouterLink></template></AppAlert>
       <section v-if="question || answer" class="learning-card dictation-card" :aria-busy="busy">
         <template v-if="!answer && question"><button v-if="question.audioUrl" type="button" class="btn btn-secondary dictation-audio" aria-keyshortcuts="Alt+P" title="播放发音（Alt + P）" :disabled="!canAnswer || audioLoading" :aria-pressed="speaking" @click="pronounce"><Volume2 :size="17" aria-hidden="true" />{{ audioLoading ? '音频加载中…' : speaking ? '重新播放' : '播放发音' }} <kbd aria-hidden="true">Alt + P</kbd></button>
           <WordMeaning class="dictation-prompt" layout="study" :word-key="question.presentationId" :translation="question.prompt" :translation-groups="question.promptGroups" full />

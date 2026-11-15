@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { AlertCircle, BookOpen, LoaderCircle } from "lucide-vue-next";
+import { BookOpen, LoaderCircle } from "lucide-vue-next";
+import AppAlert from './AppAlert.vue';
 defineProps<{
   loading?: boolean;
   error?: string;
@@ -9,21 +10,16 @@ defineProps<{
 defineEmits<{ retry: [] }>();
 </script>
 <template>
+  <AppAlert v-if="!loading && error" :message="error"><template #actions><button class="text-button" @click="$emit('retry')">重新加载</button></template></AppAlert>
   <div
-    v-if="loading || error || empty"
+    v-else-if="loading || empty"
     class="state-panel"
-    :role="error ? 'alert' : 'status'"
-    :aria-live="error ? 'assertive' : 'polite'"
+    role="status"
+    aria-live="polite"
   >
-    <LoaderCircle v-if="loading" class="spin" :size="25" /><AlertCircle
-      v-else-if="error"
-      :size="25"
-    /><BookOpen v-else :size="28" />
+    <LoaderCircle v-if="loading" class="spin" :size="25" /><BookOpen v-else :size="28" />
     <p>
-      {{ loading ? "正在整理词页…" : error || message || "这里还没有内容" }}
+      {{ loading ? "正在整理词页…" : message || "这里还没有内容" }}
     </p>
-    <button v-if="error" class="text-button" @click="$emit('retry')">
-      重新加载
-    </button>
   </div>
 </template>

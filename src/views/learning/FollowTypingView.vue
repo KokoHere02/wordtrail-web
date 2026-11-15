@@ -18,6 +18,7 @@ import WordMeaning from '../../components/word/WordMeaning.vue';
 import AppButton from '../../components/ui/AppButton.vue';
 import AppSelect from '../../components/ui/AppSelect.vue';
 import AppDialog from '../../components/ui/AppDialog.vue';
+import AppAlert from '../../components/ui/AppAlert.vue';
 import StatePanel from '../../components/ui/StatePanel.vue';
 import AppPagination from '../../components/ui/AppPagination.vue';
 import ReviewHeader from '../../components/learning/ReviewHeader.vue';
@@ -129,14 +130,15 @@ defineExpose({ toggleWord, toggleMeaning, play, canPronounce, speaking: audio.sp
       <StatePanel :loading="overallBusy && !displayedQuestion" />
       <p v-if="audio.error.value && !displayedQuestion" class="speech-error" role="status">{{ audio.error.value }}</p>
       <p v-if="notice" class="learning-notice" role="status">{{ notice }}</p>
-      <div v-if="error || session.error.value || pending || abandonPending === task?.batchId && !!task" class="learning-error" role="alert">
-        <p>{{ error || session.error.value || (pending ? '有一次输入结果尚未确认，请重试原请求。' : '放弃结果尚未确认，请先同步或重试。') }}</p>
+      <AppAlert v-if="error || session.error.value || pending || abandonPending === task?.batchId && !!task" class="learning-error" :message="error || session.error.value || (pending ? '有一次输入结果尚未确认，请重试原请求。' : '放弃结果尚未确认，请先同步或重试。')">
+        <template #actions>
         <button v-if="pendingCreate" class="muted-link" :disabled="overallBusy" @click="follow.retryCreate">重试原创建请求</button>
         <button v-else-if="pending" class="muted-link" :disabled="overallBusy" @click="session.retry">重试原输入请求</button>
         <button v-else-if="abandonPending === task?.batchId && task" class="muted-link" :disabled="overallBusy" @click="follow.abandon">重试放弃</button>
         <button class="muted-link" :disabled="overallBusy" @click="sync">重新同步</button>
         <RouterLink v-if="knownBatch && knownBatch !== id" :to="batchLink(knownBatch)" class="muted-link">进入已创建轮次</RouterLink>
-      </div>
+        </template>
+      </AppAlert>
 
       <section v-if="displayedQuestion" class="daily-training-card learning-card follow-exercise" data-mode="FOLLOW_TYPING" :data-item-id="displayedQuestion.itemId">
         <p v-if="displayedQuestion.extraTraining" class="subtle-copy follow-extra-note">追加练习 <button class="muted-link" :disabled="blocked" @click="extra()">返回本轮</button></p>
