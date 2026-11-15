@@ -13,8 +13,8 @@ export const sentenceManagementApi = {
   import: (body: SentenceImportBody) => request<SentenceImported>('POST', `${base}/import`, body),
 };
 export function sentenceServiceError(value: unknown) {
-  if (value instanceof ApiError && value.status === 403) return '当前账号没有题库维护权限，请确认服务端维护账号配置。';
+  if (value instanceof ApiError && value.status === 403) return '当前账号没有题库维护权限。';
   const message = errorMessage(value);
-  if (value instanceof ApiError && (value.status === 404 && !['SENTENCE_NOT_FOUND', 'SENTENCE_SESSION_NOT_FOUND', 'SENTENCE_ATTEMPT_NOT_FOUND', 'WORD_NOT_FOUND', 'BOOK_NOT_FOUND'].includes(value.code) || value.status === 405)) return `${message}；新接口暂不可用，请确认后端版本及重启状态。`;
+  if (value instanceof ApiError && (value.status === 404 && !['SENTENCE_NOT_FOUND', 'SENTENCE_SESSION_NOT_FOUND', 'SENTENCE_ATTEMPT_NOT_FOUND', 'WORD_NOT_FOUND', 'BOOK_NOT_FOUND'].includes(value.code) || value.status === 405)) return '题库暂不可用，请稍后重试。';
   return message;
 }

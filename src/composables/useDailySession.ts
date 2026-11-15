@@ -60,7 +60,7 @@ export function useDailySession(userId: number) {
       if (['PENDING', 'RELEARNING'].includes(detail.learningStatus) && detail.nextAttemptNo !== null) {
         if (!Number.isInteger(detail.attemptLimit) || detail.attemptLimit < 1 || detail.nextAttemptNo < 1 || detail.nextAttemptNo > detail.attemptLimit) {
           item.value = undefined;
-          throw new ApiError('作答上限或序号无效，请确认后端已更新。', 'DAILY_CONTRACT_MISMATCH');
+          throw new ApiError('暂时无法加载题目，请稍后重试。', 'DAILY_CONTRACT_MISMATCH');
         }
         item.value = detail; return;
       }
@@ -121,7 +121,7 @@ export function useDailySession(userId: number) {
     detailsError.value = '';
     try {
       const current = await dailyApi.item(batchId, itemId);
-      if (!Number.isInteger(current.attemptLimit) || current.attemptLimit < 1) throw new ApiError('接口未返回有效作答上限，请确认后端已更新。', 'DAILY_CONTRACT_MISMATCH');
+      if (!Number.isInteger(current.attemptLimit) || current.attemptLimit < 1) throw new ApiError('暂时无法加载题目，请稍后重试。', 'DAILY_CONTRACT_MISMATCH');
       answerDetails.value = current;
       if (current.learningStatus !== 'SKIPPED' && current.correctableLogId === originalLogId) correctableLogId.value = originalLogId;
     } catch (e) { detailsError.value = errorMessage(e); }

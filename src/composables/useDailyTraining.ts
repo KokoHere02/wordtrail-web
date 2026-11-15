@@ -66,16 +66,16 @@ export function useDailyTraining(userId: number, scope: TrainingScope = 'DAILY')
         } else pending.value = saved;
       }
       else throw new Error('Invalid pending request');
-    } catch { error.value = '未确认请求的本地记录无法读取，请重新登录后核对服务端记录。'; }
+    } catch { error.value = '上次提交结果无法确认，请重新登录后核对学习记录。'; }
   }
   function update(value: TrainingTask) {
     if (value.taskType !== (practice ? 'PRACTICE' : 'DAILY')) throw new ApiError('任务类型不匹配，请返回任务列表。', 'WRONG_TASK_TYPE');
     task.value = requireTrainingTask(value); mode.value = task.value.studyMode;
   }
   function readable(e: unknown) {
-    if (follow && e instanceof ApiError && (e.status === 404 || e.status === 405)) return '独立跟拼接口暂不可用，请确认已部署第 36 节新版后端。';
+    if (follow && e instanceof ApiError && (e.status === 404 || e.status === 405)) return '跟拼练习暂不可用，请稍后重试。';
     if (e instanceof ApiError && (e.status === 404 || e.status === 405 || e.code === 'TRAINING_ENDPOINT_REQUIRED'))
-      return '统一每日训练接口不可用。请确认业务库已执行 011 迁移，且已启动新版后端。';
+      return '每日训练暂不可用，请稍后重试。';
     return errorMessage(e);
   }
   async function fetchQuestion(token: number) {
@@ -212,7 +212,7 @@ export function useDailyTraining(userId: number, scope: TrainingScope = 'DAILY')
       // A mode write can succeed even if its response is lost. Resolve from GET, never guess its version.
       await handle(e, token);
       if (alive && token === generation && error.value && !expired.value) {
-        try { await resync(token); error.value = ''; notice.value = '已按服务端恢复当前学习方式。'; }
+        try { await resync(token); error.value = ''; notice.value = '已恢复当前学习方式。'; }
         catch (syncError) { await handleSyncError(syncError); }
       }
     } finally { if (alive && token === generation) busy.value = false; }

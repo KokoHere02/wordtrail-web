@@ -11,7 +11,7 @@ const root = '/learning/follow-typing/batches';
 function task(value: TrainingTask) {
   requireTrainingTask(value);
   if (value.taskType !== 'PRACTICE' || value.studyMode !== 'FOLLOW_TYPING' || value.learningDate !== null || value.dailyTarget !== 0 || value.modeVersion !== 0 || !Number.isInteger(value.followTypingTarget))
-    throw new ApiError('独立跟拼服务尚未就绪，请确认已部署第 36 节新版后端。', 'FOLLOW_TYPING_DEPLOYMENT_REQUIRED');
+    throw new ApiError('暂时无法加载跟拼练习，请稍后重试。', 'FOLLOW_TYPING_DEPLOYMENT_REQUIRED');
   return value;
 }
 export const followTypingApi = {

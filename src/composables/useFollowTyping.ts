@@ -32,7 +32,7 @@ export function useFollowTyping(userId: number, resolveBatch: (id: number) => Pr
   function creationFailure(e: unknown) {
     const uncertain = !(e instanceof ApiError) || e.code === 'NETWORK_ERROR' || (e.status ?? 0) >= 500 || e.code === 'FOLLOW_TYPING_DEPLOYMENT_REQUIRED';
     if (!uncertain) clearCreate();
-    error.value = uncertain && pendingCreate.value ? '创建结果尚未确认，请重试原请求。词数与请求标识已保留。' :
+    error.value = uncertain && pendingCreate.value ? '创建结果尚未确认，请重试。' :
       e instanceof ApiError && e.code === 'NO_FOLLOW_TYPING_WORDS' ? '暂无可用跟拼词，请检查启用中的学习计划，或等待重复限制冷却后再练。' : errorMessage(e);
   }
   async function create() {

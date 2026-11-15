@@ -48,7 +48,7 @@ export function useDictationSession(userId: number, batchId: number) {
     if (!active) return;
     progress.value = task;
     if (typeof task.singleAttempt !== 'boolean' || typeof task.canContinue !== 'boolean')
-      throw new ApiError('独立默写测验接口尚未更新，请重启第 20 节新版后端。', 'DICTATION_ENDPOINT_REQUIRED');
+      throw new ApiError('暂时无法加载默写，请稍后重试。', 'DICTATION_ENDPOINT_REQUIRED');
     return task;
   }
   async function issue() {
@@ -57,7 +57,7 @@ export function useDictationSession(userId: number, batchId: number) {
     const issued = await dictationApi.next(batchId);
     if (!active) return;
     if (issued.nextAttemptNo !== 1 || !issued.presentationId)
-      throw new ApiError('题目不是单次作答测验，请确认已启动新版后端。', 'DICTATION_ENDPOINT_REQUIRED');
+      throw new ApiError('暂时无法加载题目，请稍后重试。', 'DICTATION_ENDPOINT_REQUIRED');
     question.value = issued;
   }
   async function showResult(task: DictationTask) {
@@ -67,12 +67,12 @@ export function useDictationSession(userId: number, batchId: number) {
     const task = await readTask();
     if (!active || !task) return;
     if (!task.singleAttempt || legacyReadOnly.value) { hideAnswer(); blocked.value = true; return; }
-    if (invalidPending) { blocked.value = true; error.value = '未确认请求的格式无法读取，请在默写记录中核对；不能更换请求键重答。'; return; }
+    if (invalidPending) { blocked.value = true; error.value = '上次提交结果无法确认，请在默写记录中核对。'; return; }
     // Even after the final answer, an unknown write must retry its original bytes.
     if (pending.value) { error.value = '上次提交结果尚未确认，请原样重试后继续。'; return; }
     if (task.status === 'COMPLETED') { await showResult(task); return; }
     if (!task.canContinue) { hideAnswer(); blocked.value = true; notice.value = '本轮不可继续，可查看记录或新建测验。'; return; }
-    if (task.nextItemId === null) { recoverable.value = true; error.value = '服务端暂未提供待答题目，请重新同步。'; return; }
+    if (task.nextItemId === null) { recoverable.value = true; error.value = '暂时无法加载题目，请重试。'; return; }
     await issue();
   }
   async function handleFailure(value: unknown) {
@@ -92,7 +92,7 @@ export function useDictationSession(userId: number, batchId: number) {
       remember(); hideAnswer(); await restore();
     } else if (['BATCH_NOT_FOUND', 'NOT_DICTATION_TASK', 'DICTATION_ENDPOINT_REQUIRED', 'REQUEST_ID_REUSED'].includes(value.code)) {
       blocked.value = true; hideAnswer();
-      if (value.code === 'REQUEST_ID_REUSED') error.value += '；原请求已保留，请返回默写记录核对，勿更换请求键重放。';
+      if (value.code === 'REQUEST_ID_REUSED') error.value = '提交结果存在冲突，请返回默写记录核对。';
     } else if (['INVALID_PARAMETER', 'INVALID_DICTATION_ANSWER'].includes(value.code)) {
       remember();
     }

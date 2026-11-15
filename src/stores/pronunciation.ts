@@ -11,7 +11,7 @@ export const usePronunciation = defineStore('pronunciation', () => {
   let generation = 0, revision = 0, inflight: Promise<void> | undefined;
   watch(() => auth.user?.id, () => { generation++; value.value = defaultPronunciation(); loaded.value = false; inflight = undefined; }, { flush: 'sync' });
   function accept(settings: Pronunciation | undefined) {
-    if (!settings) throw new ApiError('新版发音接口尚未就绪，请重启新版后端。', 'PRONUNCIATION_DEPLOYMENT_REQUIRED');
+    if (!settings) throw new ApiError('暂时无法加载发音设置，请稍后重试。', 'PRONUNCIATION_DEPLOYMENT_REQUIRED');
     value.value = { ...settings }; loaded.value = true;
   }
   async function load() {

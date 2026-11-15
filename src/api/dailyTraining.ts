@@ -6,17 +6,17 @@ import type { DailyStudyMode, TrainingTask, TrainingQuestion, TrainingAnswerBody
 export function requireTrainingTask(task: DailyTask | TrainingTask): TrainingTask {
   if (!['RECOGNITION', 'DICTATION', 'FOLLOW_TYPING', 'LISTEN_DICTATION'].includes(task.studyMode ?? '') ||
       !Number.isInteger(task.modeVersion) || !Number.isInteger(task.trainingCount)) {
-    throw new ApiError('当前后端尚未提供统一每日训练。请先完成 011 迁移并启动新版后端，再重新同步。', 'TRAINING_DEPLOYMENT_REQUIRED');
+    throw new ApiError('暂时无法加载训练，请稍后重试。', 'TRAINING_DEPLOYMENT_REQUIRED');
   }
   return task as TrainingTask;
 }
 const root = (batchId: number) => `/learning-batches/${batchId}/daily`;
 export function requireTrainingQuestion(question: TrainingQuestion): TrainingQuestion {
   if (question.mode === 'LISTEN_DICTATION' && !question.audioUrl)
-    throw new ApiError('听音题未提供音频地址，请确认已启动支持第 33 节的新后端。', 'TRAINING_DEPLOYMENT_REQUIRED');
+    throw new ApiError('音频暂不可用，请稍后重试。', 'TRAINING_DEPLOYMENT_REQUIRED');
   if (!['QUESTION', 'AWAITING_SELF_ASSESSMENT', 'AWAITING_INPUT'].includes(question.phase) || typeof question.answerRevealed !== 'boolean' ||
       !['PENDING', 'RELEARNING', 'DONE'].includes(question.itemStatus)) {
-    throw new ApiError('当前后端未提供第 30 节的训练阶段和词项状态，请重启新版后端后重新同步；无需新增 SQL 迁移。', 'TRAINING_DEPLOYMENT_REQUIRED');
+    throw new ApiError('暂时无法加载题目，请稍后重试。', 'TRAINING_DEPLOYMENT_REQUIRED');
   }
   return question;
 }

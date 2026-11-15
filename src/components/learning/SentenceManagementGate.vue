@@ -8,5 +8,5 @@ watch(() => access.canManage, value => { if (value) emit('authorized'); }, { imm
 onMounted(() => access.load());
 </script>
 <template>
-  <div class="sentence-management-gate"><StatePanel :loading="access.loading" :error="access.error" @retry="access.load(true)" /><div v-if="!access.loading && !access.canManage && !access.error" class="library-empty sentence-permission-empty"><h2>没有题库维护权限</h2><p>维护权限由服务端配置，普通句子练习不受影响。</p><button type="button" class="btn btn-secondary" @click="access.load(true)">重新检查权限</button></div><slot v-if="access.canManage" /></div>
+  <div class="sentence-management-gate"><StatePanel :loading="access.loading" :error="access.error" @retry="access.load(true)" /><div v-if="!access.loading && !access.canManage && !access.error" class="library-empty sentence-permission-empty"><h2>没有题库维护权限</h2><p>仍可正常进行句子练习。</p><button type="button" class="btn btn-secondary" @click="access.load(true)">重新检查权限</button></div><slot v-if="access.canManage" /></div>
 </template>

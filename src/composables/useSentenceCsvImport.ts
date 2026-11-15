@@ -82,11 +82,11 @@ export function useSentenceCsvImport(userId: number) {
     } catch (value) {
       if (!active) return;
       fail(value);
-      if (value instanceof ApiError && value.code === 'REQUEST_ID_REUSED') { blocked.value = true; error.value += '；原文和请求键已保留，请核对，不自动更换请求键。'; }
+      if (value instanceof ApiError && value.code === 'REQUEST_ID_REUSED') { blocked.value = true; error.value = '导入结果存在冲突，请在题库中核对。'; }
       else if (value instanceof ApiError && ['SENTENCE_IMPORT_NOT_READY', 'SENTENCE_ALREADY_EXISTS', 'SENTENCE_WORD_UNAVAILABLE', 'IMPORT_CSV_INVALID', 'IMPORT_EMPTY', 'IMPORT_ROW_LIMIT', 'IMPORT_ENCODING_UNSUPPORTED', 'IMPORT_TOO_LARGE', 'INVALID_PARAMETER'].includes(value.code)) {
         remember(); preview.value = undefined; previewText.value = undefined;
         error.value += '；整批未导入，请修改内容或重新预览。';
-      } else notice.value = '结果尚未确认。原 CSV 和请求键已保留，请重试原请求。';
+      } else notice.value = '导入结果尚未确认，请重试。';
     } finally { if (active) saving.value = false; }
   }
   async function confirm() {
@@ -97,7 +97,7 @@ export function useSentenceCsvImport(userId: number) {
     if (busy.value) return;
     const uncertain = !!pending.value;
     remember(); imported.value = undefined; resetPreview();
-    notice.value = uncertain ? '已开始新的导入内容，请先在题库核对上次结果；重新确认将使用新请求键。' : '';
+    notice.value = uncertain ? '已开始新的导入内容，请先在题库核对上次结果。' : '';
   }
   return { access, mode, text, file, preview, previewText, pending, imported, previewing, saving, error, notice, blocked, busy, locked, allReady, canConfirm, runPreview, confirm, retry: send, beginNew };
 }

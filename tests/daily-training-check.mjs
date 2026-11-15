@@ -255,8 +255,8 @@ await check('late responses from disposed pages cannot overwrite new sessions', 
   state.studyMode = 'DICTATION'; const current = session(); await current.s.open(); release(); await loading;
   assert.equal(current.s.mode.value, 'DICTATION'); assert.equal(current.s.question.value.word, undefined); assert.equal(old.s.question.value, undefined);
 });
-await check('missing 011 task fields show deployment prerequisite rather than legacy or mock fallback', async () => {
-  delete state.modeVersion; const { s } = session(); await s.open(); assert.match(s.error.value, /011/); assert.equal(s.question.value, undefined);
+await check('missing task fields prevent loading the question', async () => {
+  delete state.modeVersion; const { s } = session(); await s.open(); assert.match(s.error.value, /暂时无法加载训练/); assert.equal(s.question.value, undefined);
 });
 await check('recognition reveal restores across new scopes, repeated next and mode changes without extra REVEAL', async () => {
   const first = session(); await first.s.open();
@@ -283,10 +283,10 @@ await check('ANSWER_ALREADY_REVEALED refreshes presentation once and continues s
   await s.action('REVEAL'); assert.equal(writes().length, 1);
   pendingHook = undefined; await s.action('ANSWER', 2); assert.equal(writes().length, 2); assert.equal(writes()[1].body.action, 'ANSWER');
 });
-await check('pre-30 question response stops with a restart diagnostic rather than inferring phase', async () => {
+await check('incomplete question response stops without inferring phase', async () => {
   const original = http.defaults.adapter;
   http.defaults.adapter = async config => { const response = await original(config); if (config.url.endsWith('/next')) delete response.data.data.phase; return response; };
-  try { const { s } = session(); await s.open(); assert.equal(s.question.value, undefined); assert.match(s.error.value, /重启新版后端/); assert.equal(writes().length, 0); }
+  try { const { s } = session(); await s.open(); assert.equal(s.question.value, undefined); assert.match(s.error.value, /暂时无法加载题目/); assert.equal(writes().length, 0); }
   finally { http.defaults.adapter = original; }
 });
 await check('statistics/history use dedicated exact endpoints and settings PUT retains only dailyTarget', async () => {

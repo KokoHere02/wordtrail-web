@@ -35,7 +35,7 @@ export function useAccountSecurity(autoLoad = true) {
       try { return await accountApi.sessions(page.value, size); }
       catch (value) {
         if (value instanceof ApiError && value.code === 'AUTH_SESSION_UPGRADE_REQUIRED') { needsUpgrade.value = true; throw new Error('当前凭证需要升级，请刷新登录凭证或重新登录。'); }
-        if (value instanceof ApiError && [404, 405].includes(value.status || 0)) throw new Error('设备接口暂不可用，请确认后端已加载新版本并重启。');
+        if (value instanceof ApiError && [404, 405].includes(value.status || 0)) throw new Error('暂时无法加载设备信息，请稍后重试。');
         throw value;
       }
     });
