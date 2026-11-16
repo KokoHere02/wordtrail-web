@@ -2,7 +2,7 @@
 import { computed, ref, useId, watch } from 'vue';
 import { ChevronDown } from 'lucide-vue-next';
 import type { TranslationFields } from '../../types/translation';
-import { displayPartOfSpeech, parseLegacyMeaning, professionalPrefix, splitMeaningItems } from '../../utils/studyMeaning';
+import { describePartOfSpeech, displayPartOfSpeech, parseLegacyMeaning, professionalPrefix, splitMeaningItems } from '../../utils/studyMeaning';
 const props = withDefaults(defineProps<TranslationFields & { layout?: 'compact' | 'study'; wordKey?: string | number; full?: boolean }>(), { layout: 'compact', full: false });
 const expanded = ref(false);
 const openProfessional = ref(new Set<number>());
@@ -11,7 +11,7 @@ const source = computed(() => props.translationGroups !== undefined ? props.tran
 const groups = computed(() => source.value?.map(group => {
   const professional = props.layout === 'study' && group.partOfSpeech === null ? professionalPrefix(group.meaning) : null;
   const meaning = professional ? group.meaning.slice(professional.length) : group.meaning;
-  return { ...group, meaning, label: displayPartOfSpeech(group.partOfSpeech), professional, items: props.layout === 'study' ? splitMeaningItems(meaning) : [meaning] };
+  return { ...group, meaning, label: displayPartOfSpeech(group.partOfSpeech), description: props.layout === 'study' ? describePartOfSpeech(group.partOfSpeech) : undefined, professional, items: props.layout === 'study' ? splitMeaningItems(meaning) : [meaning] };
 }));
 const collapsible = computed(() => props.layout === 'study' && groups.value?.some(group => group.items.length > 4 || group.professional));
 function toggleProfessional(index: number) {
@@ -33,7 +33,7 @@ watch(() => [props.translationGroups, props.translation, props.wordKey], () => {
         <div v-for="(group, index) in groups" :key="index" :class="['translation-group', { 'has-part-of-speech': group.partOfSpeech !== null || (group.professional && full), 'translation-professional': group.professional, 'is-full': full }]">
           <button v-if="group.professional && !full" type="button" class="professional-toggle" :aria-expanded="openProfessional.has(index)" :aria-controls="`${contentId}-${index}`" @click="toggleProfessional(index)"><span>{{ group.professional.label }} 专业释义</span><ChevronDown :size="18" :class="{ expanded: openProfessional.has(index) }" /></button>
           <span v-else-if="group.professional" class="translation-part-of-speech">{{ group.professional.label }}</span>
-          <span v-else-if="group.partOfSpeech !== null" class="translation-part-of-speech">{{ group.label }}</span>
+          <span v-else-if="group.partOfSpeech !== null" class="translation-part-of-speech" :data-pos-tooltip="group.description" :aria-label="group.description ? `${group.label} ${group.description}` : undefined" :tabindex="group.description ? 0 : undefined">{{ group.label }}</span>
           <div v-if="full || !group.professional || openProfessional.has(index)" :id="group.professional ? `${contentId}-${index}` : undefined" class="translation-body"><span class="translation-meaning">{{ full || expanded ? group.meaning : group.items.slice(0, 4).join('') }}</span><small v-if="!full && !expanded && group.items.length > 4" class="translation-more">另有 {{ group.items.length - 4 }} 项释义</small></div>
         </div>
       </div>

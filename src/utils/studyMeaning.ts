@@ -37,6 +37,21 @@ export function displayPartOfSpeech(value: string | null): string | null {
   return value?.replace(/(^|[\s/&])a\.(?=$|[\s/&])/gi, '$1adj.') ?? null;
 }
 
+const partOfSpeechNames: Record<string, string> = {
+  n: '名词', v: '动词', vt: '及物动词', vi: '不及物动词',
+  a: '形容词', adj: '形容词', ad: '副词', adv: '副词',
+  prep: '介词', pron: '代词', conj: '连词', interj: '感叹词', int: '感叹词',
+  art: '冠词', det: '限定词', num: '数词', aux: '助动词', modal: '情态动词',
+  abbr: '缩写', prefix: '前缀', suffix: '后缀', pl: '复数',
+};
+
+export function describePartOfSpeech(value: string | null): string | undefined {
+  if (!value) return undefined;
+  const parts = value.trim().split(/\s*[&/]\s*/);
+  const names = parts.map(part => partOfSpeechNames[part.trim().replace(/\.$/, '').toLowerCase()]);
+  return names.every(Boolean) ? names.join(' / ') : undefined;
+}
+
 export function professionalPrefix(meaning: string) {
   const match = meaning.match(/^\s*(\[[^\]\n]{1,20}\])[\t ]*/u);
   return match ? { label: match[1]!, length: match[0].length } : null;
