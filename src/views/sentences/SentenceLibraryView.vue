@@ -13,7 +13,7 @@ type Tag = { id: number; category: string; name: string };
 type Sentence = { id: number; englishText: string; referenceTranslation: string; explanation: string | null; source: string; sourceReference: string | null; learning: boolean; favorite: boolean; available: boolean; tags?: Tag[] };
 type History = { id: number; translation: string; createdAt: string };
 const route = useRoute(); const access = useSentenceManagementAccess();
-const rows = ref<Sentence[]>([]), tags = ref<Tag[]>([]), scope = ref(route.query.scope === 'favorites' ? 'favorites' : 'bank'), tagId = ref(''), offset = ref(0), busy = ref(false), error = ref('');
+const rows = ref<Sentence[]>([]), tags = ref<Tag[]>([]), scope = ref(route.query.scope === 'favorites' || route.query.scope === 'learning' ? route.query.scope : 'bank'), tagId = ref(''), offset = ref(0), busy = ref(false), error = ref('');
 const searchInput = ref(''), keyword = ref('');
 const selected = ref<number[]>([]);
 const randomOpen = ref(false), selectionNotice = ref('');

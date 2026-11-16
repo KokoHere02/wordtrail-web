@@ -1,4 +1,5 @@
-.word-detail-page { max-width: var(--content); }
+.wordlist-page.book-wordlist-page, .wordlist-page.word-detail-page { width: min(calc(100% - var(--s5) * 2), var(--content-library-width)); }
+.word-detail-page { max-width: var(--content-library-width); }
 .detail-back { align-self: flex-start; margin-bottom: var(--s6); min-height: var(--control); }
 .word-detail-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--s6); padding-bottom: var(--s8); }
 .word-detail-heading > div { min-width: 0; }

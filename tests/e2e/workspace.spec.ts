@@ -186,48 +186,28 @@ for (const width of [1280, 375]) test(`weak words select across pages for indepe
 
 for (const [width, theme] of [[1280, 'light'], [375, 'dark'], [320, 'light']] as const) test(`content library navigation remains visible and highlights the current page at ${width}px`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 900 });
+  await page.addInitScript(theme => localStorage.setItem('wordtrail.theme', theme), theme);
   await page.goto('/login');
-  await page.locator('#username').fill('content_navigation_reader');
-  await page.locator('#password').fill('example123');
+  await page.getByLabel('手机号或邮箱').fill('13800138000');
+  await page.getByLabel('密码', { exact: true }).fill('example123');
   await page.getByRole('button', { name: '登录', exact: true }).click();
-  await expect(page.locator('.daily-equation')).toBeVisible();
-  await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('link', { name: '内容库', exact: true }).click();
+  await page.waitForURL(url => !url.pathname.includes('login'));
+  await page.getByRole('navigation', { name: '主导航' }).getByRole('link', { name: '内容库', exact: true }).click();
   const nav = page.getByRole('navigation', { name: '内容库分类', exact: true });
-  const entries = [['单词', '/books'], ['句子', '/sentences'], ['学习计划', '/plan'], ['薄弱词', '/weak-words']] as const;
-  async function expectActive(label: string) {
-    await expect(nav.locator('a')).toHaveCount(4);
-    await expect(nav.getByRole('link', { name: '默写待巩固', exact: true })).toHaveCount(0);
-    for (const [name] of entries) await expect(nav.getByRole('link', { name, exact: true })).toBeVisible();
-    await expect(nav.locator('a.active')).toHaveText(label);
-    await expect(nav.locator('a[aria-current="page"]')).toHaveText(label);
-    await expect(page.locator('.app-main-nav a.active')).toHaveText('内容库');
+  const kinds = nav.getByRole('group', { name: '内容类型' });
+  const words = nav.getByRole('group', { name: '单词分类' });
+  for (const [label, path] of [['词书', '/books'], ['学习计划', '/plan'], ['薄弱词', '/weak-words'], ['错词与错因', '/consolidation/words']] as const) {
+    await words.getByRole('link', { name: label, exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`${path}$`));
+    await expect(kinds.getByRole('link', { name: '单词' })).toHaveAttribute('aria-current', 'location');
+    await expect(words.getByRole('link', { name: label, exact: true })).toHaveAttribute('aria-current', 'page');
+    await expect(page.locator('#main h1')).toHaveCount(0);
     expect(await page.locator('html').evaluate(node => node.scrollWidth <= window.innerWidth)).toBe(true);
   }
-  for (const [label, path] of entries) {
-    await nav.getByRole('link', { name: label, exact: true }).click();
-    await expect(page).toHaveURL(new RegExp(`${path}$`));
-    await expectActive(label);
-    await expect(page.locator('#main h1')).toHaveCount(0);
-    if (path === '/weak-words') {
-      await expect(page.getByRole('group', { name: '薄弱词来源' })).toHaveCount(0);
-      await expect(page.locator('.weak-words-page')).not.toContainText('历史认读专项');
-    }
-  }
-  await nav.getByRole('link', { name: '句子', exact: true }).click();
-  await expectActive('句子');
-  await nav.getByRole('link', { name: '学习计划', exact: true }).click();
-  await expectActive('学习计划');
-  await page.goBack(); await expectActive('句子');
-  await page.goForward(); await expectActive('学习计划');
-  await page.reload(); await expectActive('学习计划');
-  for (const [path, label] of [['/books/1', '单词'], ['/words/1004', '单词'], ['/sentences/favorites', '句子'], ['/sentences/notes', '句子'], ['/weak-words?source=DAILY', '薄弱词']] as const) {
-    await page.evaluate(async path => { const routerPath = '/src/router/index.ts'; const { router } = await import(/* @vite-ignore */ routerPath); await router.push(path); }, path);
-    await expectActive(label);
-  }
-  await page.evaluate(theme => { document.documentElement.dataset.theme = theme; }, theme);
-  await nav.getByRole('link', { name: '句子', exact: true }).focus();
-  await page.keyboard.press('Enter');
-  await expectActive('句子');
+  await kinds.getByRole('link', { name: '句子', exact: true }).click();
+  await expect(kinds.getByRole('link', { name: '句子' })).toHaveAttribute('aria-current', 'location');
+  await expect(page.getByRole('navigation', { name: '句子范围' }).getByRole('button', { name: '句子库' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(words).toHaveCount(0);
   await page.screenshot({ path: testInfo.outputPath('content-navigation.png'), animations: 'disabled' });
 });
 

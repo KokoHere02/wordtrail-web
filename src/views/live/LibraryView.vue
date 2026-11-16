@@ -48,10 +48,10 @@ onMounted(refresh);
       </article>
     </TransitionGroup>
     <AppPagination v-if="data" :page="page" :size="size" :total="data.total" :disabled="loading" @change="page = $event" />
-    <div class="library-bottom"><RouterLink to="/plan" class="btn btn-secondary">我的计划<ArrowRight :size="18" /></RouterLink></div>
     <BookEditorDialog v-model="editorOpen" :book="editingBook" @saved="saved" @unavailable="refresh" />
   </div>
 </template>
 <style scoped>
+.library-page { width: min(calc(100% - var(--s5) * 2), var(--content-library-width)); }
 .library-toolbar .library-heading-actions { width: 100%; justify-content: flex-end; }
 </style>
