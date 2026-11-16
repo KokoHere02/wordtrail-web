@@ -462,6 +462,22 @@
 .study-directory :is(button, a):focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .study-directory-toolbar { min-height: 52px; justify-content: flex-end; }
 .is-daily-practice .study-directory-toolbar { border-bottom: 0; }
+@media (min-width: 1100px) {
+  .is-daily-practice .study-directory-main:has(.workspace-exercise.has-aligned-prompt) { position: relative; }
+  .is-daily-practice .study-directory-main:has(.workspace-exercise.has-aligned-prompt) > .study-directory-toolbar { position: absolute; top: 24px; right: 0; z-index: 5; }
+  .is-daily-practice .study-directory-main:has(.workspace-exercise.has-aligned-prompt) .word-practice-tools { gap: 2px; }
+  .is-daily-practice .study-directory-main:has(.workspace-exercise.has-aligned-prompt) .word-practice-tools .workspace-icon-button { width: 32px; }
+  .is-daily-practice .study-directory-main:has(.workspace-exercise.has-aligned-prompt) .word-practice-tool-divider { margin-inline: 4px; }
+  .is-daily-practice .workspace-exercise.has-aligned-prompt .daily-training-card > .learning-word { width: min(100%, 46cqw, calc(100cqw - 460px)); }
+  .is-daily-practice .workspace-exercise.has-aligned-prompt > .workspace-status-meta { align-items: flex-start; text-align: left; }
+  .is-daily-practice .workspace-exercise.has-aligned-prompt > .workspace-status-meta .workspace-progress > div { justify-content: flex-start; }
+  /* Move the controls above long words so the heading can use the whole row. */
+  .is-daily-practice .study-directory-main:has(.workspace-exercise.has-wide-word) > .study-directory-toolbar { top: 0; }
+  .is-daily-practice .workspace-exercise.has-wide-word > .workspace-status-meta { top: 14px; }
+  .is-daily-practice .workspace-exercise.has-wide-word > .workspace-status-meta .workspace-progress { max-width: 45%; }
+  .is-daily-practice .workspace-exercise.has-wide-word #mode-panel-words { padding-top: var(--word-tools-height, 52px); }
+  .is-daily-practice .workspace-exercise.has-wide-word .daily-training-card > .learning-word { width: 100%; max-width: none; }
+}
 @media (max-width: 800px) {
   .study-directory-layout, .study-directory-layout.is-collapsed { grid-template-columns: minmax(0, 1fr); gap: 8px; }
   .study-directory, .study-directory.is-collapsed { min-height: 0; padding: 0 0 8px; border-right: 0; border-bottom: 1px solid var(--line); }

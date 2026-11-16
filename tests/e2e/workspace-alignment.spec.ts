@@ -49,6 +49,27 @@ test('status stays aligned through recognition audio failure and tab changes', a
 
   await expect(word).toHaveText('edition');
   await expectAligned(word);
+  await page.setViewportSize({ width: 1150, height: 900 });
+  await word.evaluate(element => { element.textContent = 'settlement'; });
+  await expect.poll(() => word.evaluate(element => {
+    const range = document.createRange(); range.selectNodeContents(element);
+    return range.getClientRects().length;
+  })).toBe(1);
+  await word.evaluate(element => { element.textContent = 'internationalization'; });
+  await expect(page.locator('.workspace-exercise')).toHaveClass(/has-wide-word/);
+  await expect.poll(() => word.evaluate(element => {
+    const range = document.createRange(); range.selectNodeContents(element);
+    return range.getClientRects().length;
+  })).toBe(1);
+  const wordBounds = await word.boundingBox();
+  for (const selector of ['.study-directory-toolbar', '.workspace-status-meta .workspace-progress']) {
+    const sideBounds = await page.locator(selector).boundingBox();
+    expect(sideBounds!.y + sideBounds!.height).toBeLessThanOrEqual(wordBounds!.y);
+  }
+  await word.evaluate(element => { element.textContent = 'edition'; });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await expect(page.locator('.workspace-exercise')).not.toHaveClass(/has-wide-word/);
+  await expectAligned(word);
   await expect(meta.locator('.workspace-source')).toHaveCount(0);
   await expect(page.locator('.is-daily-practice .study-directory-toolbar')).toHaveCSS('border-bottom-style', 'none');
   const navigation = page.getByRole('navigation', { name: '学习导航' });

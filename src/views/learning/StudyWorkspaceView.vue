@@ -85,6 +85,7 @@ let layoutResize: ResizeObserver | undefined;
 let layoutMutations: MutationObserver | undefined;
 let observedPrompt: Element | null = null;
 let observedMeta: Element | null = null;
+const wordMeasure = document.createElement('canvas').getContext('2d');
 function scheduleExerciseLayout() {
   if (layoutFrame) return;
   layoutFrame = requestAnimationFrame(() => {
@@ -109,6 +110,20 @@ function scheduleExerciseLayout() {
       if (visiblePrompt) layoutResize?.observe(visiblePrompt);
     }
     root.classList.toggle('has-aligned-prompt', !!visiblePrompt);
+    let needsWordSpace = false;
+    if (visiblePrompt && workspace.lane === 'daily' && wordMeasure) {
+      const font = getComputedStyle(visiblePrompt);
+      wordMeasure.font = font.font;
+      const available = Math.min(root.clientWidth * 0.46, root.clientWidth - 460, visiblePrompt.parentElement?.clientWidth ?? Infinity);
+      needsWordSpace = wordMeasure.measureText(visiblePrompt.textContent?.trim() || '').width + 8 > available;
+    }
+    root.classList.toggle('has-wide-word', needsWordSpace);
+    if (needsWordSpace) {
+      const toolbar = root.parentElement?.querySelector<HTMLElement>(':scope > .study-directory-toolbar');
+      const toolsHeight = Math.ceil(Math.max(toolbar?.getBoundingClientRect().height ?? 0, meta.getBoundingClientRect().height + 14, 52));
+      const height = `${toolsHeight}px`;
+      if (root.style.getPropertyValue('--word-tools-height') !== height) root.style.setProperty('--word-tools-height', height);
+    } else root.style.removeProperty('--word-tools-height');
     if (!visiblePrompt) {
       root.style.removeProperty('--exercise-meta-top');
       return;
@@ -123,12 +138,14 @@ watch(exercise, (root, _previous, onCleanup) => {
   if (!root) return;
   layoutResize = new ResizeObserver(scheduleExerciseLayout);
   layoutResize.observe(root);
+  const toolbar = root.parentElement?.querySelector(':scope > .study-directory-toolbar');
+  if (toolbar) layoutResize.observe(toolbar);
   layoutMutations = new MutationObserver(scheduleExerciseLayout);
   layoutMutations.observe(root, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['class', 'style', 'hidden'] });
   scheduleExerciseLayout();
   onCleanup(() => { layoutResize?.disconnect(); layoutMutations?.disconnect(); observedPrompt = null; observedMeta = null; });
 }, { flush: 'post' });
-onMounted(() => window.addEventListener('resize', scheduleExerciseLayout));
+onMounted(() => { window.addEventListener('resize', scheduleExerciseLayout); void document.fonts.ready.then(scheduleExerciseLayout); });
 onUnmounted(() => {
   cancelAnimationFrame(layoutFrame);
   layoutResize?.disconnect();
