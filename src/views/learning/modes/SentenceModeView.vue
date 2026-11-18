@@ -2,6 +2,10 @@
 import { computed, nextTick, onActivated, onDeactivated, onScopeDispose, ref, watch } from 'vue';
 import { ArrowRight, BookOpen, RotateCcw } from 'lucide-vue-next';
 import { request, errorMessage } from '../../../api/http';
+import { sentenceAudioUrl } from '../../../api/learningMedia';
+import { useAudioPlayer } from '../../../composables/useAudioPlayer';
+import { useLearningKeys } from '../../../composables/useLearningKeys';
+import { usePronunciation } from '../../../stores/pronunciation';
 import { useStudySurface } from '../../../composables/useStudySurface';
 import { createRequestId } from '../../../utils/requestId';
 import AppAlert from '../../../components/ui/AppAlert.vue';
@@ -15,6 +19,19 @@ const loading = ref(false), submitting = ref(false), loaded = ref(false), error 
 const needsRefresh = ref(false);
 const answerInput = ref<HTMLTextAreaElement | null>(null), nextButton = ref<HTMLButtonElement | null>(null);
 const current = computed(() => queue.value[index.value]);
+const pronunciation = usePronunciation();
+const { play, stop, loading: audioLoading, speaking, error: audioError } = useAudioPlayer();
+function toggleAudio() {
+  if (audioLoading.value || speaking.value) stop();
+  else if (current.value) void play(sentenceAudioUrl(current.value.id), pronunciation.value);
+}
+useLearningKeys({ pronounce: toggleAudio });
+const audioLabel = computed(() => audioLoading.value ? '取消加载' : speaking.value ? '停止朗读' : '朗读原句');
+defineExpose({ canPronounce: computed(() => !!current.value), audioLabel, audioActive: computed(() => audioLoading.value || speaking.value), toggleAudio });
+watch([() => current.value?.id, () => surface?.active.value], () => {
+  stop();
+  audioError.value = '';
+});
 const completed = computed(() => loaded.value && queue.value.length > 0 && index.value >= queue.value.length);
 let mounted = true;
 onScopeDispose(() => { mounted = false; });
@@ -75,11 +92,11 @@ async function submit() {
   }
 }
 watch(() => surface?.active.value, active => {
+  if (active) void pronunciation.load().catch(() => { /* Playback can use the default voice settings. */ });
   if (active && (!loaded.value || needsRefresh.value || completed.value || queue.value.length === 0) && !loading.value) void load();
 }, { immediate: true });
 watch([queue, index, loaded], () => {
   if (!surface) return;
-  surface.state.source = '句子学习列表';
   surface.state.total = queue.value.length;
   surface.state.completed = Math.min(index.value, queue.value.length);
   surface.state.remaining = Math.max(0, queue.value.length - index.value);
@@ -96,6 +113,7 @@ watch([queue, index, loaded], () => {
       <div class="sentence-prompt">
         <span class="sentence-prompt-label">英译中</span>
         <h1 lang="en">{{ current.englishText }}</h1>
+        <p v-if="audioError" class="speech-error" role="status">{{ audioError }}</p>
       </div>
       <form v-if="!feedback" class="sentence-answer-form" @submit.prevent="submit">
         <label for="workspace-sentence-answer">你的翻译</label>

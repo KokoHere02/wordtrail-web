@@ -7,7 +7,7 @@ export function audioPath(source: string, accent: 'US' | 'UK') {
   const prefix = base.pathname.replace(/\/$/, '');
   if (url.origin !== base.origin || !url.pathname.startsWith(`${prefix}/`)) throw new ApiError('音频地址不可用。', 'INVALID_AUDIO_URL');
   const path = url.pathname.slice(prefix.length);
-  if (!/^\/words\/\d+\/audio$/.test(path) && !/^\/learning-batches\/\d+\/training\/items\/\d+\/audio$/.test(path) && !/^\/dictation\/batches\/\d+\/items\/\d+\/audio$/.test(path))
+  if (!/^\/words\/\d+\/audio$/.test(path) && !/^\/sentence-practice\/sentences\/\d+\/audio$/.test(path) && !/^\/learning-batches\/\d+\/training\/items\/\d+\/audio$/.test(path) && !/^\/dictation\/batches\/\d+\/items\/\d+\/audio$/.test(path))
     throw new ApiError('音频地址不可用。', 'INVALID_AUDIO_URL');
   if ([...url.searchParams.keys()].some(key => !['accent', 'presentationId', 'modeVersion'].includes(key)))
     throw new ApiError('音频参数不可用。', 'INVALID_AUDIO_URL');
@@ -20,9 +20,15 @@ export async function audioBlob(source: string, accent: 'US' | 'UK', signal: Abo
     throw await responseError(response.data, '音频暂不可用，请重试或切换学习方式。', response.status);
   return response.data;
 }
-export function ordinaryAudioUrl(wordId: number) {
+function mediaUrl(path: string) {
   const base = new URL(http.defaults.baseURL || '/api', window.location.origin);
-  return `${base.origin}${base.pathname.replace(/\/$/, '')}/words/${wordId}/audio`;
+  return `${base.origin}${base.pathname.replace(/\/$/, '')}${path}`;
+}
+export function ordinaryAudioUrl(wordId: number) {
+  return mediaUrl(`/words/${wordId}/audio`);
+}
+export function sentenceAudioUrl(sentenceId: number) {
+  return mediaUrl(`/sentence-practice/sentences/${sentenceId}/audio`);
 }
 export async function exportLearningData(signal?: AbortSignal) {
   const response = await http.get<Blob>('/me/learning-data/export', { responseType: 'blob', timeout: 120000, signal });

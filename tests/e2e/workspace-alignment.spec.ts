@@ -35,18 +35,6 @@ test('status stays aligned through recognition audio failure and tab changes', a
       return a && b ? Math.abs(a.y + a.height / 2 - b.y - b.height / 2) : Infinity;
     }).toBeLessThan(2);
   }
-  async function expectSourceBelowProgress(status: typeof meta) {
-    const progress = status.locator('.workspace-progress');
-    const source = status.locator('.workspace-source');
-    await expect(source).toBeVisible();
-    await expect.poll(async () => {
-      const p = await progress.boundingBox(), s = await source.boundingBox();
-      return p && s ? s.y - (p.y + p.height) : -1;
-    }).toBeGreaterThanOrEqual(0);
-    const bounds = await source.boundingBox();
-    expect(bounds!.x + bounds!.width).toBeGreaterThan(page.viewportSize()!.width / 2);
-  }
-
   await expect(word).toHaveText('edition');
   await expectAligned(word);
   await page.setViewportSize({ width: 1150, height: 900 });
@@ -110,8 +98,12 @@ test('status stays aligned through recognition audio failure and tab changes', a
   const sentence = page.locator('.sentence-workspace-card h1');
   await expect(sentence).toBeVisible();
   await expect(navigation.getByRole('link', { name: '每日单词' })).toBeHidden();
-  await expectAligned(sentence);
-  await expectSourceBelowProgress(meta);
+  await expect(meta.getByRole('button', { name: '朗读原句' })).toBeVisible();
+  await expect(meta.locator('.workspace-source')).toHaveCount(0);
+  await expect.poll(async () => {
+    const status = await meta.boundingBox(), prompt = await sentence.boundingBox();
+    return status && prompt ? prompt.y - status.y - status.height : -1;
+  }).toBeGreaterThanOrEqual(12);
   await page.getByRole('tab', { name: '单词练习' }).click();
   await expect(word).toHaveText('edition');
   await expectAligned(word);

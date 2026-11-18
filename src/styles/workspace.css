@@ -413,6 +413,14 @@
 /* Keep the exercise status alongside the prompt when there is room for all three. */
 .workspace-exercise { position: relative; min-width: 0; container-type: inline-size; }
 .workspace-exercise > .workspace-meta { min-height: 0; padding-block: var(--s4); border-bottom: 0; }
+.workspace-exercise.is-sentences > .workspace-meta {
+  flex-flow: row nowrap; align-items: center; justify-content: flex-end;
+  width: min(100%, 820px); margin-inline: auto; padding-block: 0 var(--s2);
+  column-gap: var(--s3);
+}
+.is-sentences .workspace-progress > div { display: grid; gap: var(--s1); }
+.workspace-exercise.is-sentences .workspace-meta .workspace-progress-track { width: 100%; max-width: none; }
+.is-sentences #mode-panel-sentences { padding-top: 0; }
 @media (min-width: 1100px) {
   .workspace-exercise.has-aligned-prompt > .workspace-meta {
     position: absolute; top: var(--exercise-meta-top, 0px); left: 0; right: 0; z-index: 1; padding: 0; pointer-events: none;
@@ -423,7 +431,6 @@
   .workspace-exercise.has-aligned-prompt:is(.is-daily, .is-follow) #mode-panel-words { padding-top: var(--s2); }
   .workspace-exercise.has-aligned-prompt:is(.is-daily, .is-follow) .daily-training-card > .learning-word { width: 50%; max-width: 46cqw; margin-top: 0; margin-inline: auto; }
   .workspace-exercise.has-aligned-prompt.is-follow .follow-exercise { padding-top: var(--s2); }
-  .workspace-exercise.has-aligned-prompt.is-sentences .sentence-prompt { width: min(65%, 46cqw); margin-inline: auto; }
 }
 
 .study-directory-layout { display: grid; grid-template-columns: 176px minmax(0, 1fr); gap: 24px; align-items: start; transition: grid-template-columns 220ms ease, gap 220ms ease; }

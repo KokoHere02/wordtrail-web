@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { Square, Volume2 } from 'lucide-vue-next';
 import { useStudyWorkspace } from '../../stores/studyWorkspace';
 import { useAuthStore } from '../../stores/auth';
 import type { StudyMode, StudySurfaceState } from '../../composables/useStudySurface';
@@ -21,6 +22,7 @@ const dailyView = ref<InstanceType<typeof UnifiedDailyView>>(), dailyBlocked = r
 const followView = ref<InstanceType<typeof FollowTypingView>>(), preferences = useStudyPreferences();
 const navigationCollapsed = ref(false);
 const wordToolbar = ref<InstanceType<typeof WordPracticeToolbar>>();
+const sentenceView = ref<InstanceType<typeof SentenceModeView>>();
 const exercise = ref<HTMLElement>();
 const followCount = computed({ get: () => String(followView.value?.count ?? 20), set: value => { followView.value?.setCount(Number(value)); } });
 const following = computed(() => workspace.lane === 'follow');
@@ -79,7 +81,7 @@ function selectTab(id: 'words' | 'sentences') {
   return select(id === 'sentences' ? 'sentences' : lastWordMode.value);
 }
 
-// The status belongs beside the visible prompt, including when notices change its position.
+// Align the word practice status with its prompt when notices or feedback move it.
 let layoutFrame = 0;
 let layoutResize: ResizeObserver | undefined;
 let layoutMutations: MutationObserver | undefined;
@@ -100,8 +102,7 @@ function scheduleExerciseLayout() {
     }
     const selector = workspace.lane === 'daily'
       ? '#mode-panel-daily .daily-training-card[data-mode="RECOGNITION"] > .learning-word, #mode-panel-daily .recognition-feedback > .learning-word'
-      : workspace.lane === 'follow' ? '#mode-panel-follow .follow-exercise > .learning-word'
-      : workspace.lane === 'sentences' ? '#mode-panel-sentences .sentence-workspace-card h1' : '';
+      : workspace.lane === 'follow' ? '#mode-panel-follow .follow-exercise > .learning-word' : '';
     const prompt = window.innerWidth >= 1100 && selector ? root.querySelector<HTMLElement>(selector) : null;
     const visiblePrompt = prompt?.getClientRects().length ? prompt : null;
     if (observedPrompt !== visiblePrompt) {
@@ -171,13 +172,23 @@ onUnmounted(() => {
       </WordPracticeToolbar>
     </div>
     <div ref="exercise" class="workspace-exercise" :class="`is-${workspace.lane}`">
-    <div v-if="workspace.lane !== 'independent' || (workspace.dictationId && !current.settings)" class="workspace-meta workspace-status-meta"><div class="workspace-progress"><div><span>{{ current.completed }} / {{ current.total || '—' }} {{ current.noun }} · 剩余 {{ current.remaining }} {{ current.noun }}</span><div class="workspace-progress-track" role="progressbar" aria-label="当前任务完成进度" :aria-valuenow="current.completed" :aria-valuemax="current.total || 1"><span :style="{ width: `${current.total ? Math.min(100, current.completed / current.total * 100) : 0}%` }" /></div></div></div><div v-if="workspace.lane !== 'daily' && !following" class="workspace-source"><span>{{ current.source }}</span></div></div>
+    <div v-if="workspace.lane !== 'independent' || (workspace.dictationId && !current.settings)" class="workspace-meta workspace-status-meta">
+      <button v-if="workspace.lane === 'sentences' && sentenceView?.canPronounce" type="button" class="workspace-icon-button" :aria-label="sentenceView.audioLabel"
+        aria-keyshortcuts="P Alt+P" :title="`${sentenceView.audioLabel}（P 或 Alt + P）`" @click="sentenceView.toggleAudio()">
+        <component :is="sentenceView.audioActive ? Square : Volume2" :size="20" :stroke-width="1.7" aria-hidden="true" />
+      </button>
+      <div class="workspace-progress"><div>
+        <span>{{ current.completed }} / {{ current.total || '—' }} {{ current.noun }} · 剩余 {{ current.remaining }} {{ current.noun }}</span>
+        <div class="workspace-progress-track" role="progressbar" aria-label="当前任务完成进度" :aria-valuenow="current.completed" :aria-valuemax="current.total || 1"><span :style="{ width: `${current.total ? Math.min(100, current.completed / current.total * 100) : 0}%` }" /></div>
+      </div></div>
+      <div v-if="workspace.lane === 'independent'" class="workspace-source"><span>{{ current.source }}</span></div>
+    </div>
     <section id="mode-panel-words" v-show="activeTab === 'words' && workspace.lane !== 'independent'" role="tabpanel" tabindex="-1" aria-labelledby="mode-tab-words" class="workspace-panel">
       <div id="mode-panel-daily" v-show="workspace.lane === 'daily'"><StudyModeHost v-if="visited.has('daily')" :active="workspace.lane === 'daily'" :state="states.daily!"><UnifiedDailyView ref="dailyView" :requested-batch-id="workspace.dailyId" @mode="confirmedMode" @blocked="dailyBlocked = $event" /></StudyModeHost></div>
       <div id="mode-panel-follow" v-show="following"><StudyModeHost v-if="visited.has('follow')" :active="following" :state="states.follow!"><FollowTypingView ref="followView" :requested-batch-id="workspace.followId" @batch="workspace.followId = $event" /></StudyModeHost></div>
     </section>
     <section id="mode-panel-independent" v-show="workspace.lane === 'independent'" role="region" aria-label="独立默写专项" class="workspace-panel"><StudyModeHost v-if="visited.has('independent')" :active="workspace.lane === 'independent'" :state="states.independent!"><DictationModeView /></StudyModeHost></section>
-    <section id="mode-panel-sentences" v-show="workspace.lane === 'sentences'" role="tabpanel" tabindex="-1" aria-labelledby="mode-tab-sentences" class="workspace-panel"><StudyModeHost v-if="visited.has('sentences')" :active="workspace.lane === 'sentences'" :state="states.sentences!"><SentenceModeView /></StudyModeHost></section>
+    <section id="mode-panel-sentences" v-show="workspace.lane === 'sentences'" role="tabpanel" tabindex="-1" aria-labelledby="mode-tab-sentences" class="workspace-panel"><StudyModeHost v-if="visited.has('sentences')" :active="workspace.lane === 'sentences'" :state="states.sentences!"><SentenceModeView ref="sentenceView" /></StudyModeHost></section>
     </div>
     </div>
     </div>

@@ -1,6 +1,9 @@
 import { expect, test } from '@playwright/test';
 test('sentence list, skip, repeat and history', async ({page}, testInfo) => {
-  await page.goto('/login', {waitUntil:'domcontentloaded'}); await page.locator('#username').fill('sentence_learning_reader'); await page.locator('#password').fill('example123'); await page.getByRole('button',{name:'登录',exact:true}).click();
+  await page.goto('/login', {waitUntil:'domcontentloaded'});
+  await page.getByRole('textbox', { name: '手机号或邮箱' }).fill('13800000001');
+  await page.getByLabel('密码', { exact: true }).fill('example123');
+  await page.getByRole('button',{name:'登录',exact:true}).click();
   await expect(page.locator('.daily-equation')).toBeVisible();
   await page.evaluate(async () => {
     const {http}=await import(/* @vite-ignore */ '/src/api/http.ts'); const {router}=await import(/* @vite-ignore */ '/src/router/index.ts');
@@ -14,6 +17,20 @@ test('sentence list, skip, repeat and history', async ({page}, testInfo) => {
       const body=config.data?JSON.parse(config.data):{};
       if(config.url==='/sentence-practice/tags')return ok([]);
       if(config.url==='/sentence-translation/management/access')return ok({canManage:false});
+      if (/^\/sentence-practice\/sentences\/\d+\/audio\?accent=(US|UK)$/.test(config.url)) {
+        Reflect.set(window, '__lastSentenceAudio', config.url);
+        // A playable ten-second PCM fixture leaves time to exercise stop and navigation.
+        const header = new Uint8Array(44), view = new DataView(header.buffer);
+        const samples = 80000;
+        header.set(new TextEncoder().encode('RIFF'), 0);
+        header.set(new TextEncoder().encode('WAVEfmt '), 8);
+        header.set(new TextEncoder().encode('data'), 36);
+        view.setUint32(4, 36 + samples * 2, true);
+        view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+        view.setUint32(24, 8000, true); view.setUint32(28, 16000, true);
+        view.setUint16(32, 2, true); view.setUint16(34, 16, true); view.setUint32(40, samples * 2, true);
+        return { config, status: 200, headers: { 'content-type': 'audio/wav' }, data: new Blob([header, new Uint8Array(samples * 2)], { type: 'audio/wav' }) };
+      }
       if(config.url==='/sentence-practice/sentences'){const offset=Number(config.params?.offset || 0), limit=Number(config.params?.limit || 50); return ok(rows.filter(x=>config.params?.scope!=='learning'||learning.has(x.id)).slice(offset,offset+limit).map(x=>({...x,learning:learning.has(x.id)})));}
       if(config.url.startsWith('/sentence-practice/learning/')&&config.method==='put'){learning.add(Number(config.url.split('/').at(-1)));return ok(null);}
       if(config.url.startsWith('/sentence-practice/learning/')&&config.method==='delete'){learning.delete(Number(config.url.split('/').at(-1)));return ok(null);}
@@ -49,10 +66,51 @@ test('sentence list, skip, repeat and history', async ({page}, testInfo) => {
   await expect(page.getByRole('region', {name:'句子翻译练习'})).toContainText('Example sentence 1.');
   await expect(page.locator('.workspace-progress')).toContainText('0 / 2 句');
   await page.screenshot({ path: testInfo.outputPath('workspace-practice.png') });
+  const play = page.locator('.workspace-status-meta').getByRole('button', { name: '朗读原句' });
+  const stop = page.getByRole('button', { name: '停止朗读' });
+  await expect(play).toHaveText('');
+  await expect(page.getByText('句子学习列表', { exact: true })).toHaveCount(0);
+  for (const width of [320, 390, 1100, 1280]) {
+    await page.setViewportSize({ width, height: 720 });
+    const layout = await play.evaluate(button => {
+      const icon = button.getBoundingClientRect();
+      const header = button.closest('.workspace-status-meta')!;
+      const count = header.querySelector('.workspace-progress > div > span')!.getBoundingClientRect();
+      const prompt = document.querySelector('.sentence-prompt')!.getBoundingClientRect();
+      return {
+        gap: count.left - icon.right,
+        countInIconRow: count.top >= icon.top && count.bottom <= icon.bottom,
+        trackBelow: header.querySelector('[role="progressbar"]')!.getBoundingClientRect().top >= count.bottom,
+        abovePrompt: prompt.top - header.getBoundingClientRect().bottom,
+        rightInset: header.getBoundingClientRect().right - count.right,
+      };
+    });
+    expect(layout.gap).toBeGreaterThanOrEqual(8);
+    expect(layout.gap).toBeLessThanOrEqual(24);
+    expect(layout.countInIconRow).toBe(true);
+    expect(layout.trackBelow).toBe(true);
+    expect(layout.abovePrompt).toBeGreaterThanOrEqual(12);
+    expect(Math.abs(layout.rightInset)).toBeLessThan(2);
+    if (width === 390) await page.screenshot({ path: testInfo.outputPath('workspace-practice-mobile.png') });
+  }
+  await page.getByLabel('你的翻译').fill('我的翻译');
+  await page.keyboard.press('p');
+  await expect(play).toBeVisible();
+  await page.keyboard.press('Alt+p');
+  await expect(stop).toBeVisible();
+  expect(await page.evaluate(() => Reflect.get(window, '__lastSentenceAudio'))).toMatch(/\/sentences\/1\/audio\?/);
+  await stop.click();
+  await expect(page.getByLabel('你的翻译')).toHaveValue('我的翻译p');
   await page.getByLabel('你的翻译').fill('我的翻译');
   await page.getByRole('button',{name:'提交翻译'}).click();
   await expect(page.locator('.sentence-reference-answer').getByText('参考翻译 1')).toBeVisible();
+  await page.getByRole('heading', { name: 'Example sentence 1.' }).click();
+  await page.keyboard.press('p');
+  await expect(stop).toBeVisible();
   await page.getByRole('button',{name:'下一句'}).click();
+  await play.click();
+  await expect(stop).toBeVisible();
+  expect(await page.evaluate(() => Reflect.get(window, '__lastSentenceAudio'))).toMatch(/\/sentences\/2\/audio\?/);
   await page.getByRole('button',{name:'跳过'}).click();
   await expect(page.getByText('跳过的 1 句仍在学习列表中。')).toBeVisible();
   await page.getByRole('link',{name:'管理学习列表'}).click();
