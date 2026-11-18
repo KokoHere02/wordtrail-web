@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { onBeforeRouteLeave, useRoute } from 'vue-router';
 import { ArrowLeft, ArrowRight, Plus, Download, Upload, Shuffle } from 'lucide-vue-next';
 import { useBookContents } from '../../composables/useBookContents';
 import { useBookExport } from '../../composables/useBookExport';
@@ -18,7 +18,21 @@ import WordHistoryDialog from '../../components/learning/WordHistoryDialog.vue';
 import WordMeaning from '../../components/word/WordMeaning.vue';
 import RandomBookWordsDialog from '../../components/word/RandomBookWordsDialog.vue';
 const id = Number(useRoute().params.bookId);
-const contents = useBookContents(id);
+const savedList = window.history.state?.wordBookList;
+const contents = useBookContents(id, savedList?.bookId === id ? savedList : undefined);
+onBeforeRouteLeave(to => {
+  if (to.params.wordId) {
+    const wordBookList = { bookId: id, page: contents.page.value, keyword: contents.appliedKeyword.value, filter: contents.filter.value };
+    window.history.replaceState({ ...window.history.state, wordBookList }, '');
+  }
+});
+function detailLink(wordId: number) {
+  return { path: `/words/${wordId}`, query: {
+    book: String(id), page: String(contents.page.value),
+    keyword: contents.appliedKeyword.value || undefined,
+    status: contents.filter.value === 'ALL' ? undefined : contents.filter.value,
+  } };
+}
 const { book, bookLoading, bookError, data, loading, error, selection, keyword, filter, page, size, busy, available, editable, saveError, notice, pageIds, pageSelected } = contents;
 const filters: { value: LearningStatus; label: string }[] = [{ value: 'ALL', label: '全部' }, { value: 'UNLEARNED', label: '未学' }, { value: 'LEARNED', label: '已开始' }];
 const historyWord = ref<BookWord>();
@@ -64,7 +78,7 @@ watch(notice, (message, _previous, onCleanup) => {
       </div>
       <div class="wordlist-selection"><label><input type="checkbox" :checked="pageSelected" :indeterminate="!pageSelected && pageIds.some(wordId => selection.selected.value.has(wordId))" :disabled="loading || busy || !available || !pageIds.length" @change="selection.togglePage(pageIds, !pageSelected)" />选择当前页</label><span class="selected-count">已选 {{ selection.count.value }} 词</span><button class="muted-link" :disabled="busy || !selection.count.value" @click="selection.clear">清空选择</button><button v-if="editable" class="muted-link" :disabled="busy || loading || !selection.count.value || selection.count.value > 100" @click="saveError = ''; removeOpen = true">移出所选</button><span class="wordlist-selection-hint">{{ selection.count.value > 100 ? '每批最多 100 词，请减少选择。' : '跨页保留 · 每批最多 100 词' }}</span></div>
       <StatePanel :loading="loading && !(busy && data)" :error="error" :empty="!loading && !!data && !data.records.length" :message="book?.editable && book.wordCount === 0 ? '词本还是空的，可搜索收词或批量导入。' : '没有找到符合条件的单词。'" @retry="contents.refresh" />
-      <template v-if="(!loading || (busy && data)) && !error"><div v-for="word in data?.records" :key="word.id" class="preview-word-row"><label><input type="checkbox" :checked="selection.selected.value.has(word.id)" :disabled="busy || !available" :aria-label="`选择 ${word.word}`" @change="selection.toggle(word.id, !selection.selected.value.has(word.id))" /><span><RouterLink :to="`/words/${word.id}`"><strong lang="en">{{ word.word }}</strong></RouterLink><small>{{ word.phonetic }}</small></span></label><WordMeaning class="word-translation" :translation="word.translation" :translation-groups="word.translationGroups" /><span :class="['word-selected-state', { added: word.learned }]">{{ word.learned ? '已开始' : '未学' }}<button class="muted-link" @click="historyWord = word; historyOpen = true">学习历史</button></span></div></template>
+      <template v-if="(!loading || (busy && data)) && !error"><div v-for="word in data?.records" :key="word.id" class="preview-word-row"><label><input type="checkbox" :checked="selection.selected.value.has(word.id)" :disabled="busy || !available" :aria-label="`选择 ${word.word}`" @change="selection.toggle(word.id, !selection.selected.value.has(word.id))" /><span><RouterLink :to="detailLink(word.id)"><strong lang="en">{{ word.word }}</strong></RouterLink><small lang="en-fonipa">{{ word.phonetic }}</small></span></label><WordMeaning class="word-translation" :translation="word.translation" :translation-groups="word.translationGroups" /><span :class="['word-selected-state', { added: word.learned }]">{{ word.learned ? '已开始' : '未学' }}<button class="muted-link" @click="historyWord = word; historyOpen = true">学习历史</button></span></div></template>
       <AppPagination v-if="data" :page="page" :size="size" :total="data.total" :disabled="loading || busy" @change="page = $event" />
     </section>
     <BookEditorDialog v-if="book" v-model="editorOpen" :book="book" @saved="contents.loadBook" @unavailable="contents.loadBook" />
@@ -72,6 +86,6 @@ watch(notice, (message, _previous, onCleanup) => {
     <BookImportDialog v-if="importOpen && book" v-model="importOpen" :book-id="id" @imported="imported" @unavailable="contents.loadBook" />
     <RandomBookWordsDialog v-model="randomOpen" :book-id="id" :previous-count="selection.count.value" @selected="useRandomSelection" />
     <AppDialog :model-value="removeOpen" title="移出词本？" :description="`移出所选 ${selection.count.value} 词，学习计划与历史保留。`" @update:model-value="value => { if (!busy) removeOpen = value; }"><p v-if="saveError" class="inline-error" role="alert">{{ saveError }}</p><div class="live-actions"><AppButton :busy="busy" :disabled="!editable" @click="remove">确认移出词本</AppButton><AppButton variant="secondary" :disabled="busy" @click="removeOpen = false">取消</AppButton></div></AppDialog>
-    <WordHistoryDialog v-model="historyOpen" :word-id="historyWord?.id ?? null" :word="historyWord?.word || ''" />
+    <WordHistoryDialog v-model="historyOpen" :word-id="historyWord?.id ?? null" :word="historyWord?.word || ''" :detail-to="historyWord ? detailLink(historyWord.id) : undefined" />
   </div>
 </template>

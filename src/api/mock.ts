@@ -260,7 +260,7 @@ export const mockAdapter: AxiosAdapter = async (config) => {
     const practiceItems = () => state.batches.flatMap(batch => batch.items.map(item => ({ batchId: batch.id, itemId: item.itemId, wordId: item.wordId, result: item.result, answerCount: item.answered ? 1 : 0 })));
     const insights = mockInsights({ account: user()!.username, url, method: config.method || 'get', query, practiceEvents: state.events, practiceItems: practiceItems() });
     if (insights) return response(insights.data);
-    const wordStudy = mockWordStudy({ account: user()!.username, url, method: config.method || 'get', body, query, dictionary: books.flatMap(book => systemWords(book.id)), practiceEvents: state.events, practiceItems: practiceItems() });
+    const wordStudy = mockWordStudy({ systemBooks: books, systemWordIds: id => systemWords(id).map(word => word.id), account: user()!.username, url, method: config.method || 'get', body, query, dictionary: books.flatMap(book => systemWords(book.id)), practiceEvents: state.events, practiceItems: practiceItems() });
     if (wordStudy) return response(wordStudy.data, wordStudy.status);
     const daily = mockDaily(user()!.username, url, config.method || 'get', body, query, id => bookWords(id, state), state.events);
     if (daily) return response(daily.data);

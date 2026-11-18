@@ -8,15 +8,15 @@ import { useSelection } from './useSelection';
 import type { Book, BookWord, LearningStatus, Page } from '../types/api';
 import type { TodayOverview } from '../types/daily';
 
-export function useBookContents(id: number) {
+export function useBookContents(id: number, initial?: { keyword: string; filter: LearningStatus; page: number }) {
   const metadata = useResource<Book>();
   const words = useResource<Page<BookWord>>();
   const selection = useSelection();
   const today = useResource<TodayOverview>();
-  const keyword = ref('');
-  const appliedKeyword = ref('');
-  const filter = ref<LearningStatus>('ALL');
-  const page = ref(1);
+  const keyword = ref(initial?.keyword ?? '');
+  const appliedKeyword = ref(keyword.value);
+  const filter = ref<LearningStatus>(initial?.filter ?? 'ALL');
+  const page = ref(initial?.page ?? 1);
   const size = 10;
   const busy = ref(false);
   const blocked = ref(false);
@@ -69,5 +69,5 @@ export function useBookContents(id: number) {
     } catch (e) { handleError(e); }
     finally { busy.value = false; }
   }
-  return { book: metadata.data, bookLoading: metadata.loading, bookError: metadata.error, ...words, selection, keyword, filter, page, size, busy, blocked, available, editable, saveError, notice, today: today.data, pageIds, pageSelected, loadBook, refresh, reload, search, remove, join };
+  return { book: metadata.data, bookLoading: metadata.loading, bookError: metadata.error, ...words, selection, keyword, appliedKeyword, filter, page, size, busy, blocked, available, editable, saveError, notice, today: today.data, pageIds, pageSelected, loadBook, refresh, reload, search, remove, join };
 }

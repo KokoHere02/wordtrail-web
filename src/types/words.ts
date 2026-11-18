@@ -14,12 +14,19 @@ export interface WordDetailPlan {
   started: boolean;
   due: boolean;
 }
+export interface BookLocation {
+  id: number;
+  name: string;
+  personal: boolean;
+  wordIndex: number;
+}
 export interface WordDetail extends TranslationFields {
   id: number;
   word: string;
   phonetic: string | null;
   translation: string | null;
   personalBooks: { id: number; name: string }[];
+  bookLocations: BookLocation[];
   plan: WordDetailPlan | null;
 }
 export interface WeakWord extends TranslationFields {

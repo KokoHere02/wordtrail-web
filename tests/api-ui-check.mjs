@@ -154,7 +154,7 @@ await router.push('/records'); await until(() => document.querySelector('.record
 assert.equal(document.querySelector('a[href="/learning"]'), null);
 await router.push('/words/1001'); await until(() => document.querySelector('.word-detail-heading'), 'word detail');
 clickText('学习历史'); await until(() => document.querySelector('.history-event'), 'historical events');
-assert.match(document.querySelector('[role="dialog"]').textContent, /历史认读专项/);
+assert.match(document.querySelector('.detail-section').textContent, /历史认读专项/);
 assert.equal(calls.some(call => call.method !== 'get' && !call.url.startsWith('/auth/')), false);
 console.log('PASS old links display retirement without requests or conversion; menus/book entries removed; PRACTICE statistics and word history remain read-only');
 app.unmount(); await window.happyDOM.close();

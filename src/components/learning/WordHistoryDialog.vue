@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import type { RouteLocationRaw } from 'vue-router';
 import { dailyApi } from '../../api/daily';
 import { useResource } from '../../composables/useResource';
 import type { Page } from '../../types/api';
@@ -9,7 +10,7 @@ import AppPagination from '../ui/AppPagination.vue';
 import StatePanel from '../ui/StatePanel.vue';
 import DictationHistoryList from './DictationHistoryList.vue';
 import { ArrowUpRight, History, RotateCcw } from 'lucide-vue-next';
-const props = defineProps<{ modelValue: boolean; wordId: number | null; word: string; initialMode?: 'RECOGNITION' | 'DICTATION' }>();
+const props = defineProps<{ modelValue: boolean; wordId: number | null; word: string; initialMode?: 'RECOGNITION' | 'DICTATION'; embedded?: boolean; detailTo?: RouteLocationRaw }>();
 const emit = defineEmits<{ 'update:modelValue': [value: boolean] }>();
 const { data, loading, error, load } = useResource<Page<WordHistoryEvent>>();
 const page = ref(1);
@@ -36,7 +37,10 @@ watch(() => [props.modelValue, props.wordId, mode.value] as const, refresh, { im
 function changePage(value: number) { page.value = value; refresh(); }
 </script>
 <template>
-  <AppDialog :model-value="modelValue" :title="`${word} · 学习历史`" description="最新记录在前 · 北京时间" panel-class="word-history-dialog" @update:model-value="emit('update:modelValue', $event)">
+  <component :is="embedded ? 'section' : AppDialog"
+    v-bind="embedded ? { 'aria-label': '学习历史' } : { modelValue, title: `${word} · 学习历史`, description: '最新记录在前 · 北京时间', panelClass: 'word-history-dialog' }"
+    @update:model-value="emit('update:modelValue', $event)">
+    <p v-if="embedded" class="subtle-copy">最新记录在前 · 北京时间</p>
     <div class="history-type-tabs" role="group" aria-label="历史类型"><button type="button" :class="{ active: mode === 'RECOGNITION' }" :aria-pressed="mode === 'RECOGNITION'" @click="mode = 'RECOGNITION'">学习记录</button><button type="button" :class="{ active: mode === 'DICTATION' }" :aria-pressed="mode === 'DICTATION'" @click="mode = 'DICTATION'">默写记录</button></div>
     <div class="word-history-body">
       <DictationHistoryList v-if="modelValue && mode === 'DICTATION' && wordId !== null" :word-id="wordId" />
@@ -57,6 +61,6 @@ function changePage(value: number) { page.value = value; refresh(); }
         <AppPagination v-if="data" :page="page" :size="size" :total="data.total" :disabled="loading" @change="changePage" />
       </template>
     </div>
-    <footer v-if="wordId !== null" class="word-history-footer"><RouterLink :to="`/words/${wordId}`" class="violet-link" @click="emit('update:modelValue', false)">单词详情<ArrowUpRight :size="16" aria-hidden="true" /></RouterLink></footer>
-  </AppDialog>
+    <footer v-if="!embedded && wordId !== null" class="word-history-footer"><RouterLink :to="detailTo ?? `/words/${wordId}`" class="violet-link" @click="emit('update:modelValue', false)">单词详情<ArrowUpRight :size="16" aria-hidden="true" /></RouterLink></footer>
+  </component>
 </template>

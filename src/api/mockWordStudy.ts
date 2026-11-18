@@ -3,7 +3,7 @@ import type { BookWord, Result } from '../types/api';
 import type { WordHistoryEvent } from '../types/daily';
 import type { LearningSource, WeakWord, WeakWordsPage, WordDetail } from '../types/words';
 import { mockDailyEvidence, mockLearned } from './mockDaily';
-import { personalBooksForWord } from './mockBooks';
+import { personalBooksForWord, personalWordIds } from './mockBooks';
 export type StudyLog = WordHistoryEvent & { wordId: number };
 export interface EvidenceItem { batchId: number; itemId: number; wordId: number; result: Result | null; answerCount: number | null }
 export function effectiveResult(answer: StudyLog, events: StudyLog[]) {
@@ -35,6 +35,8 @@ export function weakEvidence(source: LearningSource, dictionary: BookWord[], ite
   return { records, source, dataScope: 'RECORDED_EVENTS' as const, statisticsComplete: incomplete.size === 0, incompleteWordCount: incomplete.size, firstRecordedAt: answers.at(-1)?.answeredAt ?? null, lastRecordedAt: answers[0]?.answeredAt ?? null };
 }
 interface Context {
+  systemWordIds: (bookId: number) => number[];
+  systemBooks: { id: number; name: string }[];
   account: string; url: string; method: string; body: Record<string, unknown>; query: URLSearchParams;
   dictionary: BookWord[]; practiceEvents: StudyLog[]; practiceItems: EvidenceItem[];
 }
@@ -47,7 +49,15 @@ export function mockWordStudy(context: Context): { data: unknown; status: number
     if (!word) fail(404, 'WORD_NOT_FOUND', '单词不存在');
     const plan = mockLearned(account, word.id);
     const now = new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Shanghai' }).replace(' ', 'T');
-    const data: WordDetail = { id: word.id, word: word.word, phonetic: word.phonetic, translation: word.translation, translationGroups: word.translationGroups, personalBooks: personalBooksForWord(account, word.id), plan: plan ? { planStatus: plan.planStatus, joinedAt: plan.joinedAt, firstLearnedAt: plan.firstLearnedAt, lastLearnedAt: plan.lastLearnedAt, lastResult: plan.lastResult, nextReviewAt: plan.nextReviewAt, reviewLevel: plan.reviewLevel, started: !!plan.firstLearnedAt, due: plan.planStatus === 'ACTIVE' && !!plan.firstLearnedAt && !!plan.nextReviewAt && plan.nextReviewAt <= now } : null };
+    const personalBooks = personalBooksForWord(account, word.id);
+    const bookLocations = personalBooks.map(book => ({
+      ...book, personal: true, wordIndex: personalWordIds(account, book.id).indexOf(word.id),
+    }));
+    for (const book of context.systemBooks) {
+      const index = context.systemWordIds(book.id).indexOf(word.id);
+      if (index >= 0) bookLocations.push({ id: book.id, name: book.name, personal: false, wordIndex: index });
+    }
+    const data: WordDetail = { id: word.id, word: word.word, phonetic: word.phonetic, translation: word.translation, translationGroups: word.translationGroups, personalBooks, bookLocations, plan: plan ? { planStatus: plan.planStatus, joinedAt: plan.joinedAt, firstLearnedAt: plan.firstLearnedAt, lastLearnedAt: plan.lastLearnedAt, lastResult: plan.lastResult, nextReviewAt: plan.nextReviewAt, reviewLevel: plan.reviewLevel, started: !!plan.firstLearnedAt, due: plan.planStatus === 'ACTIVE' && !!plan.firstLearnedAt && !!plan.nextReviewAt && plan.nextReviewAt <= now } : null };
     return { data, status: 200 };
   }
   if (url !== '/learning/weak-words' || method !== 'get') return;
