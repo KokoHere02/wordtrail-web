@@ -97,50 +97,50 @@ onMounted(refresh);
 <style scoped>
 .home-today { width: min(100% - 48px, 1080px); margin: 0 auto; padding: clamp(40px, 6vw, 82px) 0 48px; }
 .home-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; padding-bottom: 27px; border-bottom: 1px solid var(--line); }
-.home-eyebrow { color: var(--accent); font-size: 11px; font-weight: 700; letter-spacing: .16em; }
-.home-heading h1 { margin-top: 10px; font-size: clamp(38px, 4.3vw, 58px); letter-spacing: -.055em; line-height: 1.15; }
-.home-date { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; padding-bottom: 5px; }
+.home-eyebrow { color: var(--accent); font-size: var(--text-xs); font-weight: 700; letter-spacing: .16em; }
+.home-heading h1 { margin-top: 10px; font-size: clamp(38px, 4.3vw, 58px); letter-spacing: normal; line-height: 1.15; }
+.home-date { color: var(--muted); font-size: var(--text-base); font-variant-numeric: tabular-nums; padding-bottom: 5px; font-family: var(--font-notation); font-weight: 400; }
 .home-layout { display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: clamp(60px, 9vw, 130px); padding-top: 55px; }
-.home-section-label { display: flex; gap: 12px; align-items: center; color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: .05em; }
-.home-section-label span { color: var(--accent); font-family: var(--font-serif); font-size: 13px; }
+.home-section-label { display: flex; gap: 12px; align-items: center; color: var(--muted); font-size: var(--text-sm); font-weight: 600; letter-spacing: .05em; }
+.home-section-label span { color: var(--accent); font-family: var(--font-sans); font-size: var(--text-sm); }
 .home-focus.today-hero { text-align: left; padding: 0; }
 .home-goal-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-top: 32px; }
-.home-goal-heading h2 { margin: 0; font-size: clamp(23px, 2.4vw, 31px); letter-spacing: -.04em; line-height: 1.35; }
-.home-goal-heading p { color: var(--muted); margin-top: 9px; font-size: 14px; }
-.home-text-link { display: inline-flex; align-items: center; gap: 5px; color: var(--accent-strong); font-size: 13px; font-weight: 650; white-space: nowrap; }
+.home-goal-heading h2 { margin: 0; font-family: var(--font-heading); font-size: clamp(23px, 2.4vw, 31px); letter-spacing: normal; line-height: 1.35; }
+.home-goal-heading p { color: var(--muted); margin-top: 9px; font-size: var(--text-base); }
+.home-text-link { display: inline-flex; align-items: center; gap: 5px; color: var(--accent-strong); font-size: var(--text-sm); font-weight: 500; white-space: nowrap; }
 .home-text-link:hover, .home-footer a:hover { text-decoration: underline; text-underline-offset: 4px; }
 .home-goal-heading > .home-text-link { margin-top: 9px; }
 .home-progress, .home-target { margin-top: 38px; }
-.home-progress-copy { display: flex; justify-content: space-between; gap: 16px; align-items: baseline; color: var(--muted); font-size: 13px; margin-bottom: 12px; }
-.home-progress-copy strong { color: var(--ink); font-size: 20px; font-variant-numeric: tabular-nums; }
+.home-progress-copy { display: flex; justify-content: space-between; gap: 16px; align-items: baseline; color: var(--muted); font-size: var(--text-sm); margin-bottom: 12px; }
+.home-progress-copy strong { color: var(--ink); font-size: 20px; font-variant-numeric: tabular-nums; font-family: var(--font-notation); font-weight: 400; }
 .home-progress :deep(.violet-progress) { height: 4px; background: var(--progress-track); }
-.home-target { color: var(--muted); font-size: 14px; }
+.home-target { color: var(--muted); font-size: var(--text-base); }
 .home-queue { display: flex; align-items: flex-start; justify-content: flex-start; gap: clamp(56px, 9vw, 115px); margin-top: 43px; }
 .home-queue > div { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; gap: 5px; }
-.home-queue span { color: var(--muted); font-size: 13px; margin: 0; }
-.home-queue strong { font-family: var(--font-serif); font-size: 45px; font-weight: 500; letter-spacing: -.04em; line-height: 1.1; font-variant-numeric: tabular-nums; }
-.home-queue small { color: var(--muted); font-family: var(--font-sans); font-size: 13px; font-weight: 400; letter-spacing: 0; }
+.home-queue span { color: var(--muted); font-size: var(--text-sm); margin: 0; }
+.home-queue strong { font-family: var(--font-notation); font-size: 45px; font-weight: 400; letter-spacing: -.04em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.home-queue small { color: var(--muted); font-family: var(--font-sans); font-size: var(--text-sm); font-weight: 400; letter-spacing: 0; }
 .home-actions { display: flex; align-items: center; justify-content: flex-start; flex-wrap: wrap; gap: 24px; margin-top: 44px; }
-.home-actions .home-primary { min-height: 52px; min-width: 190px; justify-content: space-between; gap: 22px; padding: 0 22px; font-size: 15px; }
-.home-notice, .home-note { color: var(--muted); font-size: 13px; line-height: 1.7; margin-top: 20px; }
+.home-actions .home-primary { min-height: 52px; min-width: 190px; justify-content: space-between; gap: 22px; padding: 0 22px; font-size: var(--text-base); }
+.home-notice, .home-note { color: var(--muted); font-size: var(--text-sm); line-height: 1.7; margin-top: 20px; }
 .home-aside { border-left: 1px solid var(--line); padding-left: 40px; }
 .home-plan-line { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-top: 26px; }
-.home-plan-line strong { font-family: var(--font-serif); font-size: 36px; font-weight: 500; line-height: 1; font-variant-numeric: tabular-nums; }
-.home-plan-line span, .home-aside-copy { color: var(--muted); font-size: 13px; }
+.home-plan-line strong { font-family: var(--font-notation); font-size: 36px; font-weight: 400; line-height: 1; font-variant-numeric: tabular-nums; }
+.home-plan-line span, .home-aside-copy { color: var(--muted); font-size: var(--text-sm); }
 .home-icon-link { display: inline-flex; color: var(--accent); }
 .home-aside-copy { margin-top: 12px; line-height: 1.7; }
 .home-plan-link { margin-top: 20px; }
-.home-plan-details { color: var(--muted); font-size: 13px; margin-top: 12px; }
+.home-plan-details { color: var(--muted); font-size: var(--text-sm); margin-top: 12px; }
 .home-plan-details summary { cursor: pointer; width: fit-content; }
 .home-plan-details p { margin-top: 6px; }
 .home-explore { border-top: 1px solid var(--line); margin-top: 42px; padding-top: 30px; }
 .home-explore nav { margin-top: 17px; }
-.home-explore nav a { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; color: var(--ink); font-size: 14px; }
+.home-explore nav a { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; color: var(--ink); font-size: var(--text-base); }
 .home-explore nav a svg { color: var(--muted); transition: transform var(--motion-fast); }
 .home-explore nav a:hover svg { transform: translate(3px, -3px); color: var(--accent); }
-.home-footer { display: flex; align-items: center; justify-content: space-between; gap: 24px; border-top: 1px solid var(--line); margin-top: 72px; padding-top: 21px; color: var(--muted); font-size: 12px; }
+.home-footer { display: flex; align-items: center; justify-content: space-between; gap: 24px; border-top: 1px solid var(--line); margin-top: 72px; padding-top: 21px; color: var(--muted); font-size: var(--text-sm); }
 .home-footer div { display: flex; flex-wrap: wrap; gap: 24px; }
-.home-footer a { display: inline-flex; align-items: center; gap: 5px; color: var(--accent-strong); font-weight: 600; }
+.home-footer a { display: inline-flex; align-items: center; gap: 5px; color: var(--accent-strong); font-weight: 500; }
 @media (max-width: 760px) {
   .home-today { width: min(100% - 40px, 600px); padding-top: 36px; }
   .home-layout { grid-template-columns: 1fr; gap: 48px; padding-top: 38px; }
@@ -151,7 +151,7 @@ onMounted(refresh);
 }
 @media (max-width: 420px) {
   .home-heading { align-items: start; }
-  .home-date { padding-top: 4px; font-size: 12px; }
+  .home-date { padding-top: 4px; font-size: var(--text-sm); }
   .home-focus.today-hero { text-align: left; padding: 0; }
 .home-goal-heading { flex-direction: column; gap: 10px; }
   .home-goal-heading > .home-text-link { margin-top: 0; }

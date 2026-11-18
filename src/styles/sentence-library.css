@@ -2,13 +2,13 @@
 .sentence-library-page { width: min(calc(100% - var(--s5) * 2), var(--content-library-width)); margin: var(--s6) auto var(--s8); min-width: 0; flex: 1; }
 .sentence-library-page .sentence-nav { display: flex; flex-wrap: nowrap; gap: var(--s1); overflow-x: auto; margin: 0 0 var(--s5); padding: var(--s1); border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); scrollbar-width: thin; }
 .sentence-library-page .sentence-nav > a, .sentence-library-page .sentence-nav > button { flex-shrink: 0; min-height: var(--control); padding: var(--s2) var(--s4); border: 0; border-radius: var(--radius-sm); font-size: var(--text-base); white-space: nowrap; }
-.sentence-library-page .sentence-nav > a.active { background: var(--sage); color: var(--accent-strong); font-weight: 600; }
+.sentence-library-page .sentence-nav > a.active { background: var(--sage); color: var(--accent-strong); font-weight: 700; }
 .sentence-library-page .sentence-nav > a:hover { color: var(--accent); background: var(--hover); }
 .sentence-library-page .sentence-nav > a:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
 .sentence-filter-sheet { display: flex; align-items: flex-end; flex-wrap: wrap; gap: var(--s5); padding: var(--s5); margin-bottom: var(--s5); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); }
 .sentence-library-page .sentence-filters { display: flex; flex: 1; align-items: flex-end; flex-wrap: wrap; gap: var(--s3); padding: 0; min-width: 0; }
 .sentence-filter-field, .sentence-library-page .sentence-auto-start > label { display: grid; gap: var(--s2); min-width: 0; font-size: var(--text-sm); color: var(--muted); }
-.sentence-filter-field > span { font-weight: 500; }
+.sentence-filter-field > span { font-weight: 600; }
 .sentence-library-page .app-select { min-width: 132px; }
 .sentence-library-page .app-select > label { font-size: var(--text-sm); }
 .sentence-word-filter { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s2); }
@@ -70,10 +70,10 @@
 .sentence-word-pills { display: flex; flex-wrap: wrap; gap: var(--s2); margin-top: var(--s3); }
 .sentence-word-pills > span { color: var(--muted); background: var(--hover); }
 .sentence-library-page .library-heading { padding: 0; margin-bottom: var(--s5); }
-.sentence-library-page .library-heading h1 { font-size: 23px; margin: 0; line-height: 1.5; letter-spacing: 0; font-weight: 600; }
+.sentence-library-page .library-heading h1 { font-size: 23px; margin: 0; line-height: 1.5; letter-spacing: normal; font-weight: 700; }
 .sentence-library-page .sentence-editor { max-width: none; margin-block: var(--s5); padding: var(--s6); border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); }
 .sentence-library-page .sentence-editor fieldset { gap: var(--s3); }
-.sentence-library-page .sentence-editor fieldset > label { font-size: var(--text-sm); font-weight: 500; color: var(--control-text); margin-top: var(--s3); }
+.sentence-library-page .sentence-editor fieldset > label { font-size: var(--text-sm); font-weight: 600; color: var(--control-text); margin-top: var(--s3); }
 .sentence-library-page .sentence-editor fieldset > label:first-child { margin-top: 0; }
 .sentence-library-page .sentence-editor .btn { margin-top: var(--s3); }
 .sentence-library-page .sentence-editor .app-select-trigger { font: inherit; }
@@ -93,7 +93,7 @@
 .sentence-dialog .sentence-word-search { display: flex; gap: var(--s3); margin-bottom: var(--s4); }
 .sentence-dialog .sentence-word-search > .search-field { flex: 1; }
 .sentence-dialog .sentence-word-option { padding-block: var(--s4); gap: var(--s4); }
-.sentence-dialog .sentence-word-option strong { font: 500 22px/1.5 var(--font-serif); }
+.sentence-dialog .sentence-word-option strong { font: 700 22px/1.5 var(--font-sans); }
 .sentence-dialog .sentence-word-option .word-meaning { color: var(--muted); margin-top: var(--s2); font-size: var(--text-base); }
 .sentence-dialog .sentence-word-option .btn { min-width: 100px; }
 .sentence-dialog .sentence-schedule-facts { gap: 0; padding: 0; }
@@ -141,7 +141,7 @@
   .sentence-library-page .sentence-question-row { grid-template-columns: 24px minmax(0, 1fr); gap: var(--s3); padding-block: var(--s5); }
   .sentence-library-page .sentence-question-copy .sentence-english, .sentence-library-page .sentence-note-row > .sentence-english { font-size: 18px; }
   .sentence-library-page .sentence-row-actions { grid-column: 2; max-width: none; justify-content: flex-start; gap: 6px; }
-  .sentence-library-page .sentence-row-actions > button { min-height: 40px; font-size: 12px; }
+  .sentence-library-page .sentence-row-actions > button { min-height: 40px; font-size: var(--text-sm); }
   .sentence-library-page .sentence-note-row { padding: var(--s4); }
   .sentence-library-page .sentence-editor { padding: var(--s4); }
   .sentence-library-page .sentence-note-form { padding: 0; }

@@ -95,21 +95,21 @@ function destination(row: LearningRecord): string | null {
 <style scoped>
 .records-page.unified-records { width: min(calc(100% - var(--s5) * 2), var(--content-library-width)); padding: var(--s6) 0 var(--s12); }
 .record-modes { display:flex; gap:32px; border-bottom:1px solid var(--line); margin-bottom:28px; }
-.record-modes button { position:relative; border:0; padding:10px 2px 14px; background:transparent; color:var(--muted); font:inherit; cursor:pointer; }
-.record-modes button.active { color:var(--ink); font-weight:600; }
+.record-modes button { position:relative; border:0; padding:10px 2px 14px; background:transparent; color:var(--muted); font:inherit; cursor:pointer; font-weight: 500; }
+.record-modes button.active { color:var(--ink); font-weight:700; }
 .record-modes button.active::after { position:absolute; content:''; left:0; right:0; bottom:-1px; height:2px; background:var(--accent-strong); }
 .sentence-records-heading { display:flex; justify-content:flex-end; margin:4px 0 12px; }
 .sentence-record-row { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:start; gap:28px; padding:24px 0; border-bottom:1px solid var(--line); }
 .sentence-record-copy { min-width:0; overflow-wrap:anywhere; }
-.sentence-record-copy strong { font:400 23px/1.45 var(--font-serif); }
+.sentence-record-copy strong { font:500 23px/1.45 var(--font-sans); }
 .sentence-record-copy p { margin:9px 0 0; color:var(--muted); line-height:1.6; white-space:pre-wrap; }
 .sentence-record-copy .sentence-record-reference { color:var(--accent-strong); }
-.sentence-record-copy p > span { font-size:13px; font-weight:600; }
-.sentence-record-row time { color:var(--muted); font-size:13px; white-space:nowrap; }
+.sentence-record-copy p > span { font-size:var(--text-sm); font-weight:600; }
+.sentence-record-row time { color:var(--muted); font-size:var(--text-sm); white-space:nowrap; }
 .records-filters { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--s4); }
 .records-types, .records-filter-actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s2); }
 .records-types button { min-height: var(--control); padding: var(--s2) var(--s5); border: 1px solid var(--line); border-radius: var(--radius-pill); background: var(--surface); color: var(--control-text); white-space: nowrap; }
-.records-types button.active { color: var(--surface); background: var(--accent-strong); border-color: var(--accent-strong); }
+.records-types button.active { color: var(--surface); background: var(--accent-strong); border-color: var(--accent-strong); font-weight: 700; }
 .records-filter-actions :deep(.app-select) { min-width: 150px; }
 .records-refresh { display: grid; place-items: center; width: var(--control); height: var(--control); border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); color: var(--muted); }
 .records-groups { margin-top: var(--s8); }
@@ -120,7 +120,7 @@ function destination(row: LearningRecord): string | null {
 .record-name { min-width: 0; overflow-wrap: anywhere; }
 .record-name strong { font-size: var(--text-base); font-weight: 500; }
 .record-name p { margin: var(--s1) 0 0; color: var(--muted); font-size: var(--text-sm); }
-.record-time, .record-progress { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.record-time, .record-progress { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; font-family: var(--font-notation); font-weight: 400; }
 .record-status { display: inline-flex; align-items: center; gap: var(--s2); white-space: nowrap; color: var(--muted); }
 .record-status i { width: 9px; height: 9px; flex: none; border-radius: 50%; background: var(--muted); }
 .record-status.status-in_progress i { background: #73aeee; }

@@ -95,7 +95,7 @@ async function submit() {
         <div class="entry-index"><span>No. 037</span><span aria-hidden="true"></span></div>
         <div class="entry-copy">
           <h2 lang="en">serendipity</h2>
-          <p class="entry-phonetic">/ˌserənˈdɪpəti/</p>
+          <p class="entry-phonetic" lang="en-fonipa">/ˌserənˈdɪpəti/</p>
           <p class="entry-definition"><i>n.</i><span>意外的幸运；在无意中发现美好事物的机缘</span></p>
           <blockquote lang="en">I found a lovely little bookshop by chance.</blockquote>
         </div>
@@ -181,16 +181,16 @@ async function submit() {
   min-height: 650px;
   display: flex;
   flex-direction: column;
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
 }
 .entry-index { display: flex; align-items: center; gap: 20px; font-style: italic; font-size: 18px; letter-spacing: .03em; }
 .entry-index span:last-child { flex: 1; height: 1px; background: currentColor; opacity: .8; }
 .entry-copy { padding: clamp(55px, 7vw, 100px) 0 0 20px; }
-.entry-copy h2 { margin: 0; font: 500 clamp(58px, 7.1vw, 104px)/.98 var(--font-serif); letter-spacing: -.055em; overflow-wrap: anywhere; }
+.entry-copy h2 { margin: 0; font: 800 clamp(58px, 7.1vw, 104px)/.98 var(--font-sans); letter-spacing: var(--headword-tracking); overflow-wrap: anywhere; }
 .entry-phonetic { margin: 16px 0 0; font-size: clamp(19px, 2vw, 27px); letter-spacing: .015em; }
-.entry-definition { display: flex; gap: 16px; align-items: baseline; margin: 43px 0 0; font-family: var(--font-serif), "Songti SC", "SimSun", serif; font-size: clamp(17px, 1.5vw, 22px); line-height: 1.8; }
+.entry-definition { display: flex; gap: 16px; align-items: baseline; margin: 43px 0 0; font-family: var(--font-sans); font-size: clamp(17px, 1.5vw, 22px); line-height: 1.8; }
 .entry-definition i { font-size: 1.15em; }
-.entry-copy blockquote { margin: 46px 0 0 4px; padding: 2px 0 2px 20px; border-left: 1px solid currentColor; font: italic clamp(16px, 1.4vw, 20px)/1.6 var(--font-serif); }
+.entry-copy blockquote { margin: 46px 0 0 4px; padding: 2px 0 2px 20px; border-left: 1px solid currentColor; font: 500 clamp(16px, 1.4vw, 20px)/1.6 var(--font-sans); }
 .entry-art { width: min(53%, 275px); height: auto; align-self: flex-end; margin-top: auto; margin-right: 25px; }
 .entry-bottom { height: 1px; width: 100%; background: currentColor; opacity: .8; margin-top: 20px; }
 .auth-panel { width: 100%; max-width: 440px; justify-self: center; color: var(--accent); }
@@ -198,28 +198,28 @@ async function submit() {
 .auth-wordmark small { font: 600 15px/1 var(--font-serif); letter-spacing: .09em; }
 .auth-monogram { font: 600 49px/.85 var(--font-serif); letter-spacing: -.09em; }
 .auth-tabs { position: relative; display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--line); margin-bottom: 28px; }
-.auth-tabs button { position: relative; padding: 0 8px 15px; border: 0; background: transparent; color: var(--muted); font-size: 16px; cursor: pointer; }
-.auth-tabs button.selected { color: var(--accent); font-weight: 600; }
+.auth-tabs button { position: relative; padding: 0 8px 15px; border: 0; background: transparent; color: var(--muted); font-size: var(--text-md); cursor: pointer; }
+.auth-tabs button.selected { color: var(--accent); font-weight: 700; }
 .auth-tab-indicator { position: absolute; left: 0; bottom: -1px; width: 50%; height: 2px; background: var(--accent); transition: transform 240ms ease; }
 .auth-tab-indicator.on-code { transform: translateX(100%); }
-.auth-intro { text-align: center; color: var(--muted); margin: 0 0 30px; font-size: 14px; }
+.auth-intro { text-align: center; color: var(--muted); margin: 0 0 30px; font-size: var(--text-base); }
 .auth-form { display: grid; gap: 22px; }
 .auth-credential-fields { display: grid; gap: 22px; }
 .credential-switch-enter-active, .credential-switch-leave-active { transition: opacity 150ms ease, transform 150ms ease; }
 .credential-switch-enter-from { opacity: 0; transform: translateY(7px); }
 .credential-switch-leave-to { opacity: 0; transform: translateY(-5px); }
 .auth-field { display: grid; gap: 9px; min-width: 0; }
-.auth-field label { color: var(--ink); font-size: 15px; font-weight: 600; }
-.auth-field input { width: 100%; min-width: 0; height: 50px; border: 1px solid var(--answer-border); border-radius: 12px; padding: 0 14px; background: transparent; color: var(--ink); font: inherit; font-size: 15px; }
+.auth-field label { color: var(--ink); font-size: var(--text-base); font-weight: 600; }
+.auth-field input { width: 100%; min-width: 0; height: 50px; border: 1px solid var(--answer-border); border-radius: 12px; padding: 0 14px; background: transparent; color: var(--ink); font: inherit; font-size: var(--text-base); }
 .auth-field input::placeholder { color: var(--text-placeholder); }
 .code-input { display: flex; align-items: stretch; border: 1px solid var(--answer-border); border-radius: 12px; }
 .code-input input { flex: 1; border: 0; }
-.code-input button { flex: none; margin: 10px 0; padding: 0 13px; border: 0; border-left: 1px solid var(--line); background: transparent; color: var(--accent); font-size: 14px; cursor: pointer; }
+.code-input button { flex: none; margin: 10px 0; padding: 0 13px; border: 0; border-left: 1px solid var(--line); background: transparent; color: var(--accent); font-size: var(--text-base); cursor: pointer; }
 .code-input button:disabled { color: var(--muted); cursor: not-allowed; }
-.auth-action { width: 100%; min-height: 52px; margin-top: 8px; border-radius: 6px; font-size: 17px; font-weight: 600; letter-spacing: .12em; }
-.auth-alternate { margin: 28px 0 0; text-align: center; color: var(--muted); font-size: 14px; }
+.auth-action { width: 100%; min-height: 52px; margin-top: 8px; border-radius: 7px; font-size: var(--text-md); font-weight: 700; letter-spacing: .12em; }
+.auth-alternate { margin: 28px 0 0; text-align: center; color: var(--muted); font-size: var(--text-base); }
 .auth-alternate a { margin-left: 6px; color: var(--accent); text-decoration: underline; text-underline-offset: 4px; }
-.auth-notice, .auth-error, .auth-demo { font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.auth-notice, .auth-error, .auth-demo { font-size: var(--text-sm); line-height: 1.6; overflow-wrap: anywhere; }
 .auth-notice { margin: 0 0 20px; color: var(--accent); }
 .auth-error { margin: -8px 0 0; color: var(--error); }
 .auth-demo { margin: 24px 0 0; text-align: center; color: var(--muted); }

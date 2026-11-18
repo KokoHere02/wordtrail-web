@@ -5,6 +5,12 @@ test('sentence list, skip, repeat and history', async ({page}, testInfo) => {
   await page.getByLabel('密码', { exact: true }).fill('example123');
   await page.getByRole('button',{name:'登录',exact:true}).click();
   await expect(page.locator('.daily-equation')).toBeVisible();
+  await expect(page.getByRole('heading', {name:'今日学习', exact:true})).toHaveCSS('font-weight', '700');
+  await expect(page.getByRole('heading', {name:'今日学习', exact:true})).toHaveCSS('font-family', /WordTrail Dawei/);
+  await expect(page.locator('#home-focus-title')).toHaveCSS('font-family', /WordTrail Dawei/);
+  await expect(page.locator('.app-main-nav a.active')).toHaveCSS('font-family', /WordTrail Youhei/);
+  await expect(page.locator('.app-main-nav a.active')).toHaveCSS('font-weight', '700');
+  await expect(page.locator('.app-main-nav a:not(.active)').first()).toHaveCSS('font-weight', '500');
   await page.evaluate(async () => {
     const {http}=await import(/* @vite-ignore */ '/src/api/http.ts'); const {router}=await import(/* @vite-ignore */ '/src/router/index.ts');
     const fallback=http.defaults.adapter; const learning=new Set<number>(); const history: string[]=[];
@@ -65,6 +71,14 @@ test('sentence list, skip, repeat and history', async ({page}, testInfo) => {
   await expect(page).toHaveURL(/\/learn\?mode=sentences/);
   await expect(page.getByRole('region', {name:'句子翻译练习'})).toContainText('Example sentence 1.');
   await expect(page.locator('.workspace-progress')).toContainText('0 / 2 句');
+  await expect(page.locator('.sentence-prompt h1')).toHaveCSS('font-family', /^Nunito,/);
+  await expect(page.locator('.sentence-prompt h1')).not.toHaveCSS('font-family', /Dawei/);
+  await expect(page.getByLabel('你的翻译')).toHaveCSS('font-family', /WordTrail Youhei/);
+  await expect(page.getByRole('button', {name:'提交翻译'})).toHaveCSS('font-family', /WordTrail Youhei/);
+  await expect(page.locator('.sentence-prompt h1')).toHaveCSS('font-weight', '500');
+  await expect(page.getByLabel('你的翻译')).toHaveCSS('font-weight', '400');
+  await expect(page.getByRole('button', {name:'提交翻译'})).toHaveCSS('font-weight', '700');
+  await expect(page.locator('.workspace-progress > div > span')).toHaveCSS('font-variant-numeric', 'tabular-nums');
   await page.screenshot({ path: testInfo.outputPath('workspace-practice.png') });
   const play = page.locator('.workspace-status-meta').getByRole('button', { name: '朗读原句' });
   const stop = page.getByRole('button', { name: '停止朗读' });

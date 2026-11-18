@@ -20,7 +20,7 @@ defineExpose({ pronounce });
 </script>
 <template>
   <div class="review-pronunciation">
-    <div class="review-phonetic-row"><span v-if="phonetic" class="review-phonetic">{{ phonetic }}</span><button type="button" class="review-audio" :aria-label="`朗读 ${word}`" aria-keyshortcuts="P" :aria-pressed="speaking" :disabled="!wordId || loading" :title="speaking ? '正在朗读' : '朗读单词（P）'" @click="pronounce"><Volume2 :size="23" :stroke-width="1.7" /></button></div>
+    <div class="review-phonetic-row"><span v-if="phonetic" class="review-phonetic" lang="en-fonipa">{{ phonetic }}</span><button type="button" class="review-audio" :aria-label="`朗读 ${word}`" aria-keyshortcuts="P" :aria-pressed="speaking" :disabled="!wordId || loading" :title="speaking ? '正在朗读' : '朗读单词（P）'" @click="pronounce"><Volume2 :size="23" :stroke-width="1.7" /></button></div>
     <p v-if="error" class="speech-error" role="status">{{ error }}</p>
   </div>
 </template>

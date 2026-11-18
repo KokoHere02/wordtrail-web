@@ -27,6 +27,8 @@
   background: var(--button-start);
   color: var(--on-accent);
   box-shadow: none;
+  font-weight: 700;
+  border-radius: 7px;
 }
 .btn-primary:hover:not(:disabled) {
   background: var(--primary-hover);
@@ -278,13 +280,14 @@
   background: var(--muted);
 }
 .book-number {
-  font: var(--text-book)/1 var(--font-serif);
+  font: 400 var(--text-book)/1 var(--font-notation);
   color: var(--book-index);
   display: flex;
   flex-direction: column;
   justify-content: center;
   text-align: center;
   padding-right: var(--s3);
+  font-variant-numeric: tabular-nums;
 }
 .book-number > span {
   font-family: var(--font-sans);
@@ -365,7 +368,7 @@
 .segmented button.selected {
   background: var(--sage);
   color: var(--ink);
-  font-weight: 500;
+  font-weight: 700;
 }
 .selection-line {
   display: flex;
@@ -415,7 +418,7 @@
   background: var(--row-selected);
 }
 .word-name {
-  font: var(--text-xl)/1.3 var(--font-serif);
+  font: 700 var(--text-xl)/1.3 var(--font-sans);
   overflow-wrap: anywhere;
 }
 .word-translation {
@@ -622,14 +625,14 @@
   justify-content: center;
 }
 .study-word {
-  font: 400 var(--study-word-size)/1.18 var(--font-serif);
-  letter-spacing: -3px;
+  font: 800 var(--study-word-size)/1.18 var(--font-sans);
+  letter-spacing: var(--headword-tracking);
   max-width: 100%;
   overflow-wrap: anywhere;
 }
 .study-word.long-word {
   font-size: var(--study-long-word-size);
-  letter-spacing: -1px;
+  letter-spacing: var(--headword-tracking);
 }
 .phonetic {
   font-size: var(--text-lg);
@@ -783,7 +786,7 @@
   margin-bottom: var(--s5);
 }
 .book-card-top > span {
-  font: var(--text-md) var(--font-serif);
+  font: var(--text-md) var(--font-sans);
   color: var(--muted);
   margin-left: auto;
 }
@@ -900,7 +903,8 @@
 }
 .result-stat strong {
   display: block;
-  font: 400 var(--text-stat)/1.3 var(--font-serif);
+  font: 400 var(--text-stat)/1.3 var(--font-notation);
+  font-variant-numeric: tabular-nums;
 }
 .result-stat span {
   color: var(--muted);
@@ -1342,11 +1346,11 @@
   }
   .study-word {
     font-size: var(--study-word-size);
-    letter-spacing: -2px;
+    letter-spacing: var(--headword-tracking);
   }
   .study-word.long-word {
     font-size: var(--study-long-word-size);
-    letter-spacing: -1px;
+    letter-spacing: var(--headword-tracking);
   }
   .phonetic {
     font-size: var(--text-md);

@@ -2,7 +2,7 @@
 .sentence-catalog .library-heading p { margin-top: var(--s3); }
 .sentence-nav { display: flex; flex-wrap: wrap; gap: var(--s5); margin-bottom: var(--s6); border-bottom: 1px solid var(--line); }
 .sentence-nav > a { display: inline-flex; align-items: center; min-height: var(--control); padding: var(--s2) var(--s1); color: var(--muted); border-bottom: 2px solid transparent; font-size: var(--text-base); }
-.sentence-nav > a.active { color: var(--accent); border-color: var(--accent); }
+.sentence-nav > a.active { color: var(--accent); border-color: var(--accent); font-weight: 700; }
 .sentence-filters { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s3); padding-bottom: var(--s5); }
 .sentence-filters label, .sentence-launch-actions label { display: flex; align-items: center; gap: var(--s2); font-size: var(--text-base); }
 .sentence-filters select, .sentence-launch-actions input { min-height: var(--control); padding: var(--s2) var(--s3); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); }
@@ -11,7 +11,7 @@
 .sentence-launch-error { margin-top: var(--s4); }
 .sentence-question-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: var(--s4); padding: var(--s5) 0; border-top: 1px solid var(--line); }
 .sentence-question-copy { min-width: 0; }
-.sentence-english { font: 400 var(--text-xl)/1.65 var(--font-serif); color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; }
+.sentence-english { font: 500 var(--text-xl)/1.65 var(--font-sans); color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; }
 .sentence-source, .sentence-question-copy > .subtle-copy { margin-top: var(--s2); overflow-wrap: anywhere; }
 .sentence-row-actions { display: flex; flex-wrap: wrap; gap: var(--s3); justify-content: flex-end; }
 .sentence-favorite { display: inline-flex; align-items: center; gap: var(--s2); min-height: var(--control); color: var(--accent); font-size: var(--text-base); background: transparent; }
@@ -39,7 +39,7 @@
 .sentence-result-stats { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--s3); margin: var(--s6) 0; }
 .sentence-result-stats > div { display: flex; flex-direction: column-reverse; gap: var(--s2); padding: var(--s4); border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); text-align: center; }
 .sentence-result-stats dt { color: var(--muted); font-size: var(--text-base); }
-.sentence-result-stats dd { font: 400 var(--text-round)/1.4 var(--font-serif); }
+.sentence-result-stats dd { font: 400 var(--text-round)/1.4 var(--font-notation); font-variant-numeric: tabular-nums; }
 .sentence-assessment-counts { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--s3) var(--s5); color: var(--control-text); }
 .sentence-result-actions { margin-bottom: var(--s6); }
 .sentence-history-row { padding: var(--s5) 0; border-top: 1px solid var(--line); }

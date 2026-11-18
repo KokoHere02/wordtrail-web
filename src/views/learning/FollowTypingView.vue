@@ -144,7 +144,7 @@ defineExpose({ toggleWord, toggleMeaning, play, canPronounce, speaking: audio.sp
         <p v-if="displayedQuestion.extraTraining" class="subtle-copy follow-extra-note">追加练习 <button class="muted-link" :disabled="blocked" @click="extra()">返回本轮</button></p>
         <h1 v-if="preferences.showFollowWord" lang="en" class="learning-word">{{ displayedQuestion.word }}</h1>
         <button v-else type="button" class="daily-recall-prompt" @click="toggleWord">显示英文</button>
-        <p v-if="preferences.showFollowWord && preferences.showPhonetic && displayedQuestion.phonetic" class="daily-word-phonetic follow-pronunciation" lang="en">{{ displayedQuestion.phonetic }}</p>
+        <p v-if="preferences.showFollowWord && preferences.showPhonetic && displayedQuestion.phonetic" class="daily-word-phonetic follow-pronunciation" lang="en-fonipa">{{ displayedQuestion.phonetic }}</p>
         <button v-if="displayedQuestion.audioUrl" type="button" class="btn btn-secondary training-play" aria-keyshortcuts="Alt+P" title="播放发音（Alt + P）" :disabled="!canPronounce" @click="play">播放发音 <kbd aria-hidden="true">Alt + P</kbd></button>
         <p v-if="audio.error.value" class="speech-error" role="status">{{ audio.error.value }} <button class="muted-link" :disabled="!canPronounce" @click="play">重试播放</button></p>
         <form class="daily-typing-form" @submit.prevent="submit">

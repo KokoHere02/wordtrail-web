@@ -3,7 +3,7 @@
 .book-progress { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4); margin: var(--s3) 0 0; font-size: var(--text-sm); }
 .book-progress > div { display: flex; align-items: baseline; gap: var(--s1); }
 .book-progress dt { color: var(--muted); }
-.book-progress dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.book-progress dd { margin: 0; font-weight: 400; font-variant-numeric: tabular-nums; font-family: var(--font-notation); }
 .wordlist-heading > .live-actions { flex: 0 1 auto; justify-content: flex-end; }
 .book-detail-copy { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s2) var(--s4); overflow-wrap: anywhere; }
 .book-wordlist-page { padding-top: 12px; }

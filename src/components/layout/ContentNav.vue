@@ -42,7 +42,7 @@ const sentenceTabs = [
 .content-library-tools { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s1); min-width: 0; padding: var(--s2) var(--s3); }
 .content-library-tools a { display: inline-flex; align-items: center; justify-content: center; gap: var(--s2); min-height: var(--control); padding: var(--s2) var(--s4); border-radius: var(--radius-sm); color: var(--muted); font-size: var(--text-base); white-space: nowrap; transition: color var(--motion-fast), background var(--motion-fast); }
 .content-library-tools a:hover { color: var(--ink); background: var(--hover); }
-.content-library-tools a.active { color: var(--accent-strong); background: var(--sage); font-weight: 600; }
+.content-library-tools a.active { color: var(--accent-strong); background: var(--sage); font-weight: 700; }
 .content-library-tools a:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
 .content-library-nav svg { flex-shrink: 0; }
 .sentence-library-top .content-library-kinds { border-bottom: 0; }

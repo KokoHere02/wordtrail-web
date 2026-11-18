@@ -36,6 +36,7 @@ test('status stays aligned through recognition audio failure and tab changes', a
     }).toBeLessThan(2);
   }
   await expect(word).toHaveText('edition');
+  await expect(word).toHaveCSS('font-weight', '800');
   await expectAligned(word);
   await page.setViewportSize({ width: 1150, height: 900 });
   await word.evaluate(element => { element.textContent = 'settlement'; });

@@ -131,31 +131,31 @@ watch([queue, index, loaded], () => {
 .sentence-workspace { width: min(100%, 820px); margin: 0 auto; }
 .sentence-workspace-card { padding: 28px 0 64px; }
 .sentence-prompt { padding-bottom: 38px; border-bottom: 1px solid var(--line); }
-.sentence-prompt-label { color: var(--accent-strong); font-size: 14px; font-weight: 600; }
-.sentence-workspace-card h1 { margin: 22px 0 0; color: var(--ink); font: 400 clamp(28px, 3.5vw, 44px)/1.4 var(--font-serif); overflow-wrap: anywhere; }
+.sentence-prompt-label { color: var(--accent-strong); font-size: var(--text-base); font-weight: 600; }
+.sentence-workspace-card h1 { margin: 22px 0 0; color: var(--ink); font: 500 clamp(28px, 3.5vw, 44px)/1.4 var(--font-sans); overflow-wrap: anywhere; letter-spacing: normal; }
 .sentence-answer-form { display: grid; gap: 0; padding-top: 38px; }
-.sentence-answer-form label, .sentence-answer-feedback span { color: var(--ink); font-size: 14px; font-weight: 600; }
-.sentence-answer-form textarea { display: block; width: 100%; min-height: 48px; margin-top: 16px; padding: 4px 0 10px; border: 0; border-bottom: 1px solid var(--muted); border-radius: 0; outline: none; color: var(--ink); background: transparent; font-family: "Noto Serif SC", "Songti SC", "Microsoft YaHei", serif; font-weight: 400; font-size: 20px; line-height: 1.75; letter-spacing: .04em; resize: none; overflow-y: hidden; transition: border-color .2s; }
-.sentence-answer-form textarea::placeholder { color: var(--muted); opacity: .75; font-family: var(--font-sans); font-size: 16px; letter-spacing: .02em; }
-.sentence-shortcuts { margin: 10px 0 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.sentence-answer-form label, .sentence-answer-feedback span { color: var(--ink); font-size: var(--text-base); font-weight: 600; }
+.sentence-answer-form textarea { display: block; width: 100%; min-height: 48px; margin-top: 16px; padding: 4px 0 10px; border: 0; border-bottom: 1px solid var(--muted); border-radius: 0; outline: none; color: var(--ink); background: transparent; font-family: var(--font-sans); font-weight: 400; font-size: 20px; line-height: 1.75; letter-spacing: normal; resize: none; overflow-y: hidden; transition: border-color .2s; }
+.sentence-answer-form textarea::placeholder { color: var(--muted); opacity: .75; font-family: var(--font-sans); font-size: var(--text-md); letter-spacing: .02em; }
+.sentence-shortcuts { margin: 10px 0 0; color: var(--muted); font-size: var(--text-sm); line-height: 1.6; }
 .sentence-shortcuts span { padding: 0 6px; }
 .sentence-answer-form textarea:focus-visible { border-bottom: 2px solid var(--focus-ring); padding-bottom: 9px; }
 .sentence-workspace-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
 .sentence-answer-form .sentence-workspace-actions { justify-content: space-between; }
 .sentence-workspace-actions .btn, .sentence-answer-feedback .btn, .sentence-workspace-state .btn { display: inline-flex; align-items: center; gap: 8px; }
 .sentence-workspace-actions .btn { min-height: 44px; padding-inline: 20px; }
-.sentence-skip { display: inline-flex; align-items: center; gap: 8px; padding: 10px 0; border: 0; background: transparent; color: var(--accent-strong); font: inherit; cursor: pointer; }
+.sentence-skip { display: inline-flex; align-items: center; gap: 8px; padding: 10px 0; border: 0; background: transparent; color: var(--accent-strong); font: inherit; cursor: pointer; font-weight: 500; }
 .sentence-skip:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 4px; }
 .sentence-skip:disabled { opacity: .5; cursor: not-allowed; }
 .sentence-answer-feedback { display: grid; gap: 0; padding-top: 32px; }
 .sentence-answer-feedback > div { padding: 0 0 24px; }
 .sentence-answer-feedback > .sentence-reference-answer { padding-top: 24px; border-top: 1px solid var(--line); }
-.sentence-answer-feedback p { margin: 10px 0 0; color: var(--ink); font-family: "Noto Serif SC", "Songti SC", "Microsoft YaHei", serif; font-size: 20px; line-height: 1.75; letter-spacing: .04em; white-space: pre-wrap; overflow-wrap: anywhere; }
-.sentence-answer-feedback .sentence-feedback-explanation { margin: 0 0 20px; color: var(--muted); font-size: 14px; }
+.sentence-answer-feedback p { margin: 10px 0 0; color: var(--ink); font-family: var(--font-sans); font-size: 20px; line-height: 1.75; letter-spacing: normal; white-space: pre-wrap; overflow-wrap: anywhere; font-weight: 400; }
+.sentence-answer-feedback .sentence-feedback-explanation { margin: 0 0 20px; color: var(--muted); font-size: var(--text-base); }
 .sentence-answer-feedback .btn { justify-self: start; margin-top: 8px; }
-.sentence-answer-feedback .sentence-next-hint { margin: 8px 0 0; color: var(--muted); font: 400 12px/1.5 var(--font-sans); letter-spacing: 0; }
+.sentence-answer-feedback .sentence-next-hint { margin: 8px 0 0; color: var(--muted); font: 400 var(--text-sm)/1.5 var(--font-sans); letter-spacing: 0; }
 .sentence-workspace-state { margin: 60px 0; color: var(--muted); line-height: 1.7; }
 .sentence-workspace-state h2 { margin: 0 0 12px; color: var(--ink); font-size: 21px; }
 .sentence-workspace-state p { margin: 0 0 20px; }
-@media (max-width: 600px) { .sentence-workspace-card { padding: 12px 0 40px; } .sentence-prompt { padding-bottom: 28px; } .sentence-workspace-card h1 { margin-top: 16px; } .sentence-answer-form { padding-top: 28px; } .sentence-answer-form textarea { font-size: 16px; } .sentence-workspace-state { margin: 32px 0; } }
+@media (max-width: 600px) { .sentence-workspace-card { padding: 12px 0 40px; } .sentence-prompt { padding-bottom: 28px; } .sentence-workspace-card h1 { margin-top: 16px; } .sentence-answer-form { padding-top: 28px; } .sentence-answer-form textarea { font-size: var(--text-md); font-weight: 400; letter-spacing: normal; } .sentence-workspace-state { margin: 32px 0; } }
 </style>

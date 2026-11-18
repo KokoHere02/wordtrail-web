@@ -22,7 +22,7 @@
 .import-rows { list-style: none; padding: 0; margin: 0; min-width: 0; }
 .import-row { padding: var(--s4) 0; border-top: 1px solid var(--line); overflow-wrap: anywhere; }
 .import-row-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s2) var(--s3); }
-.import-row-heading strong { font: 400 var(--text-xl)/1.5 var(--font-serif); white-space: pre-wrap; overflow-wrap: anywhere; }
+.import-row-heading strong { font: 700 var(--text-xl)/1.5 var(--font-sans); white-space: pre-wrap; overflow-wrap: anywhere; }
 .import-status { padding: var(--s1) var(--s2); border-radius: var(--tag-radius); background: var(--tag-bg); color: var(--tag-text); font-size: var(--text-sm); }
 .import-status.import-problem { background: var(--amber-bg); color: var(--amber); }
 .import-row > .subtle-copy { margin: var(--s2) 0; white-space: pre-wrap; }

@@ -38,7 +38,7 @@
 .sentence-stat-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); margin-block: var(--s4) var(--s8); gap: var(--s4); }
 .sentence-stat-grid > div { padding: var(--s4); border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
 .sentence-stat-grid dt { font-size: var(--text-base); color: var(--muted); }
-.sentence-stat-grid dd { margin-top: var(--s3); color: var(--ink); font-size: var(--text-round); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.sentence-stat-grid dd { margin-top: var(--s3); color: var(--ink); font-size: var(--text-round); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; font-family: var(--font-notation); }
 .sentence-stat-grid small { font-size: var(--text-base); }
 .sentence-current-counts { margin-block: var(--s6); }
 .sentence-current-links { display: flex; flex-wrap: wrap; gap: var(--s5); margin-block: var(--s3); }

@@ -32,7 +32,7 @@ watch(() => [props.revision, props.allowExtra], () => { void load(); });
       <p v-if="!data.records.length" class="training-list-empty">暂无单词</p>
       <article v-for="row in data.records" :key="row.itemId" :class="['training-item-row', { 'is-current': row.current }]" :data-item-id="row.itemId">
         <header><span class="training-item-order">{{ row.sortOrder }}</span><strong v-if="(scope === 'FOLLOW_TYPING' || row.itemStatus === 'DONE') && row.word" lang="en">{{ row.word }}</strong><strong v-else>第 {{ row.sortOrder }} 词</strong><span v-if="row.current" class="training-item-current">正在学习</span><span>{{ trainingStatusLabel(row) }}</span></header>
-        <template v-if="scope === 'FOLLOW_TYPING' || row.itemStatus === 'DONE'"><p v-if="row.phonetic" class="subtle-copy">{{ row.phonetic }}</p><WordMeaning :translation="row.translation" :translation-groups="row.translationGroups" /></template>
+        <template v-if="scope === 'FOLLOW_TYPING' || row.itemStatus === 'DONE'"><p v-if="row.phonetic" class="subtle-copy" lang="en-fonipa">{{ row.phonetic }}</p><WordMeaning :translation="row.translation" :translation-groups="row.translationGroups" /></template>
         <div class="training-item-footer"><span class="subtle-copy">练习 {{ row.trainingCount }} 次</span><button v-if="row.canExtraTrain && row.itemStatus === 'DONE'" class="muted-link" :disabled="!allowExtra" @click="$emit('extra', row.itemId)">追加练习</button></div>
       </article>
       <AppPagination :page="data.page" :size="data.size" :total="data.total" :disabled="loading" @change="load" />

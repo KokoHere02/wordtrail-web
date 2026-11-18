@@ -182,7 +182,7 @@ defineExpose({ changeMode: async (value: DailyStudyMode) => { await initializing
       <section v-if="dictationFeedback && receipt" :class="['daily-training-card', 'learning-card', 'daily-training-feedback', 'dictation-answer-feedback', { 'is-incorrect': incorrect }]" aria-live="polite">
         <div class="dictation-feedback-heading">
           <button type="button" class="btn btn-secondary training-play" aria-keyshortcuts="Alt+P" title="播放发音（Alt + P）" :disabled="!canPronounce || audioLoading" @click="pronounce">{{ audioLoading ? '音频加载中…' : speaking ? '重新播放' : '播放发音' }} <kbd aria-hidden="true">Alt + P</kbd></button>
-          <div class="dictation-feedback-answer"><h1 class="learning-word" lang="en">{{ receipt.word }}</h1><p v-if="preferences.showPhonetic" class="daily-word-phonetic dictation-feedback-phonetic" lang="en">{{ feedbackPhonetic }}</p></div>
+          <div class="dictation-feedback-answer"><h1 class="learning-word" lang="en">{{ receipt.word }}</h1><p v-if="preferences.showPhonetic" class="daily-word-phonetic dictation-feedback-phonetic" lang="en-fonipa">{{ feedbackPhonetic }}</p></div>
         </div>
         <WordLearningDetails :translation="receipt.translation" :translation-groups="receipt.translationGroups" :word-id="receipt.wordId" :word="receipt.word" :word-key="receipt.trainingId" />
         <div class="dictation-submitted"><p class="letter-input-label">英文拼写</p><p :class="['dictation-submitted-word', incorrect ? 'is-incorrect' : 'is-correct']" lang="en">{{ receipt.input }}</p><p :class="['dictation-answer-verdict', incorrect ? 'is-incorrect' : 'is-correct']">{{ incorrect ? '拼写错误' : '拼写正确' }}</p></div>
@@ -190,7 +190,7 @@ defineExpose({ changeMode: async (value: DailyStudyMode) => { await initializing
       </section>
       <section v-else-if="recognitionFeedback && receipt" class="daily-training-card learning-card daily-training-feedback recognition-feedback" aria-live="polite">
         <h1 class="learning-word" lang="en">{{ receipt.word }}</h1>
-        <div class="recognition-word-meta"><p v-if="preferences.showPhonetic && recognitionPhonetic" class="daily-word-phonetic" lang="en">{{ recognitionPhonetic }}</p><button v-if="receipt.wordId" type="button" class="recognition-audio" aria-label="播放发音" aria-keyshortcuts="Alt+P" title="播放发音（Alt + P）" :disabled="!canPronounce || audioLoading" @click="pronounce"><Volume2 :size="18" aria-hidden="true" /></button></div>
+        <div class="recognition-word-meta"><p v-if="preferences.showPhonetic && recognitionPhonetic" class="daily-word-phonetic" lang="en-fonipa">{{ recognitionPhonetic }}</p><button v-if="receipt.wordId" type="button" class="recognition-audio" aria-label="播放发音" aria-keyshortcuts="Alt+P" title="播放发音（Alt + P）" :disabled="!canPronounce || audioLoading" @click="pronounce"><Volume2 :size="18" aria-hidden="true" /></button></div>
         <WordLearningDetails :translation="receipt.translation" :translation-groups="receipt.translationGroups" :word-id="receipt.wordId" :word="receipt.word" :word-key="receipt.trainingId" />
         <div class="recognition-feedback-actions"><div class="learning-rating daily-training-rating" role="group" aria-label="本次认读选择"><button v-for="entry in ratings" :key="entry.result" type="button" :class="['rating-button', { 'is-selected': receipt.selfAssessment === entry.result }]" :aria-pressed="receipt.selfAssessment === entry.result" :disabled="!canCorrect" @click="session.correct(entry.result)">{{ entry.label }}<kbd>{{ entry.key }}</kbd></button></div><button ref="recognitionNext" type="button" class="btn btn-primary recognition-next" :disabled="session.blocked.value" @click="next">下一个 <kbd>Enter</kbd></button></div>
         <p v-if="!receipt.reviewLogId || scope === 'CONSOLIDATION'" class="subtle-copy">本次练习暂不支持修改已保存的选择。</p>
@@ -202,7 +202,7 @@ defineExpose({ changeMode: async (value: DailyStudyMode) => { await initializing
         </div>
         <p v-else class="learning-notice">{{ feedbackLabel }}</p>
         <p v-if="incorrect" class="daily-feedback-answer-label">正确拼写</p>
-        <h1 class="learning-word">{{ receipt.word }}</h1>
+        <h1 class="learning-word" lang="en">{{ receipt.word }}</h1>
         <p v-if="!incorrect && receipt.input !== null" class="daily-submitted">你的输入：<span lang="en">{{ receipt.input }}</span></p>
         <WordLearningDetails :translation="receipt.translation" :translation-groups="receipt.translationGroups" :word-id="receipt.wordId" :word="receipt.word" :word-key="receipt.trainingId" />
         <p v-if="receipt.extraTraining" class="subtle-copy">本次仅记录训练，不重复完成目标或改变复习安排。</p>
@@ -211,7 +211,7 @@ defineExpose({ changeMode: async (value: DailyStudyMode) => { await initializing
         <AppButton :disabled="session.blocked.value" @click="next">{{ receipt.action === 'REVEAL' ? '继续输入' : receipt.extraTraining ? '再次训练此词' : question ? '下一个' : '查看完成状态' }} <span aria-hidden="true">→</span></AppButton>
       </section>
       <section v-else-if="question && !historical && !expired" class="daily-training-card learning-card" :data-mode="question.mode" :data-item-id="question.itemId">
-        <template v-if="!['DICTATION', 'LISTEN_DICTATION'].includes(question.mode) || question.answerRevealed"><h1 class="learning-word" lang="en">{{ question.word }}</h1><div v-if="question.mode === 'RECOGNITION'" class="recognition-word-meta"><p v-if="preferences.showPhonetic && question.phonetic" class="daily-word-phonetic" lang="en">{{ question.phonetic }}</p><button v-if="question.audioUrl || canPronounce" type="button" class="recognition-audio" aria-label="播放发音" aria-keyshortcuts="Alt+P" title="播放发音（Alt + P）" :disabled="!canPronounce || audioLoading" @click="pronounce"><Volume2 :size="18" aria-hidden="true" /></button></div><p v-else-if="preferences.showPhonetic && question.phonetic" class="daily-word-phonetic" lang="en">{{ question.phonetic }}</p></template>
+        <template v-if="!['DICTATION', 'LISTEN_DICTATION'].includes(question.mode) || question.answerRevealed"><h1 class="learning-word" lang="en">{{ question.word }}</h1><div v-if="question.mode === 'RECOGNITION'" class="recognition-word-meta"><p v-if="preferences.showPhonetic && question.phonetic" class="daily-word-phonetic" lang="en-fonipa">{{ question.phonetic }}</p><button v-if="question.audioUrl || canPronounce" type="button" class="recognition-audio" aria-label="播放发音" aria-keyshortcuts="Alt+P" title="播放发音（Alt + P）" :disabled="!canPronounce || audioLoading" @click="pronounce"><Volume2 :size="18" aria-hidden="true" /></button></div><p v-else-if="preferences.showPhonetic && question.phonetic" class="daily-word-phonetic" lang="en-fonipa">{{ question.phonetic }}</p></template>
         <p v-if="question.extraTraining" class="subtle-copy">追加练习 · {{ trainingStatusLabel(question) }}</p>
         <template v-if="question.mode === 'RECOGNITION'">
           <WordLearningDetails v-if="definition && meaningVisible" :translation="definition.translation" :translation-groups="definition.translationGroups" :word-id="definition.wordId" :word="definition.word" :word-key="question.itemId" />

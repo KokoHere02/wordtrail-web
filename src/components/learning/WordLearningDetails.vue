@@ -8,6 +8,7 @@ import { usePronunciation } from '../../stores/pronunciation';
 import WordMeaning from '../word/WordMeaning.vue';
 import type { TranslationFields } from '../../types/translation';
 import { parseLegacyMeaning, splitMeaningItems } from '../../utils/studyMeaning';
+import { splitExample } from '../../utils/exampleText';
 
 const props = defineProps<TranslationFields & { wordId?: number; word?: string; wordKey: number | string }>();
 type Form = { form: string; formType: string };
@@ -54,11 +55,13 @@ const lookupPanel = ref<HTMLElement | null>(null);
 const lookupPosition = ref({ left: 0, top: 0 });
 let lookupAnchor: HTMLElement | null = null;
 const labels: Record<string, string> = { THIRD_PERSON_SINGULAR: '第三人称单数', PAST: '过去式', PAST_PARTICIPLE: '过去分词', PRESENT_PARTICIPLE: '现在分词', PLURAL: '复数', COMPARATIVE: '比较级', SUPERLATIVE: '最高级' };
-const terms = computed(() => [...new Set([props.word, ...forms.value.map(item => item.form)].filter((value): value is string => !!value))].sort((a,b) => b.length-a.length));
+const terms = computed(() => [props.word || '', ...forms.value.map(item => item.form)]);
 function segments(text: string) {
-  return text.split(/([a-zA-Z]+(?:['’][a-zA-Z]+)*)/g).filter(Boolean).map(part => ({
-    text: part, word: /^[a-zA-Z]/.test(part), match: terms.value.some(term => term.toLowerCase() === part.toLowerCase()),
-  }));
+  return splitExample(text, terms.value).flatMap(run =>
+    run.text.split(/([a-zA-Z]+(?:['’][a-zA-Z]+)*)/g).filter(Boolean).map(part => ({
+      text: part, word: /^[a-zA-Z]/.test(part), match: run.match,
+    })),
+  );
 }
 function stopAudio() { audioRequest++; stop(); audioWordId.value = null; audioError.value = ''; }
 function closeLookup() { lookupVersion++; selected.value = null; lookupLoading.value = false; lookupAnchor = null; stopAudio(); }
@@ -127,12 +130,12 @@ watch(() => props.wordId, (wordId, _, onCleanup) => {
     <section v-if="relatedWords.length || relatedError" class="related-words detail-row" aria-label="关联单词">
       <h2>关联单词</h2>
       <p v-if="relatedError" class="detail-state">关联单词暂时无法加载</p>
-      <div v-else class="related-content"><ul :id="relatedListId"><li v-for="item in visibleRelated" :key="item.id"><div class="related-word-heading"><div class="word-row-main"><RouterLink :to="`/words/${item.id}`" class="related-word-name" lang="en">{{ item.word }}</RouterLink><button type="button" class="example-lookup-audio" :aria-label="`朗读 ${item.word}`" :title="audioWordId === item.id && speaking ? '正在朗读' : '播放单词发音'" :aria-pressed="audioWordId === item.id && speaking" :disabled="audioWordId === item.id && audioLoading" @click="pronounce(item.id)"><Volume2 :size="16" aria-hidden="true" /></button></div><span class="word-row-phonetic">{{ item.phonetic || '' }}</span></div><WordMeaning :translation="relatedPreview(item.translation)" /></li></ul><p v-if="audioError && relatedWords.some(item => item.id === audioWordId)" class="example-audio-error" role="status">{{ audioError }}</p><button v-if="relatedWords.length > 5" type="button" class="related-expand related-show-all" :aria-expanded="showAllRelated" :aria-controls="relatedListId" @click="showAllRelated = !showAllRelated">{{ showAllRelated ? '收起关联单词' : `展开其他 ${relatedWords.length - 5} 个关联单词` }}</button><p v-if="showAllRelated && relatedWords.length === 50" class="subtle-copy">最多展示前 50 个关联单词。</p></div>
+      <div v-else class="related-content"><ul :id="relatedListId"><li v-for="item in visibleRelated" :key="item.id"><div class="related-word-heading"><div class="word-row-main"><RouterLink :to="`/words/${item.id}`" class="related-word-name" lang="en">{{ item.word }}</RouterLink><button type="button" class="example-lookup-audio" :aria-label="`朗读 ${item.word}`" :title="audioWordId === item.id && speaking ? '正在朗读' : '播放单词发音'" :aria-pressed="audioWordId === item.id && speaking" :disabled="audioWordId === item.id && audioLoading" @click="pronounce(item.id)"><Volume2 :size="16" aria-hidden="true" /></button></div><span class="word-row-phonetic" lang="en-fonipa">{{ item.phonetic || '' }}</span></div><WordMeaning :translation="relatedPreview(item.translation)" /></li></ul><p v-if="audioError && relatedWords.some(item => item.id === audioWordId)" class="example-audio-error" role="status">{{ audioError }}</p><button v-if="relatedWords.length > 5" type="button" class="related-expand related-show-all" :aria-expanded="showAllRelated" :aria-controls="relatedListId" @click="showAllRelated = !showAllRelated">{{ showAllRelated ? '收起关联单词' : `展开其他 ${relatedWords.length - 5} 个关联单词` }}</button><p v-if="showAllRelated && relatedWords.length === 50" class="subtle-copy">最多展示前 50 个关联单词。</p></div>
     </section>
     <section v-if="confusablesLoading || confusablesError || confusables.length" class="confusable-words detail-row" aria-label="形近词">
       <h2>形近词</h2>
       <p v-if="confusablesLoading" class="detail-state">正在加载形近词…</p><p v-else-if="confusablesError" class="detail-state">形近词暂时无法加载</p>
-      <div v-else class="confusable-content"><ul><li v-for="item in confusables" :key="item.id"><div class="confusable-heading"><div class="word-row-main"><strong lang="en">{{ item.word }}</strong><button type="button" class="example-lookup-audio" :aria-label="`朗读 ${item.word}`" :aria-pressed="audioWordId === item.id && speaking" :disabled="audioWordId === item.id && audioLoading" @click="pronounce(item.id)"><Volume2 :size="16" aria-hidden="true" /></button></div><span class="word-row-phonetic">{{ item.phonetic || '' }}</span></div><WordMeaning :translation="item.translation" /></li></ul><p v-if="audioError && confusables.some(item => item.id === audioWordId)" class="example-audio-error" role="status">{{ audioError }}</p></div>
+      <div v-else class="confusable-content"><ul><li v-for="item in confusables" :key="item.id"><div class="confusable-heading"><div class="word-row-main"><strong lang="en">{{ item.word }}</strong><button type="button" class="example-lookup-audio" :aria-label="`朗读 ${item.word}`" :aria-pressed="audioWordId === item.id && speaking" :disabled="audioWordId === item.id && audioLoading" @click="pronounce(item.id)"><Volume2 :size="16" aria-hidden="true" /></button></div><span class="word-row-phonetic" lang="en-fonipa">{{ item.phonetic || '' }}</span></div><WordMeaning :translation="item.translation" /></li></ul><p v-if="audioError && confusables.some(item => item.id === audioWordId)" class="example-audio-error" role="status">{{ audioError }}</p></div>
     </section>
     <section class="word-learning-examples detail-row" aria-label="双语例句">
       <h2>双语例句</h2>
@@ -141,7 +144,7 @@ watch(() => props.wordId, (wordId, _, onCleanup) => {
     </section>
   </div>
   <Teleport to="body">
-    <div v-if="selected" ref="lookupPanel" class="example-lookup" :style="{ left: `${lookupPosition.left}px`, top: `${lookupPosition.top}px` }" role="region" :aria-label="`${selected.text} 的词典释义`" aria-live="polite" @keydown.esc.stop="closeLookup"><button type="button" class="example-lookup-close" aria-label="关闭释义" @click="closeLookup">×</button><p v-if="lookupLoading">正在查询 {{ selected.text }}…</p><p v-else-if="lookupError">查询失败，请再次点击单词重试。</p><p v-else-if="!lookupResults.length">词库中未找到 {{ selected.text }}。</p><div v-for="result in lookupResults" v-else :key="result.id" class="example-lookup-result"><div class="example-lookup-heading"><strong lang="en">{{ result.word }}</strong><span v-if="result.phonetic" class="example-lookup-phonetic">{{ result.phonetic }}</span><button type="button" class="example-lookup-audio" :aria-label="`朗读 ${result.word}`" :title="audioWordId === result.id && speaking ? '正在朗读' : '播放单词发音'" :aria-pressed="audioWordId === result.id && speaking" :disabled="audioWordId === result.id && audioLoading" @click="pronounce(result.id)"><Volume2 :size="18" aria-hidden="true" /></button></div><WordMeaning :translation="result.translation" /><p v-if="audioWordId === result.id && audioError" class="example-audio-error" role="status">{{ audioError }}</p></div></div>
+    <div v-if="selected" ref="lookupPanel" class="example-lookup" :style="{ left: `${lookupPosition.left}px`, top: `${lookupPosition.top}px` }" role="region" :aria-label="`${selected.text} 的词典释义`" aria-live="polite" @keydown.esc.stop="closeLookup"><button type="button" class="example-lookup-close" aria-label="关闭释义" @click="closeLookup">×</button><p v-if="lookupLoading">正在查询 {{ selected.text }}…</p><p v-else-if="lookupError">查询失败，请再次点击单词重试。</p><p v-else-if="!lookupResults.length">词库中未找到 {{ selected.text }}。</p><div v-for="result in lookupResults" v-else :key="result.id" class="example-lookup-result"><div class="example-lookup-heading"><strong lang="en">{{ result.word }}</strong><span v-if="result.phonetic" class="example-lookup-phonetic" lang="en-fonipa">{{ result.phonetic }}</span><button type="button" class="example-lookup-audio" :aria-label="`朗读 ${result.word}`" :title="audioWordId === result.id && speaking ? '正在朗读' : '播放单词发音'" :aria-pressed="audioWordId === result.id && speaking" :disabled="audioWordId === result.id && audioLoading" @click="pronounce(result.id)"><Volume2 :size="18" aria-hidden="true" /></button></div><WordMeaning :translation="result.translation" /><p v-if="audioWordId === result.id && audioError" class="example-audio-error" role="status">{{ audioError }}</p></div></div>
   </Teleport>
 </template>
 <style scoped>
@@ -155,13 +158,13 @@ watch(() => props.wordId, (wordId, _, onCleanup) => {
 .word-learning-meanings :deep(.translation-body) { min-width: 0; overflow-wrap: anywhere; }
 .word-learning-meanings :deep(.translation-professional .translation-body) { padding-top: 0; }
 .detail-row { display: grid; grid-template-columns: 156px minmax(0, 1fr); gap: 16px; align-items: start; min-width: 0; padding: 20px 0; border-top: 1px solid var(--line); }
-.detail-row h2 { justify-self: start; margin: 0; padding: 5px 16px; border-radius: 20px; background: var(--sage); color: var(--accent-strong); font-size: 15px; line-height: 1.4; white-space: nowrap; }
-.detail-state, .word-learning-empty { margin: 0; color: var(--muted); font-size: 14px; line-height: 30px; }
+.detail-row h2 { justify-self: start; margin: 0; padding: 5px 16px; border-radius: 20px; background: var(--sage); color: var(--accent-strong); font-size: var(--text-base); line-height: 1.4; white-space: nowrap; }
+.detail-state, .word-learning-empty { margin: 0; color: var(--muted); font-size: var(--text-base); line-height: 30px; }
 .word-learning-forms ul { display: flex; flex-wrap: wrap; gap: 12px 0; min-width: 0; padding: 0; margin: 0; list-style: none; }
 .word-learning-forms li { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 8px; padding: 3px 20px; border-left: 1px solid var(--line); }
 .word-learning-forms li:first-child { padding-left: 0; border-left: 0; }
-.word-learning-forms li span { color: var(--muted); font-size: 13px; }
-.word-learning-forms li strong { color: var(--ink); font: 500 20px/1.4 var(--font-serif); overflow-wrap: anywhere; }
+.word-learning-forms li span { color: var(--muted); font-size: var(--text-sm); }
+.word-learning-forms li strong { color: var(--ink); font: 700 20px/1.4 var(--font-sans); overflow-wrap: anywhere; }
 .confusable-content { min-width: 0; }
 .confusable-words ul { min-width: 0; padding: 0; margin: 0; list-style: none; }
 .confusable-words li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 4px 24px; min-width: 0; padding: 4px 0; overflow-wrap: anywhere; }
@@ -173,19 +176,19 @@ watch(() => props.wordId, (wordId, _, onCleanup) => {
 .word-row-main .example-lookup-audio { flex: none; width: 28px; height: 28px; }
 .confusable-heading { display: flex; flex-wrap: wrap; gap: 4px 6px; }
 .confusable-heading .word-row-main { gap: 14px; }
-.confusable-heading strong { min-width: 0; overflow-wrap: anywhere; color: var(--ink); font: 700 20px/1.3 var(--font-serif); }
-.word-row-phonetic { min-width: 0; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
-.confusable-words li > .word-meaning { min-width: 0; margin: 0; color: var(--ink); font: 400 15px/1.5 var(--font-sans); }
+.confusable-heading strong { min-width: 0; overflow-wrap: anywhere; color: var(--ink); font: 700 20px/1.3 var(--font-sans); }
+.word-row-phonetic { min-width: 0; color: var(--muted); font-size: var(--text-sm); overflow-wrap: anywhere; }
+.confusable-words li > .word-meaning { min-width: 0; margin: 0; color: var(--ink); font: 400 var(--text-base)/1.5 var(--font-sans); }
 .related-content { min-width: 0; }
 .related-words ul { min-width: 0; padding: 0; margin: 0; list-style: none; }
 .related-words li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 4px 24px; min-width: 0; padding: 4px 0; overflow-wrap: anywhere; }
 .related-words li + li { border-top: 1px solid var(--line); }
 .related-words li:first-child { padding-top: 0; }
 .related-words li:last-child { padding-bottom: 0; }
-.related-word-name { min-width: 0; overflow-wrap: anywhere; color: var(--ink); font: 700 20px/1.3 var(--font-serif); }
+.related-word-name { min-width: 0; overflow-wrap: anywhere; color: var(--ink); font: 700 20px/1.3 var(--font-sans); }
 .related-word-name:hover { color: var(--accent-strong); text-decoration: underline; }
-.related-words li > .word-meaning { min-width: 0; margin: 0; font-size: 14px; }
-.related-expand { padding: 2px 0; border: 0; background: transparent; color: var(--accent-strong); font-size: 13px; cursor: pointer; }
+.related-words li > .word-meaning { min-width: 0; margin: 0; font-size: var(--text-base); }
+.related-expand { padding: 2px 0; border: 0; background: transparent; color: var(--accent-strong); font-size: var(--text-sm); cursor: pointer; }
 .related-expand:hover { text-decoration: underline; }
 .related-expand:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
 .related-show-all { margin-top: 10px; }
@@ -195,13 +198,13 @@ watch(() => props.wordId, (wordId, _, onCleanup) => {
 .example-number { flex: none; width: 10px; color: var(--accent-strong); font-size: 0; line-height: 1.6; }
 .example-number::before { content: '•'; font-size: 18px; }
 .example-english, .example-chinese { margin: 0; overflow-wrap: anywhere; }
-.example-english { color: var(--ink); font: 400 19px/1.4 var(--font-serif); }
+.example-english { color: var(--ink); font: 500 var(--text-lg)/1.4 var(--font-sans); }
 .example-content { min-width: 0; flex: 1; }
 .example-word { display: inline; padding: 0; border: 0; border-radius: 3px; color: inherit; background: transparent; font: inherit; cursor: pointer; }
 .example-word:hover, .example-word:focus-visible, .example-word.is-selected { color: var(--accent-strong); text-decoration: underline; text-underline-offset: 3px; }
 .example-word:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .example-word.is-match { color: var(--selection-text); background: var(--selection-bg); box-shadow: 0 0 0 2px var(--selection-bg); font-weight: 700; }
-.example-lookup { position: fixed; z-index: 1000; box-sizing: border-box; width: min(300px, calc(100vw - 16px)); max-height: min(320px, calc(100vh - 16px)); overflow: auto; padding: 16px 38px 16px 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); box-shadow: 0 10px 30px rgb(0 0 0 / 18%); text-align: left; font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
+.example-lookup { position: fixed; z-index: 1000; box-sizing: border-box; width: min(300px, calc(100vw - 16px)); max-height: min(320px, calc(100vh - 16px)); overflow: auto; padding: 16px 38px 16px 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); box-shadow: 0 10px 30px rgb(0 0 0 / 18%); text-align: left; font-size: var(--text-base); line-height: 1.6; overflow-wrap: anywhere; }
 .example-lookup p { margin: 0; color: var(--muted); }
 .example-lookup-close { position: absolute; right: 9px; top: 6px; padding: 3px 6px; border: 0; background: transparent; color: var(--muted); font-size: 20px; cursor: pointer; }
 .example-lookup-result + .example-lookup-result { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
@@ -212,6 +215,6 @@ watch(() => props.wordId, (wordId, _, onCleanup) => {
 .example-lookup-audio:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .example-lookup-audio:disabled { opacity: .55; cursor: wait; }
 .example-lookup .example-audio-error { margin-top: 6px; color: var(--error); }
-.example-chinese { margin-top: 2px; color: var(--muted); font-size: 15px; line-height: 1.45; }
+.example-chinese { margin-top: 2px; color: var(--muted); font-size: var(--text-base); line-height: 1.45; }
 @media (max-width: 600px) { .detail-row { grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 16px 0; } .word-learning-forms ul { gap: 12px 18px; } .word-learning-forms li { padding: 2px 0; border-left: 0; } .confusable-words li, .related-words li { grid-template-columns: minmax(0, 1fr); gap: 2px; padding: 7px 0; } .related-word-heading { display: flex; flex-wrap: wrap; gap: 4px 10px; } }
 </style>

@@ -75,7 +75,7 @@ onMounted(refresh);
 .daily-record-content :deep(.training-item-row .training-item-footer) { grid-column: 3; grid-row: 1 / span 2; align-self: center; flex-direction: column; align-items: flex-end; margin: 0; font-size: var(--text-sm); }
 .daily-record-content :deep(.training-history-row header) { margin-bottom: var(--s2); }
 .daily-record-content :deep(.training-item-footer) { justify-content: space-between; }
-.daily-record-content :deep(.training-item-order) { display: inline-grid; place-items: center; min-width: 28px; height: 28px; background: var(--surface-raised); border-radius: var(--radius-sm); font-variant-numeric: tabular-nums; }
+.daily-record-content :deep(.training-item-order) { display: inline-grid; place-items: center; min-width: 28px; height: 28px; background: var(--surface-raised); border-radius: var(--radius-sm); font-variant-numeric: tabular-nums; font-family: var(--font-notation); }
 .daily-record-content :deep(.training-history-row time) { margin-left: auto; font-size: var(--text-sm); }
 .daily-record-content :deep(.pagination) { margin: 0; padding-block: var(--s4); }
 @media (max-width: 640px) {

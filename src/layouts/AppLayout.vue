@@ -79,8 +79,8 @@ function closeProfileOnBlur(event: FocusEvent) {
 .account-dropdown-panel { position: absolute; z-index: 100; top: 100%; right: 0; width: 220px; padding: 12px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); box-shadow: 0 12px 32px rgb(0 0 0 / 14%); transform-origin: top right; }
 .account-dropdown-heading { display: grid; gap: 5px; padding: 6px 10px 14px; margin-bottom: 6px; border-bottom: 1px solid var(--line); }
 .account-dropdown-heading strong { overflow: hidden; color: var(--ink); text-overflow: ellipsis; white-space: nowrap; }
-.account-dropdown-caption { color: var(--muted); font-size: 12px; }
-.account-dropdown-item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 42px; padding: 0 10px; border: 0; border-radius: 9px; background: transparent; color: var(--ink); font-size: 14px; text-align: left; text-decoration: none; cursor: pointer; }
+.account-dropdown-caption { color: var(--muted); font-size: var(--text-sm); }
+.account-dropdown-item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 42px; padding: 0 10px; border: 0; border-radius: 9px; background: transparent; color: var(--ink); font-size: var(--text-base); text-align: left; text-decoration: none; cursor: pointer; }
 .account-dropdown-item:hover, .account-dropdown-item:focus-visible { background: var(--sage); }
 .account-dropdown-item:disabled { opacity: .55; cursor: wait; }
 .account-dropdown-logout { color: var(--muted); }

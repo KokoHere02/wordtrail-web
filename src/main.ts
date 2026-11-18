@@ -6,8 +6,10 @@ import { router } from "./router";
 import { setExpiredHandler } from "./api/http";
 import { useAuthStore } from "./stores/auth";
 import { initializeTheme } from './composables/useTheme';
+import { registerFounderFonts } from './assets/fonts/founder/register';
 
 initializeTheme();
+registerFounderFonts();
 export const app = createApp(App);
 app.use(createPinia());
 setExpiredHandler(() => {

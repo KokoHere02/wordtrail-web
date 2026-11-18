@@ -21,5 +21,5 @@ const statistics = computed(() => route.path === '/statistics' || route.path ===
 .section-hub-nav > a { padding-inline: var(--s2); letter-spacing: .08em; }
 .record-stat-nav { display: flex; gap: var(--s2); width: min(calc(100% - var(--s5) * 2), var(--content-library-width)); margin: var(--s4) auto 0; }
 .record-stat-nav a { padding: var(--s2) var(--s4); border-radius: var(--radius-pill); color: var(--muted); }
-.record-stat-nav a.active { background: var(--sage); color: var(--accent-strong); }
+.record-stat-nav a.active { background: var(--sage); color: var(--accent-strong); font-weight: 700; }
 </style>

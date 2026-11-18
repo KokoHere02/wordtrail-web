@@ -78,20 +78,20 @@ const selectedDay = computed(() => byDate.value.get(selected.value));
 .sentence-summary-section { padding: var(--s6) 0; }
 .sentence-summary-total { border-top: 1px solid var(--line); }
 .sentence-summary-header { display: flex; justify-content: space-between; align-items: center; gap: var(--s4); }
-.sentence-summary-header h2 { margin: 0; color: var(--ink); font-size: 16px; font-weight: 600; }
-.sentence-summary-header p { margin: 5px 0 0; color: var(--muted); font-size: 13px; }
+.sentence-summary-header h2 { margin: 0; color: var(--ink); font-size: var(--text-md); font-weight: 600; }
+.sentence-summary-header p { margin: 5px 0 0; color: var(--muted); font-size: var(--text-sm); }
 .sentence-summary-header .btn { flex: none; }
 .sentence-summary-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s5); margin: var(--s5) 0 0; }
 .sentence-summary-metrics > div + div { border-left: 1px solid var(--line); padding-left: var(--s6); }
-.sentence-summary-metrics dt { color: var(--muted); font-size: 13px; }
-.sentence-summary-metrics dd { margin: 6px 0 0; color: var(--accent-strong); font-size: 30px; font-weight: 600; line-height: 1.25; font-variant-numeric: tabular-nums; }
-.sentence-summary-metrics dd small { color: var(--muted); font-size: 13px; font-weight: 400; }
-.sentence-summary-metrics p { margin: 6px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.sentence-summary-metrics dt { color: var(--muted); font-size: var(--text-sm); }
+.sentence-summary-metrics dd { margin: 6px 0 0; color: var(--accent-strong); font-size: 30px; font-weight: 600; line-height: 1.25; font-variant-numeric: tabular-nums; font-family: var(--font-notation); }
+.sentence-summary-metrics dd small { color: var(--muted); font-size: var(--text-sm); font-weight: 400; }
+.sentence-summary-metrics p { margin: 6px 0 0; color: var(--muted); font-size: var(--text-sm); line-height: 1.5; }
 @media (max-width: 600px) {
   .sentence-summary { padding: 0 var(--s4); }
   .sentence-summary-section { padding: var(--s5) 0; }
   .sentence-summary-header { align-items: flex-start; }
-  .sentence-summary-header .btn { padding-inline: var(--s3); font-size: 13px; }
+  .sentence-summary-header .btn { padding-inline: var(--s3); font-size: var(--text-sm); }
   .sentence-summary-metrics { gap: var(--s3); }
   .sentence-summary-metrics > div + div { padding-left: var(--s4); }
 }

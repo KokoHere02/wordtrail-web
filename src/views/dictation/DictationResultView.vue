@@ -50,15 +50,15 @@ onMounted(refresh);
 .dictation-result :deep(.dictation-word-copy > strong),
 .dictation-result :deep(.dictation-word-copy > .word-meaning) { min-width: 0; overflow-wrap: anywhere; }
 .dictation-result :deep(.dictation-word-feedback) { min-width: 0; padding: 13px 15px; border-radius: 9px; background: var(--hover); }
-.dictation-result :deep(.dictation-feedback-meta) { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; color: var(--muted); font-size: 12px; }
+.dictation-result :deep(.dictation-feedback-meta) { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; color: var(--muted); font-size: var(--text-sm); }
 .dictation-result :deep(.dictation-result-badge) { padding: 2px 8px; border-radius: 6px; background: var(--sage); color: var(--accent-strong); font-weight: 650; }
 .dictation-result :deep(.dictation-result-badge.is-incorrect) { background: var(--spelling-error-bg); color: var(--spelling-error); }
 .dictation-result :deep(.dictation-result-badge.is-revealed) { background: var(--surface); color: var(--muted); }
 .dictation-result :deep(.dictation-last-input) { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; margin: 10px 0 8px; }
-.dictation-result :deep(.dictation-input-label) { color: var(--muted); font-size: 12px; }
+.dictation-result :deep(.dictation-input-label) { color: var(--muted); font-size: var(--text-sm); }
 .dictation-result :deep(.dictation-input-value) { color: var(--ink); font-size: 18px; font-weight: 650; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
-.dictation-result :deep(.dictation-input-empty) { color: var(--muted); font-size: 15px; }
-.dictation-result :deep(.dictation-word-feedback time) { color: var(--muted); font-size: 12px; }
+.dictation-result :deep(.dictation-input-empty) { color: var(--muted); font-size: var(--text-base); }
+.dictation-result :deep(.dictation-word-feedback time) { color: var(--muted); font-size: var(--text-sm); }
 .dictation-result :deep(.dictation-word-row > button) { white-space: nowrap; }
 @media (max-width: 700px) {
   .dictation-result :deep(.dictation-word-row) { grid-template-columns: minmax(0, 1fr) auto; gap: 12px; padding: 15px; }

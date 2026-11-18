@@ -11,7 +11,7 @@
 .learning-card { position: relative; padding: var(--s16) var(--s10) var(--s10); border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); box-shadow: none; }
 .learning-card .learning-word-area { padding: 0; text-align: center; }
 .learning-card .memory-title { margin: 0; }
-.learning-card .memory-title h1 { font-weight: 400; }
+.learning-card .memory-title h1 { font-weight: 800; letter-spacing: var(--headword-tracking); }
 .learning-card .review-pronunciation { margin-top: var(--s3); }
 .learning-reveal-area { display: flex; justify-content: center; margin-top: var(--s8); }
 .reveal-button { display: inline-flex; align-items: center; justify-content: center; gap: var(--s3); min-height: var(--control); max-width: 100%; padding: var(--s3) var(--s5); border: 1px solid var(--recall-prompt-border); border-radius: var(--radius); color: var(--accent); background: var(--recall-prompt-bg); font-size: var(--text-md); line-height: 1.6; }
@@ -22,7 +22,7 @@
 .learning-card .review-answer { min-height: var(--learning-answer-height); padding: var(--s4); gap: var(--s3); font-size: var(--text-lg); }
 .learning-card .review-answer > span { font-size: inherit; font-weight: 500; }
 .learning-card .review-answer::after { display: none; }
-.learning-card .review-answer::before { content: attr(data-key); display: grid; place-items: center; min-width: var(--s8); height: var(--s8); padding-inline: var(--s1); border-radius: var(--s1); color: var(--key-text); background: var(--key-bg); font: 400 var(--text-md)/1 var(--font-serif); }
+.learning-card .review-answer::before { content: attr(data-key); display: grid; place-items: center; min-width: var(--s8); height: var(--s8); padding-inline: var(--s1); border-radius: var(--s1); color: var(--key-text); background: var(--key-bg); font: 400 var(--text-md)/1 var(--font-sans); }
 .learning-correction { display: flex; flex-direction: column; align-items: center; gap: var(--s2); margin-top: var(--s5); }
 .learning-correction-trigger { display: flex; align-items: center; gap: var(--s2); }
 .learning-correction-trigger .correction-button { min-height: var(--control); padding: var(--s2) var(--s1); }

@@ -45,7 +45,7 @@ async function changePage(value: number) {
         <div v-if="!loading && !error" class="import-candidate-list">
           <label v-for="word in candidates" :key="word.id" class="import-candidate">
             <input type="radio" :name="`import-row-${row.rowNumber}`" :checked="selected?.id === word.id" :disabled="disabled" :aria-label="`选用 ${word.word} #${word.id}`" @change="emit('select', word)" />
-            <span><strong lang="en">{{ word.word }}</strong><span class="subtle-copy"> #{{ word.id }} · {{ word.inBook === true ? '已收录' : word.inBook === false ? '未收录' : '收录状态未知' }}</span><small>{{ word.phonetic }}</small><WordMeaning :translation="word.translation" :translation-groups="word.translationGroups" /></span>
+            <span><strong lang="en">{{ word.word }}</strong><span class="subtle-copy"> #{{ word.id }} · {{ word.inBook === true ? '已收录' : word.inBook === false ? '未收录' : '收录状态未知' }}</span><small lang="en-fonipa">{{ word.phonetic }}</small><WordMeaning :translation="word.translation" :translation-groups="word.translationGroups" /></span>
           </label>
         </div>
         <AppPagination v-if="row.hasMoreCandidates || total > size" :page="page" :size="size" :total="total" :disabled="disabled || loading" noun="个候选" @change="changePage" />

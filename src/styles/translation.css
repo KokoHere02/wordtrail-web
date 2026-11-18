@@ -1,8 +1,8 @@
-.word-meaning { min-width: 0; max-width: 100%; color: var(--translation); font-size: var(--text-base); text-align: left; line-height: 1.7; letter-spacing: normal; }
+.word-meaning { min-width: 0; max-width: 100%; color: var(--translation); font-size: var(--text-base); text-align: left; line-height: 1.7; letter-spacing: normal; font-weight: 400; }
 .translation-group { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: var(--s2); }
 .translation-group + .translation-group { margin-top: var(--s2); }
 .translation-group.has-part-of-speech { grid-template-columns: clamp(3em, 18%, 6em) minmax(0, 1fr); }
-.translation-part-of-speech { display: block; min-width: 0; padding: 0 var(--s1); border-radius: var(--tag-radius); background: var(--tag-bg); color: var(--tag-text); font: italic 400 var(--text-sm)/1.8 var(--font-serif); text-align: center; overflow-wrap: anywhere; }
+.translation-part-of-speech { display: block; min-width: 0; padding: 0 var(--s1); border-radius: var(--tag-radius); background: var(--tag-bg); color: var(--tag-text); font: italic 400 var(--text-sm)/1.8 var(--font-sans); text-align: center; overflow-wrap: anywhere; }
 .translation-part-of-speech[data-pos-tooltip] { position: relative; cursor: help; }
 .translation-part-of-speech[data-pos-tooltip]::after { content: attr(data-pos-tooltip); position: absolute; top: calc(100% + 6px); left: 50%; z-index: 50; transform: translateX(-50%); width: max-content; max-width: min(200px, 80vw); padding: 6px 10px; border: 1px solid var(--line); border-radius: var(--radius-sm); color: var(--ink); background: var(--surface); box-shadow: 0 5px 18px #0003; font: 400 13px/1.4 var(--font-sans); pointer-events: none; opacity: 0; visibility: hidden; transition: opacity 120ms ease, visibility 120ms ease; }
 .translation-part-of-speech[data-pos-tooltip]:is(:hover, :focus-visible)::after { opacity: 1; visibility: visible; }
@@ -27,7 +27,7 @@
 .meaning-area:has(.word-meaning--study) { height: auto; padding-bottom: var(--s4); }
 .word-meaning--study.study-meaning { margin: var(--s3) 0 0; }
 @media (max-width: 700px) {
-  .word-meaning { font-size: var(--text-sm); }
+  .word-meaning { font-size: var(--text-sm); font-weight: 400; }
   .word-meaning--study { padding: var(--s4); }
   .word-meaning--study .translation-group { gap: var(--s3); }
   .word-meaning--study .translation-group.has-part-of-speech { grid-template-columns: clamp(3em, 20%, 4em) minmax(0, 1fr); }

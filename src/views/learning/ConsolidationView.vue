@@ -64,7 +64,7 @@ onMounted(() => { void load(); });
 .consolidation-list > .issue-rows { border: 0; border-radius: 0; background: transparent; }
 .consolidation-issue:first-child { border-radius: 0; }
 .consolidation-issue { padding: var(--s4) var(--s5); }
-.issue-word { font: 400 22px/1.4 var(--font-serif); overflow-wrap: anywhere; }
+.issue-word { font: 700 22px/1.4 var(--font-sans); overflow-wrap: anywhere; }
 .consolidation-word-details { margin-left: 0; }
 .consolidation-word-details > .word-meaning { margin-block: var(--s1) var(--s2); }
 .consolidation-last-input { margin-block: var(--s2); }

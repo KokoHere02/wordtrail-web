@@ -10,14 +10,14 @@
 .wordory-app .brand-wordmark strong { font-size: var(--text-card); font-weight: 500; }
 .wordory-app .brand-wordmark small { font-family: var(--font-serif); font-size: var(--text-sm); letter-spacing: .2em; color: var(--ink); font-weight: 400; }
 .wordory-app .main-nav { top: 0; height: var(--s16); width: calc(var(--s10) * 8); padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
-.wordory-app .main-nav a { color: var(--ink); font-size: var(--text-md); font-weight: 400; }
-.wordory-app .main-nav a.active { font-weight: 600; }
+.wordory-app .main-nav a { color: var(--ink); font-size: var(--text-md); font-weight: 500; }
+.wordory-app .main-nav a.active { font-weight: 700; }
 .wordory-app .nav-indicator { left: 0; top: auto; bottom: 0; width: 25%; height: 3px; border-radius: 0; background: transparent; transition: transform var(--motion-normal) var(--ease); }
 .wordory-app .nav-indicator:after { content: ''; position: absolute; inset: 0 var(--s3); border-radius: var(--radius-pill); background: var(--accent); }
 .wordory-app .header-actions { gap: var(--s6); }
 .wordory-app .appearance-button { width: var(--s12); height: var(--s8); border-right: 1px solid var(--line); border-radius: 0; padding-right: var(--s4); color: var(--ink); }
 .wordory-app .appearance-button[aria-pressed="true"] { color: var(--ink); background: transparent; }
-.wordory-app .profile-button { font-family: var(--font-serif); background: var(--sage); color: var(--accent-strong); }
+.wordory-app .profile-button { font-family: var(--font-sans); background: var(--sage); color: var(--accent-strong); }
 .wordory-app .profile-button:hover { box-shadow: 0 0 0 var(--s1) var(--hover); }
 .dialog-backdrop { background: var(--overlay-bg); }
 .dialog-panel { box-shadow: var(--shadow-float); }
@@ -26,17 +26,17 @@
 /* One grid definition keeps word, review and action columns aligned. */
 .plan-page { --plan-progress-width: 128px; --plan-review-width: 128px; --plan-columns: var(--s8) minmax(0, 1fr) var(--plan-progress-width) var(--plan-review-width) 272px; width: min(calc(100% - var(--s5) * 2), var(--content-library-width)); margin: var(--s6) auto 0; }
 .plan-page-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--s6); margin-bottom: var(--s8); }
-.plan-eyebrow { font: 400 var(--text-sm)/1.5 var(--font-serif); letter-spacing: .3em; color: var(--control-text); margin-bottom: var(--s1); }
-.plan-page-heading h1 { font-size: var(--plan-title-size); font-weight: 600; letter-spacing: -.04em; }
+.plan-eyebrow { font: 400 var(--text-sm)/1.5 var(--font-sans); letter-spacing: .3em; color: var(--control-text); margin-bottom: var(--s1); }
+.plan-page-heading h1 { font-size: var(--plan-title-size); font-weight: 700; letter-spacing: normal; }
 .plan-intro { margin-top: var(--s2); color: var(--muted); font-size: var(--text-md); letter-spacing: .05em; }
 .plan-page-heading .btn { min-height: var(--control); border-radius: var(--radius-sm); padding-inline: var(--s5); box-shadow: none; }
 .plan-sheet { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); }
 .plan-topbar { min-height: calc(var(--s16) + var(--s1)); display: flex; align-items: center; justify-content: space-between; gap: var(--s6); padding: 0 var(--s5); border-bottom: 1px solid var(--line); }
 .plan-status-tabs { display: flex; align-self: stretch; gap: var(--s6); }
 .plan-status-tabs button { display: flex; align-items: center; gap: var(--s2); position: relative; background: transparent; border: 0; padding: var(--s4) var(--s1); color: var(--muted); font-size: var(--text-md); white-space: nowrap; }
-.plan-status-tabs button.active { color: var(--accent-strong); font-weight: 600; }
+.plan-status-tabs button.active { color: var(--accent-strong); font-weight: 700; }
 .plan-status-tabs button.active:after { content: ''; position: absolute; inset: auto 0 0; height: 3px; background: var(--accent); border-radius: var(--radius-pill); }
-.plan-tab-count { font-family: var(--font-serif); font-variant-numeric: tabular-nums; }
+.plan-tab-count { font-family: var(--font-notation); font-variant-numeric: tabular-nums; font-weight: 400; }
 .plan-search { display: flex; align-items: center; gap: var(--s3); width: calc(var(--s16) * 4 + var(--s4)); min-height: var(--control); padding: 0 var(--s3); border: 1px solid var(--line); border-radius: var(--radius-sm); color: var(--control-text); }
 .plan-search input { min-width: 0; width: 0; flex: 1; border: 0; outline: none; background: transparent; color: var(--ink); font-size: var(--text-base); }
 .plan-search:focus-within { border-color: var(--focus-ring); }
@@ -45,7 +45,7 @@
 .plan-learning-tabs { display: flex; border: 1px solid var(--line); border-radius: var(--radius-sm); overflow: hidden; }
 .plan-learning-tabs button { min-height: calc(var(--control) - var(--s2)); padding: var(--s2) var(--s5); border: 0; border-right: 1px solid var(--line); background: transparent; color: var(--control-text); font-size: var(--text-base); }
 .plan-learning-tabs button:last-child { border-right: 0; }
-.plan-learning-tabs button.active { background: var(--sage); color: var(--accent-strong); font-weight: 600; }
+.plan-learning-tabs button.active { background: var(--sage); color: var(--accent-strong); font-weight: 700; }
 .plan-sort { width: 132px; flex-shrink: 0; }
 .plan-sort .app-select-trigger { min-height: calc(var(--control) - var(--s2)); padding: var(--s2) var(--s3); font-size: var(--text-base); }
 .plan-bulkbar { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s4); padding: var(--s3) var(--s5); color: var(--accent-strong); background: var(--sage); font-size: var(--text-base); border-bottom: 1px solid var(--line); }
@@ -63,8 +63,8 @@
 .plan-word-title { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--s2) var(--s4); }
 .plan-word-title > a { color: var(--ink); text-align: left; min-width: 0; }
 .plan-word-title > a:hover { color: var(--accent); }
-.plan-sheet .plan-word strong { font-family: var(--font-serif); font-size: var(--text-round); font-weight: 400; letter-spacing: -.035em; line-height: 1.2; overflow-wrap: anywhere; }
-.plan-phonetic { color: var(--phonetic); font-family: var(--font-serif); font-size: var(--text-base); overflow-wrap: anywhere; }
+.plan-sheet .plan-word strong { font-family: var(--font-sans); font-size: var(--text-round); font-weight: 700; letter-spacing: -.035em; line-height: 1.2; overflow-wrap: anywhere; }
+.plan-phonetic { color: var(--phonetic); font-size: var(--text-base); overflow-wrap: anywhere; }
 .plan-sheet .plan-word p { margin-top: var(--s1); font-size: var(--text-base); color: var(--translation); line-height: 1.5; }
 .plan-memory { min-width: 0; color: var(--control-text); font-size: var(--text-base); }
 .plan-level-bars { display: flex; gap: var(--s1); margin-bottom: var(--s2); }

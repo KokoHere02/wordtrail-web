@@ -1,4 +1,4 @@
-/* Review reference: warm paper, a serif word, quiet definition rows and flat controls. */
+/* Review reference: warm paper, a prominent headword, quiet definition rows and flat controls. */
 .wordory-app .review-stage { width: 100%; padding: 0; margin: 0; }
 .review-page, .live-daily-page.review-page { width: 100%; max-width: none; margin: 0; padding: 0; background: transparent; color: var(--ink); box-shadow: none; }
 .review-header { width: 100%; margin: 0 auto; background: var(--header-bg); }
@@ -24,7 +24,7 @@
 .review-progress > span:first-child { grid-column: 1; grid-row: 1; }
 .review-progress .progress-track { grid-column: 1 / -1; grid-row: 2; width: 100%; height: var(--s2); border-radius: var(--radius-pill); background: var(--progress-track); }
 .review-progress .progress-track > span { border-radius: inherit; background: var(--progress-start); }
-.review-progress-count { grid-column: 2; grid-row: 1; font-variant-numeric: tabular-nums; }
+.review-progress-count { grid-column: 2; grid-row: 1; font-variant-numeric: tabular-nums; font-family: var(--font-notation); font-weight: 400; }
 .review-body, .study-main.review-body { width: min(calc(100% - var(--s5) * 2), var(--review-width)); max-width: none; min-height: 0; padding: 0 0 max(var(--s8), env(safe-area-inset-bottom)); margin: 0 auto; text-align: center; }
 .review-page .memory-content { width: 100%; padding-bottom: 0; }
 .review-subtitle, .review-page .practice-counter, .review-page .study-position { display: block; margin: var(--s6) 0 var(--s2); color: var(--control-text); font-size: var(--text-base); font-weight: 400; letter-spacing: .3em; overflow-wrap: anywhere; }
@@ -32,8 +32,8 @@
 .review-page .memory-word-stage { display: block; min-height: 0; }
 .review-page .memory-word-content { padding-top: 0; }
 .review-page .memory-title, .review-page .study-word-area { min-height: 0; margin-top: var(--s2); }
-.review-page .memory-title h1, .review-page .study-word { font: 400 var(--review-word-size)/1.1 var(--review-font); letter-spacing: -.035em; color: var(--ink); max-width: 100%; overflow-wrap: anywhere; }
-.review-page .memory-title h1.long-memory-word, .review-page .study-word.long-word { font-size: var(--review-long-word-size); letter-spacing: -.025em; }
+.review-page .memory-title h1, .review-page .study-word { font: 800 var(--review-word-size)/1.1 var(--font-sans); letter-spacing: var(--headword-tracking); color: var(--ink); max-width: 100%; overflow-wrap: anywhere; }
+.review-page .memory-title h1.long-memory-word, .review-page .study-word.long-word { font-size: var(--review-long-word-size); letter-spacing: var(--headword-tracking); }
 .review-page .memory-phonetic, .review-page .phonetic { color: var(--phonetic); font-size: var(--text-xl); line-height: 1.5; margin-top: var(--s3); overflow-wrap: anywhere; }
 .review-page .live-meaning, .review-page .meaning-area { display: flex; flex-direction: column; align-items: stretch; justify-content: center; width: 100%; min-height: 0; padding: 0; margin: var(--s4) auto 0; }
 .review-page .recall-prompt { display: flex; align-items: center; justify-content: center; gap: var(--s3); min-height: var(--recall-prompt-height); margin: 0; padding: var(--s3) var(--s4); border: 1px solid var(--recall-prompt-border); border-radius: var(--radius); background: var(--recall-prompt-bg); color: var(--secondary-text); font-size: var(--text-md); line-height: 1.7; }
@@ -48,7 +48,7 @@
 .word-meaning--study .translation-body { background: transparent; box-shadow: none; }
 .word-meaning--study .translation-group.has-part-of-speech { grid-template-columns: var(--s12) minmax(0, 1fr); }
 .word-meaning--study .translation-group + .translation-group { padding-top: var(--s2); margin-top: var(--s2); }
-.word-meaning--study .translation-part-of-speech { padding: var(--s2) var(--s1); border-radius: var(--tag-radius); font: 400 var(--text-md)/1.25 var(--font-serif); }
+.word-meaning--study .translation-part-of-speech { padding: var(--s2) var(--s1); border-radius: var(--tag-radius); font: 400 var(--text-md)/1.25 var(--font-sans); }
 .word-meaning--study .translation-meaning, .word-meaning--study .translation-legacy, .word-meaning--study .translation-empty { display: block; font-size: var(--review-meaning-size); line-height: 1.7; font-weight: 400; color: var(--ink); }
 .translation-more { display: block; margin-top: var(--s1); color: var(--text-subtle); font-size: var(--text-base); line-height: 1.7; }
 .professional-toggle { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); width: 100%; min-height: var(--control); border: 0; padding: var(--s2) 0; color: var(--accent-strong); background: transparent; text-align: left; font-size: var(--text-base); }
@@ -64,7 +64,7 @@
 .review-example-space { min-height: var(--s16); }
 .review-example-space.has-example { padding: var(--s5) 0; }
 .review-example { margin: 0; padding-left: var(--s5); border-left: var(--s1) solid var(--example-line); text-align: left; background: transparent; box-shadow: none; }
-.review-example p[lang="en"] { font: 400 var(--text-lg)/1.7 var(--review-font); overflow-wrap: anywhere; white-space: pre-wrap; color: var(--ink); }
+.review-example p[lang="en"] { font: 500 var(--text-lg)/1.7 var(--font-sans); overflow-wrap: anywhere; white-space: pre-wrap; color: var(--ink); }
 .review-example .review-example-translation { margin-top: var(--s1); color: var(--muted); font-size: var(--text-base); line-height: 1.7; overflow-wrap: anywhere; white-space: pre-wrap; }
 .review-pronunciation { margin-top: var(--s2); }
 .review-phonetic-row { display: flex; align-items: center; justify-content: center; gap: var(--s2); min-height: var(--control); }
@@ -75,7 +75,7 @@
 .review-options, .review-page .recall-options, .review-page .answer-choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s3); margin: var(--s3) 0 0; }
 .review-options .review-answer { position: relative; display: flex; flex-direction: row; align-items: center; justify-content: center; min-width: 0; min-height: var(--review-answer-height); padding: var(--s3) var(--s10) var(--s3) var(--s3); border: 1px solid var(--answer-border); border-radius: var(--radius); background: transparent; color: var(--secondary-text); box-shadow: none; transform: none; transition: border-color var(--motion-fast) var(--ease), background-color var(--motion-fast) var(--ease), color var(--motion-fast) var(--ease); }
 .review-answer > strong, .review-answer > span { font-size: var(--text-card); font-weight: 400; color: inherit; }
-.review-answer::after { content: attr(data-key); position: absolute; right: var(--s8); top: 50%; transform: translateY(-50%); display: grid; place-items: center; min-width: var(--s6); height: calc(var(--s6) + var(--s1)); padding-inline: var(--s1); background: var(--key-bg); border-radius: var(--s1); color: var(--key-text); font: 400 var(--text-md)/1 var(--font-serif); }
+.review-answer::after { content: attr(data-key); position: absolute; right: var(--s8); top: 50%; transform: translateY(-50%); display: grid; place-items: center; min-width: var(--s6); height: calc(var(--s6) + var(--s1)); padding-inline: var(--s1); background: var(--key-bg); border-radius: var(--s1); color: var(--key-text); font: 400 var(--text-md)/1 var(--font-sans); }
 .review-options .review-answer:hover:not(:disabled) { transform: none; background: var(--secondary-hover); border-color: var(--answer-border); box-shadow: none; }
 .review-options .review-answer.picked, .review-options .review-answer.chosen { border-color: var(--accent); background: var(--secondary-hover); box-shadow: none; transform: none; }
 .review-options .review-answer:disabled { opacity: .55; }
@@ -97,7 +97,7 @@
 .review-session-details[open] .record-chevron { transform: rotate(180deg); }
 .review-round-counts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s4); padding: var(--s4); margin: var(--s4) 0; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
 .review-round-counts dt { margin-bottom: var(--s1); }
-.review-round-counts dd { margin: 0; color: var(--ink); font-variant-numeric: tabular-nums; }
+.review-round-counts dd { margin: 0; color: var(--ink); font-variant-numeric: tabular-nums; font-family: var(--font-notation); }
 .review-page .session-stat-grid span, .review-page .live-daily-stats > .subtle-copy, .review-attempt-count { font-size: var(--text-base); }
 .review-session-details .live-daily-stats { margin: var(--s4) 0; }
 .review-page .session-stats { background: var(--surface); border-color: var(--line); box-shadow: none; }

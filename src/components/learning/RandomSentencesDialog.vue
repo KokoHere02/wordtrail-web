@@ -60,5 +60,6 @@ watch(() => props.modelValue, open => {
 <style scoped>
 .random-sentence { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
 .random-sentence input { flex: none; margin-top: 4px; }
+.random-sentence strong { font-weight: 500; }
 .random-sentence small { display: block; margin-top: 4px; color: var(--muted); }
 </style>

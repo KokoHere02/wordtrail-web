@@ -21,11 +21,11 @@ defineProps<{ task: DailyTask }>();
 <style scoped>
 .daily-record-stats { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s10); padding: var(--s8); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); }
 .daily-record-progress { display: flex; flex-direction: column; gap: var(--s3); color: var(--muted); font-size: var(--text-sm); }
-.daily-record-progress > strong { color: var(--accent); font-size: 42px; font-weight: 600; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.daily-record-progress > strong { color: var(--accent); font-size: 42px; font-weight: 400; line-height: 1.2; font-variant-numeric: tabular-nums; font-family: var(--font-notation); }
 .daily-record-progress strong small { color: var(--muted); font-size: var(--text-xl); font-weight: 400; }
 .daily-record-counts { display: flex; align-items: center; justify-content: space-around; gap: var(--s4); border-left: 1px solid var(--line); padding-left: var(--s6); margin: 0; }
 .daily-record-counts dt { color: var(--muted); font-size: var(--text-sm); margin-bottom: var(--s3); }
-.daily-record-counts dd { margin: 0; font-size: 28px; font-variant-numeric: tabular-nums; }
+.daily-record-counts dd { margin: 0; font-size: 28px; font-variant-numeric: tabular-nums; font-family: var(--font-notation); }
 .daily-record-counts small { font-size: var(--text-sm); color: var(--muted); margin-left: var(--s1); }
 @media (max-width: 640px) {
   .daily-record-stats { grid-template-columns: 1fr; gap: var(--s6); padding: var(--s5); }
